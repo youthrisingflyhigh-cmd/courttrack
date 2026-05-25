@@ -132,10 +132,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
+<!-- Firebase compat CDN — plain scripts, no modules, fully global -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
   authDomain: "court-track-39271.firebaseapp.com",
@@ -145,8 +145,13 @@ const firebaseConfig = {
   messagingSenderId: "559684754695",
   appId: "1:559684754695:web:0d8b12f3519329d8fc79a2"
 };
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+function ref(path){ return db.ref(path); }
+function onValue(r,cb,opts){
+  if(opts&&opts.onlyOnce){ r.once('value').then(s=>cb(s)); }
+  else { r.on('value',cb); }
+}
 
 let teams=[],game=null,standings={},history=[],playerStats={},schedule=[];
 let currentTab='live';
@@ -356,8 +361,6 @@ onValue(ref(db,'ct/game'), s=>{
 });
 
 function initDone(){
-  loaded=TOTAL_KEYS; // prevent double-init from timeout
-  showTab('live');
 }
 </script>
 </body>
