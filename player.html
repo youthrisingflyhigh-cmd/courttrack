@@ -14,10 +14,11 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .nav-logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:1px;color:var(--white);}
 .nav-logo span{color:var(--orange);}
 .nav-logo small{display:block;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--muted);line-height:1;margin-top:1px;}
-.pub-badge{display:inline-block;background:#1a3a5c;color:#7ab8f5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+.pub-badge{display:inline-block;background:#1a3a5c;color:#7ab8f5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;text-transform:uppercase;}
 .page{padding:2rem;max-width:1100px;margin:0 auto;}
 .no-game{padding:80px 20px;text-align:center;color:var(--muted);}
 .no-game h2{font-size:28px;color:var(--light);margin-bottom:8px;}
+.loading{padding:80px 20px;text-align:center;color:var(--muted);font-size:14px;}
 .hero-banner{background:linear-gradient(135deg,#1a0a00 0%,#0d0d0d 60%);border:1px solid #2a2a2a;border-radius:12px;padding:2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;}
 .hero-bg-text{position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:96px;font-weight:900;color:rgba(255,92,0,0.06);letter-spacing:-2px;pointer-events:none;white-space:nowrap;}
 .hero-subtitle{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
@@ -58,28 +59,42 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .lb-sub{font-size:11px;color:var(--muted);}
 .lb-stat{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--white);min-width:48px;text-align:right;}
 .lb-stat-label{font-size:10px;color:var(--muted);text-align:right;}
-.refresh-bar{margin-top:2rem;padding:14px 20px;background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;font-size:12px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:12px;}
-.refresh-btn{padding:5px 14px;border-radius:6px;border:1px solid #333;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;}
-.refresh-btn:hover{border-color:#555;color:var(--white);}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.footer-bar{margin-top:2rem;padding:14px 20px;background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;font-size:12px;color:var(--muted);text-align:center;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
 </style>
 </head>
 <body>
 <nav>
   <div class="nav-logo">COURT<span>TRACK</span><small>by YUNG RIZZO</small></div>
-  <div class="pub-badge" style="margin:0;">👁 Player View</div>
+  <div class="pub-badge">👁 Player View</div>
 </nav>
 
-<div class="page" id="root"></div>
+<div class="page" id="root"><div class="loading">🏀 Loading game data…</div></div>
 
-<script>
-function hexToRgb(hex){const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);return r?`${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}`:null;}
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+  authDomain: "court-track-39271.firebaseapp.com",
+  databaseURL: "https://court-track-39271-default-rtdb.firebaseio.com",
+  projectId: "court-track-39271",
+  storageBucket: "court-track-39271.firebasestorage.app",
+  messagingSenderId: "559684754695",
+  appId: "1:559684754695:web:0d8b12f3519329d8fc79a2",
+  measurementId: "G-E7FTXYGTRC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+let teams = [], game = null;
 
 function render(){
-  const teams   = JSON.parse(localStorage.getItem('ct_teams') || '[]');
-  const game    = JSON.parse(localStorage.getItem('ct_game')  || 'null');
-  const root    = document.getElementById('root');
-
+  const root = document.getElementById('root');
   if(!game){
     root.innerHTML=`<div class="no-game">
       <div style="font-size:48px;margin-bottom:16px;">🏀</div>
@@ -88,7 +103,6 @@ function render(){
     </div>`;
     return;
   }
-
   const ht=teams[game.hi], at=teams[game.ai];
   if(!ht||!at){root.innerHTML='<div class="no-game"><h2>Game data unavailable.</h2></div>';return;}
 
@@ -119,7 +133,7 @@ function render(){
   </tr>`).join('');
 
   root.innerHTML=`
-    <div class="pub-badge">👁 Player View — Read Only</div>
+    <div style="margin-bottom:12px;"><span class="pub-badge">👁 Player View — Read Only</span></div>
     <div class="hero-banner">
       <div class="hero-bg-text">${ht.name.toUpperCase()}</div>
       <div class="hero-subtitle">Live Game Stats</div>
@@ -144,9 +158,9 @@ function render(){
       <div class="stat-card"><div class="sc-label">Quarter</div><div class="sc-val">Q${game.q}</div><div class="sc-name">Current</div></div>
     </div>
     <div class="lb-two">
-      <div><div class="section-label" style="margin-bottom:10px;">Points Leaders</div><div class="stats-card"><div>${lbH(byPts,'pts')}</div></div></div>
-      <div><div class="section-label" style="margin-bottom:10px;">Rebounds Leaders</div><div class="stats-card"><div>${lbH(byReb,'reb')}</div></div></div>
-      <div><div class="section-label" style="margin-bottom:10px;">Assists Leaders</div><div class="stats-card"><div>${lbH(byAst,'ast')}</div></div></div>
+      <div><div class="section-label" style="margin-bottom:10px;">Points Leaders</div><div class="stats-card">${lbH(byPts,'pts')}</div></div>
+      <div><div class="section-label" style="margin-bottom:10px;">Rebounds Leaders</div><div class="stats-card">${lbH(byReb,'reb')}</div></div>
+      <div><div class="section-label" style="margin-bottom:10px;">Assists Leaders</div><div class="stats-card">${lbH(byAst,'ast')}</div></div>
       <div>
         <div class="section-label" style="margin-bottom:10px;">Full Box Score</div>
         <div class="stats-card">
@@ -155,15 +169,17 @@ function render(){
         </div>
       </div>
     </div>
-    <div class="refresh-bar">
-      Stats updated live by coach.
-      <button class="refresh-btn" onclick="render()">↻ Refresh</button>
-    </div>`;
+    <div class="footer-bar"><span class="live-dot"></span>Stats update automatically in real time</div>`;
 }
 
-render();
-// Auto-refresh every 30 seconds
-setInterval(render, 30000);
+// Listen for teams once
+onValue(ref(db,'ct/teams'), s=>{ teams=s.val()||[]; }, {onlyOnce:true});
+
+// Live listener on game — auto-renders whenever coach logs a stat
+onValue(ref(db,'ct/game'), s=>{
+  game=s.val()||null;
+  render();
+});
 </script>
 </body>
 </html>

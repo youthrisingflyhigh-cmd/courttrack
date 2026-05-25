@@ -490,15 +490,60 @@ tr.totals-row td.pts-cell{color:var(--orange);}
   </div>
 </div>
 
-<script>
-let teams    = JSON.parse(localStorage.getItem('ct_teams')    || '[]');
-let game     = JSON.parse(localStorage.getItem('ct_game')     || 'null');
-let standings = JSON.parse(localStorage.getItem('ct_standings') || '{}');
-let history  = JSON.parse(localStorage.getItem('ct_history')  || '[]');
-// playerStats: { teamName: { playerNum: {pts,reb,ast,stl,blk,to,fgm,'3pm',ftm,gp} } }
-let playerStats = JSON.parse(localStorage.getItem('ct_playerstats') || '{}');
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+  authDomain: "court-track-39271.firebaseapp.com",
+  databaseURL: "https://court-track-39271-default-rtdb.firebaseio.com",
+  projectId: "court-track-39271",
+  storageBucket: "court-track-39271.firebasestorage.app",
+  messagingSenderId: "559684754695",
+  appId: "1:559684754695:web:0d8b12f3519329d8fc79a2",
+  measurementId: "G-E7FTXYGTRC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+let teams=[], game=null, standings={}, history=[], playerStats={};
 let selTeam=null, selPlayer=null, trackSide='home', logStack=[];
+
+// ── Firebase save helpers ──
+function save(){
+  set(ref(db,'ct/teams'),       teams);
+  set(ref(db,'ct/standings'),   standings);
+  set(ref(db,'ct/history'),     history);
+  set(ref(db,'ct/playerStats'), playerStats);
+  if(game) set(ref(db,'ct/game'), game);
+}
+function clearGame(){ remove(ref(db,'ct/game')); }
+
+// ── Bootstrap: load all data once then wire live listeners ──
+let _loaded=0;
+function _check(){ _loaded++; if(_loaded>=5) onAllLoaded(); }
+
+onValue(ref(db,'ct/teams'),       s=>{ teams=s.val()||[];       _check(); },{onlyOnce:true});
+onValue(ref(db,'ct/game'),        s=>{ game=s.val()||null;      _check(); },{onlyOnce:true});
+onValue(ref(db,'ct/standings'),   s=>{ standings=s.val()||{};   _check(); },{onlyOnce:true});
+onValue(ref(db,'ct/history'),     s=>{ history=s.val()||[];     _check(); },{onlyOnce:true});
+onValue(ref(db,'ct/playerStats'), s=>{ playerStats=s.val()||{}; _check(); },{onlyOnce:true});
+
+// ── Live listener: sync game state in real time (for player.html updates) ──
+onValue(ref(db,'ct/game'), s=>{ game=s.val()||null; });
+
+function onAllLoaded(){
+  renderTeams(); renderRoster(); renderSelects();
+  document.getElementById('team-color-input').value='';
+  document.getElementById('color-preview-swatch').style.background='transparent';
+  if(game){
+    const b=document.getElementById('game-banner');
+    b.style.display='block';
+    b.textContent=`✓ Active game: ${teams[game.hi]?.name||'?'} vs ${teams[game.ai]?.name||'?'}`;
+  }
+}
 
 const TEAM_COLORS=['#FF5C00','#3b82f6','#22c55e','#a855f7','#ef4444','#f59e0b','#06b6d4','#ec4899','#84cc16','#f97316'];
 function nextTeamColor(){
@@ -523,13 +568,8 @@ const STATS=[
   {key:'miss', label:'FG Miss',    pts:0, neg:true}
 ];
 
-function save(){
-  localStorage.setItem('ct_teams',       JSON.stringify(teams));
-  localStorage.setItem('ct_standings',   JSON.stringify(standings));
-  localStorage.setItem('ct_history',     JSON.stringify(history));
-  localStorage.setItem('ct_playerstats', JSON.stringify(playerStats));
-  if(game) localStorage.setItem('ct_game', JSON.stringify(game));
-}
+// save() and clearGame() defined above in Firebase module block
+
 
 /* ─── COLOR HELPERS ─── */
 function hexToRgb(hex){
@@ -679,7 +719,7 @@ function finishGame(){
 
   history.unshift({home:hn,away:an,homeScore:hs,awayScore:as_,date:game.date,homeColor:hc,awayColor:ac});
   game=null;
-  localStorage.removeItem('ct_game');
+  clearGame();
   save();
   alert(`Game saved! ${hs>as_?hn:an} wins ${Math.max(hs,as_)}-${Math.min(hs,as_)}`);
   showPage('standings');
@@ -868,9 +908,10 @@ function renderStandings(){
 
 function clearStandings(){
   if(!confirm('Reset all standings, game history, and player season stats? This cannot be undone.'))return;
-  standings={};history={};playerStats={};
-  localStorage.removeItem('ct_standings');localStorage.removeItem('ct_history');localStorage.removeItem('ct_playerstats');
-  history=[];
+  standings={};history=[];playerStats={};
+  remove(ref(db,'ct/standings'));
+  remove(ref(db,'ct/history'));
+  remove(ref(db,'ct/playerStats'));
   renderStandings();
 }
 
@@ -1089,15 +1130,8 @@ function showPage(p){
   }
 }
 
-/* ─── INIT ─── */
-renderTeams();renderRoster();renderSelects();
-document.getElementById('team-color-input').value='';
-document.getElementById('color-preview-swatch').style.background='transparent';
+// Init handled by onAllLoaded() after Firebase data loads
 
-if(game){
-  const b=document.getElementById('game-banner');b.style.display='block';
-  b.textContent=`✓ Active game: ${teams[game.hi]?.name||'?'} vs ${teams[game.ai]?.name||'?'}`;
-}
 </script>
 </body>
 </html>
