@@ -21,27 +21,21 @@
     --blue: #3b82f6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Barlow', sans-serif;
-    background: var(--dark);
-    color: var(--light);
-    min-height: 100vh;
-  }
+  body { font-family: 'Barlow', sans-serif; background: var(--dark); color: var(--light); min-height: 100vh; }
   h1,h2,h3 { font-family: 'Barlow Condensed', sans-serif; }
 
   /* NAV */
   nav {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 2rem; height: 56px;
-    background: var(--dark2);
-    border-bottom: 1px solid #2a2a2a;
-    position: sticky; top: 0; z-index: 100;
+    padding: 0 1.5rem; height: 56px;
+    background: var(--dark2); border-bottom: 1px solid #2a2a2a;
+    position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 4px;
   }
   .nav-logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 1px; color: var(--white); }
   .nav-logo span { color: var(--orange); }
-  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
   .nav-tab {
-    padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
     cursor: pointer; background: transparent; color: var(--muted);
     border: none; transition: all 0.15s; letter-spacing: 0.3px;
   }
@@ -50,22 +44,22 @@
   .nav-badge { background: var(--orange); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 99px; margin-left: 6px; font-weight: 700; }
 
   /* PAGE SECTIONS */
-  .page { display: none; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+  .page { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
   .page.active { display: block; }
 
   /* SCORE HEADER */
   .scoreboard {
     background: var(--dark2); border: 1px solid #2a2a2a;
-    border-radius: 12px; padding: 1.5rem 2rem;
+    border-radius: 12px; padding: 1.25rem 1.5rem;
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
-  .team-block { text-align: center; min-width: 140px; }
-  .team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
-  .team-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 64px; font-weight: 900; line-height: 1; color: var(--white); }
+  .team-block { text-align: center; min-width: 120px; }
+  .team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .team-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 56px; font-weight: 900; line-height: 1; color: var(--white); }
   .team-pts.home { color: var(--orange); }
   .score-center { text-align: center; }
-  .score-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 900; color: #333; margin-bottom: 6px; }
+  .score-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 900; color: #333; margin-bottom: 6px; }
   .game-status { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
   .game-status.live { color: var(--green); }
   .quarter-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
@@ -83,7 +77,9 @@
   }
   .player-chip:hover { border-color: #444; }
   .player-chip.selected { border-color: var(--orange); background: rgba(255,92,0,0.1); }
+  .player-chip.away-chip.selected { border-color: var(--blue); background: rgba(59,130,246,0.1); }
   .player-chip .jersey { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 16px; color: var(--orange); min-width: 20px; text-align: center; }
+  .player-chip.away-chip .jersey { color: var(--blue); }
   .player-chip .pname { font-size: 13px; font-weight: 600; color: var(--light); }
   .player-chip .ppts { font-size: 11px; color: var(--muted); }
 
@@ -105,8 +101,19 @@
   .stat-btn:hover .sb-plus { opacity: 1; }
   .stat-btn .pts-tag { position: absolute; bottom: 6px; right: 8px; font-size: 10px; font-weight: 700; color: var(--orange); background: rgba(255,92,0,0.15); padding: 1px 5px; border-radius: 4px; }
 
+  /* TEAM TOGGLE */
+  .team-toggle { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .team-toggle-btn {
+    padding: 7px 18px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid #2a2a2a; background: transparent;
+    color: var(--muted); transition: all 0.12s; font-family: 'Barlow', sans-serif;
+  }
+  .team-toggle-btn.home-active { background: rgba(255,92,0,0.15); border-color: var(--orange); color: var(--orange); }
+  .team-toggle-btn.away-active { background: rgba(59,130,246,0.15); border-color: var(--blue); color: var(--blue); }
+
   /* LOG */
-  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; }
+  .two-col { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; }
+  @media(max-width:700px){ .two-col { grid-template-columns: 1fr; } }
   .log-panel { background: var(--dark2); border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; }
   .log-header { padding: 12px 16px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; }
   .log-header span { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
@@ -116,6 +123,7 @@
   .log-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
   .log-dot.neg { background: var(--red); }
   .log-dot.neutral { background: #555; }
+  .log-dot.blue { background: var(--blue); }
   .log-player { font-weight: 600; color: var(--white); }
   .log-action { color: var(--muted); }
   .log-pts { margin-left: auto; font-weight: 700; font-size: 12px; }
@@ -128,8 +136,8 @@
   .undo-btn:hover { border-color: var(--red); color: var(--red); }
 
   /* STATS TABLE */
-  .stats-card { background: var(--dark2); border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; }
-  .stats-card-header { padding: 14px 20px; border-bottom: 1px solid #2a2a2a; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .stats-card { background: var(--dark2); border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+  .stats-card-header { padding: 14px 20px; border-bottom: 1px solid #2a2a2a; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
   table { width: 100%; border-collapse: collapse; }
   th { padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; text-align: right; border-bottom: 1px solid #2a2a2a; background: var(--dark2); }
   th:first-child, th:nth-child(2) { text-align: left; }
@@ -144,21 +152,14 @@
   .hero-banner {
     background: linear-gradient(135deg, #1a0a00 0%, #0d0d0d 60%);
     border: 1px solid #2a2a2a; border-radius: 12px;
-    padding: 3rem 2.5rem; margin-bottom: 2rem; position: relative; overflow: hidden;
-  }
-  .hero-banner::before {
-    content: 'LAKERS'; position: absolute; right: 2rem; top: 50%; transform: translateY(-50%);
-    font-family: 'Barlow Condensed', sans-serif; font-size: 96px; font-weight: 900;
-    color: rgba(255,92,0,0.06); letter-spacing: -2px; pointer-events: none; white-space: nowrap;
+    padding: 2.5rem 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
   }
   .hero-subtitle { font-size: 11px; font-weight: 700; color: var(--orange); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
-  .hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 900; color: var(--white); line-height: 1; margin-bottom: 12px; }
+  .hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: 42px; font-weight: 900; color: var(--white); line-height: 1; margin-bottom: 8px; }
   .hero-meta { font-size: 13px; color: var(--muted); }
-  .stat-highlights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
-  .stat-card {
-    background: var(--dark2); border: 1px solid #2a2a2a;
-    border-radius: 10px; padding: 1.25rem;
-  }
+  .stat-highlights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  @media(max-width:600px){ .stat-highlights { grid-template-columns: repeat(2,1fr); } }
+  .stat-card { background: var(--dark2); border: 1px solid #2a2a2a; border-radius: 10px; padding: 1.25rem; }
   .stat-card .sc-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
   .stat-card .sc-val { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 900; color: var(--white); line-height: 1; }
   .stat-card .sc-name { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -166,17 +167,10 @@
   .stat-card.highlight .sc-val { color: var(--orange); }
 
   /* LEADERBOARD */
-  .lb-row {
-    display: flex; align-items: center; gap: 14px;
-    padding: 12px 16px; border-bottom: 1px solid #1c1c1c;
-    transition: background 0.1s; cursor: default;
-  }
-  .lb-row:hover { background: rgba(255,255,255,0.02); }
+  .lb-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #1c1c1c; }
   .lb-row:last-child { border-bottom: none; }
   .lb-rank { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 900; color: var(--muted); min-width: 20px; text-align: center; }
-  .lb-rank.r1 { color: #f5a623; }
-  .lb-rank.r2 { color: #b0b0b0; }
-  .lb-rank.r3 { color: #cd7f32; }
+  .lb-rank.r1 { color: #f5a623; } .lb-rank.r2 { color: #b0b0b0; } .lb-rank.r3 { color: #cd7f32; }
   .lb-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--dark4); display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 13px; color: var(--orange); flex-shrink: 0; }
   .lb-info { flex: 1; }
   .lb-name { font-size: 14px; font-weight: 600; color: var(--white); }
@@ -184,18 +178,57 @@
   .lb-stat { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; color: var(--white); min-width: 48px; text-align: right; }
   .lb-stat-label { font-size: 10px; color: var(--muted); text-align: right; }
 
-  .flex-row { display: flex; gap: 12px; align-items: center; margin-bottom: 1.5rem; }
-  .pill { padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #2a2a2a; background: transparent; color: var(--muted); transition: all 0.1s; }
-  .pill.active { background: var(--dark3); color: var(--white); border-color: #444; }
+  /* ADMIN PANEL */
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media(max-width:700px){ .admin-grid { grid-template-columns: 1fr; } }
+  .admin-card { background: var(--dark2); border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; }
+  .admin-card-header { padding: 14px 18px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; }
+  .admin-card-header h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; color: var(--white); }
+  .admin-card-body { padding: 16px 18px; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end; }
+  .form-group { flex: 1; }
+  .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .form-input {
+    width: 100%; padding: 8px 12px; background: var(--dark3); border: 1px solid #333;
+    border-radius: 7px; color: var(--white); font-size: 13px; font-family: 'Barlow', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { outline: none; border-color: var(--orange); }
+  .form-input.small { max-width: 70px; }
+  .btn {
+    padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.12s; font-family: 'Barlow', sans-serif;
+    border: none; white-space: nowrap;
+  }
+  .btn-orange { background: var(--orange); color: #fff; }
+  .btn-orange:hover { background: var(--orange-dim); }
+  .btn-ghost { background: transparent; border: 1px solid #333; color: var(--muted); }
+  .btn-ghost:hover { border-color: #555; color: var(--light); }
+  .btn-red { background: transparent; border: 1px solid #333; color: var(--red); padding: 4px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600; }
+  .btn-red:hover { border-color: var(--red); background: rgba(239,68,68,0.1); }
+  .player-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+  .player-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--dark3); border-radius: 7px; border: 1px solid #2a2a2a; }
+  .player-item .p-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 15px; color: var(--orange); min-width: 24px; }
+  .player-item .p-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--light); }
+  .team-tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(255,92,0,0.15); color: var(--orange); }
+  .team-tag.away { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .admin-notice { background: rgba(255,92,0,0.08); border: 1px solid rgba(255,92,0,0.2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--light); margin-bottom: 1.5rem; }
+  .admin-notice strong { color: var(--orange); }
+  .start-game-btn { width: 100%; padding: 14px; background: var(--orange); color: #fff; border: none; border-radius: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; letter-spacing: 2px; cursor: pointer; transition: all 0.15s; margin-top: 1.5rem; }
+  .start-game-btn:hover { background: var(--orange-dim); }
+  .game-setup-row { display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: flex-end; }
+  .game-setup-row .form-group { flex: 1; }
 
-  /* FLASH ANIMATION */
+  /* STANDINGS */
+  .standings-table { width: 100%; border-collapse: collapse; }
+  .standings-table th { background: var(--dark3); }
+  .standings-row td:nth-child(2) { font-weight: 700; color: var(--white); }
+  .w-cell { color: var(--green) !important; font-weight: 700 !important; }
+  .l-cell { color: var(--red) !important; }
+
   @keyframes flash { 0%{background:rgba(255,92,0,0.3)} 100%{background:transparent} }
   .flash { animation: flash 0.4s ease-out; }
-
-  /* SCROLL */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -203,18 +236,108 @@
 <nav>
   <div class="nav-logo">COURT<span>TRACK</span></div>
   <div class="nav-tabs">
+    <button class="nav-tab" onclick="showPage('admin')">⚙ Setup</button>
     <button class="nav-tab active" onclick="showPage('track')">Live Tracking</button>
-    <button class="nav-tab" onclick="showPage('stats')">Team Stats</button>
+    <button class="nav-tab" onclick="showPage('stats')">Box Score</button>
+    <button class="nav-tab" onclick="showPage('standings')">Standings</button>
     <button class="nav-tab" onclick="showPage('public')">Player View <span class="nav-badge" id="live-badge">LIVE</span></button>
   </div>
 </nav>
 
+<!-- ADMIN SETUP PAGE -->
+<div class="page" id="page-admin">
+  <div style="margin-bottom:1.5rem;">
+    <h2 style="font-size:32px;font-weight:900;color:var(--white);">League Setup</h2>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px;">Add your teams and players, then start the game.</div>
+  </div>
+
+  <div class="admin-notice">
+    <strong>How it works:</strong> Add both teams and their rosters below. Then set the matchup and hit "Start Game" to begin live tracking.
+  </div>
+
+  <div class="admin-grid">
+    <!-- HOME TEAM -->
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h3>🏠 HOME TEAM</h3>
+        <span class="team-tag" id="home-team-tag">Not set</span>
+      </div>
+      <div class="admin-card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Team Name</label>
+            <input class="form-input" id="home-team-name" placeholder="e.g. Lakers" />
+          </div>
+          <button class="btn btn-orange" onclick="setTeamName('home')">Set</button>
+        </div>
+        <div style="border-top:1px solid #2a2a2a;padding-top:14px;margin-top:4px;">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Add Players</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Jersey #</label>
+              <input class="form-input small" id="home-num" placeholder="23" type="number" />
+            </div>
+            <div class="form-group" style="flex:2">
+              <label>Player Name</label>
+              <input class="form-input" id="home-pname" placeholder="e.g. LeBron James" onkeydown="if(event.key==='Enter')addPlayer('home')" />
+            </div>
+            <button class="btn btn-orange" onclick="addPlayer('home')">Add</button>
+          </div>
+          <div class="player-list" id="home-player-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AWAY TEAM -->
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h3>✈️ AWAY TEAM</h3>
+        <span class="team-tag away" id="away-team-tag">Not set</span>
+      </div>
+      <div class="admin-card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Team Name</label>
+            <input class="form-input" id="away-team-name" placeholder="e.g. Bulls" />
+          </div>
+          <button class="btn btn-orange" onclick="setTeamName('away')">Set</button>
+        </div>
+        <div style="border-top:1px solid #2a2a2a;padding-top:14px;margin-top:4px;">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Add Players</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Jersey #</label>
+              <input class="form-input small" id="away-num" placeholder="11" type="number" />
+            </div>
+            <div class="form-group" style="flex:2">
+              <label>Player Name</label>
+              <input class="form-input" id="away-pname" placeholder="e.g. DeMar DeRozan" onkeydown="if(event.key==='Enter')addPlayer('away')" />
+            </div>
+            <button class="btn btn-orange" onclick="addPlayer('away')">Add</button>
+          </div>
+          <div class="player-list" id="away-player-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEASON RECORD (for standings) -->
+  <div class="admin-card" style="margin-top:1.5rem;">
+    <div class="admin-card-header"><h3>📊 SEASON RECORDS (for Standings)</h3></div>
+    <div class="admin-card-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Enter each team's current win/loss record to keep standings accurate across games.</div>
+      <div id="season-records-form"></div>
+    </div>
+  </div>
+
+  <button class="start-game-btn" onclick="startGame()">▶ START GAME</button>
+</div>
+
 <!-- LIVE TRACKING PAGE -->
 <div class="page active" id="page-track">
-
   <div class="scoreboard">
     <div class="team-block">
-      <div class="team-name">Lakers</div>
+      <div class="team-name" id="scoreboard-home-name">Home</div>
       <div class="team-pts home" id="home-pts">0</div>
     </div>
     <div class="score-center">
@@ -228,9 +351,15 @@
       </div>
     </div>
     <div class="team-block">
-      <div class="team-name">Bulls</div>
+      <div class="team-name" id="scoreboard-away-name">Away</div>
       <div class="team-pts" id="away-pts">0</div>
     </div>
+  </div>
+
+  <!-- Team toggle -->
+  <div class="team-toggle">
+    <button class="team-toggle-btn home-active" id="toggle-home" onclick="switchTeam('home')">🏠 <span id="toggle-home-label">Home</span></button>
+    <button class="team-toggle-btn" id="toggle-away" onclick="switchTeam('away')">✈️ <span id="toggle-away-label">Away</span></button>
   </div>
 
   <div class="section-label">Select player</div>
@@ -248,30 +377,36 @@
           <button class="undo-btn" onclick="undoLast()">↩ Undo</button>
         </div>
         <div class="log-body" id="log-body">
-          <div style="padding:20px 16px; font-size:13px; color:var(--muted); font-style:italic;">Game log will appear here…</div>
+          <div style="padding:20px 16px;font-size:13px;color:var(--muted);font-style:italic;">Go to Setup first to add teams & players.</div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- TEAM STATS PAGE -->
+<!-- BOX SCORE PAGE -->
 <div class="page" id="page-stats">
-  <div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
-    <div>
-      <h2 style="font-size:28px; font-weight:900; color:var(--white);">Team Stats</h2>
-      <div style="font-size:13px; color:var(--muted); margin-top:2px;">Lakers — Current game</div>
-    </div>
+  <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Box Score</h2>
+  <div class="stats-card">
+    <div class="stats-card-header"><span id="box-home-label">Home Team</span></div>
+    <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead>
+    <tbody id="box-home-body"></tbody></table>
   </div>
   <div class="stats-card">
-    <div class="stats-card-header">Player Box Score</div>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th>
-        </tr>
-      </thead>
-      <tbody id="box-score-body"></tbody>
+    <div class="stats-card-header"><span id="box-away-label">Away Team</span></div>
+    <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead>
+    <tbody id="box-away-body"></tbody></table>
+  </div>
+</div>
+
+<!-- STANDINGS PAGE -->
+<div class="page" id="page-standings">
+  <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">League Standings</h2>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">Ranked by wins · Tiebreaker: total points scored</div>
+  <div class="stats-card">
+    <table class="standings-table">
+      <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GP</th><th>PF</th><th>PA</th><th>+/-</th></tr></thead>
+      <tbody id="standings-body"></tbody>
     </table>
   </div>
 </div>
@@ -280,102 +415,189 @@
 <div class="page" id="page-public">
   <div class="hero-banner">
     <div class="hero-subtitle">Game Stats — Live</div>
-    <div class="hero-title">Los Angeles Lakers</div>
-    <div class="hero-meta">vs Chicago Bulls &nbsp;·&nbsp; <span id="pub-date"></span></div>
+    <div class="hero-title" id="pub-home-name">Home Team</div>
+    <div class="hero-meta">vs <span id="pub-away-name">Away Team</span> &nbsp;·&nbsp; <span id="pub-date"></span></div>
   </div>
-
   <div class="stat-highlights" id="highlights"></div>
-
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
     <div>
       <div class="section-label" style="margin-bottom:10px;">Points leaders</div>
-      <div class="stats-card">
-        <div id="lb-pts"></div>
-      </div>
+      <div class="stats-card"><div id="lb-pts"></div></div>
     </div>
     <div>
       <div class="section-label" style="margin-bottom:10px;">Rebounds leaders</div>
-      <div class="stats-card">
-        <div id="lb-reb"></div>
-      </div>
+      <div class="stats-card"><div id="lb-reb"></div></div>
     </div>
     <div>
       <div class="section-label" style="margin-bottom:10px;">Assists leaders</div>
-      <div class="stats-card">
-        <div id="lb-ast"></div>
-      </div>
+      <div class="stats-card"><div id="lb-ast"></div></div>
     </div>
     <div>
       <div class="section-label" style="margin-bottom:10px;">Full box score</div>
       <div class="stats-card">
-        <table>
-          <thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th></tr></thead>
-          <tbody id="pub-box"></tbody>
-        </table>
+        <table><thead><tr><th>#</th><th>Player</th><th>Team</th><th>PTS</th><th>REB</th><th>AST</th></tr></thead>
+        <tbody id="pub-box"></tbody></table>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const PLAYERS = [
-  {name:"LeBron James", short:"James", num:23, pos:"SF"},
-  {name:"Anthony Davis", short:"Davis", num:3, pos:"PF"},
-  {name:"Austin Reaves", short:"Reaves", num:15, pos:"SG"},
-  {name:"D'Angelo Russell", short:"Russell", num:1, pos:"PG"},
-  {name:"Rui Hachimura", short:"Hachimura", num:28, pos:"PF"},
-];
-
-const ST = {};
-PLAYERS.forEach(p => { ST[p.num] = {pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0}; });
-
-const STAT_DEFS = [
-  {key:'fgm', label:'2pt Made', pts:2, pos:true},
-  {key:'3pm', label:'3pt Made', pts:3, pos:true},
-  {key:'ftm', label:'Free Throw', pts:1, pos:true},
-  {key:'reb', label:'Rebound', pts:0},
-  {key:'ast', label:'Assist', pts:0},
-  {key:'stl', label:'Steal', pts:0},
-  {key:'blk', label:'Block', pts:0},
-  {key:'to', label:'Turnover', pts:0, neg:true},
-  {key:'miss', label:'FG Miss', pts:0, neg:true},
-];
-
-let selectedNum = null;
-let homeScore = 0;
+// ─── STATE ──────────────────────────────────────────────────────
+let TEAMS = {
+  home: { name: 'Home', players: [] },
+  away: { name: 'Away', players: [] }
+};
+let SEASON = {}; // { teamName: {w,l,pf,pa} }
+let ST = {};     // { playerKey: {pts,reb,ast,stl,blk,to,fgm,'3pm',ftm,miss} }
+let selectedKey = null;
+let activeTeam = 'home';
+let homeScore = 0, awayScore = 0;
 let logStack = [];
 let quarter = 1;
 
-function showPage(p) {
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  const idx = {track:0,stats:1,public:2}[p];
-  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
-  if(p==='stats') renderBoxScore();
-  if(p==='public') renderPublic();
+const STAT_DEFS = [
+  {key:'fgm',  label:'2pt Made',   pts:2, pos:true},
+  {key:'3pm',  label:'3pt Made',   pts:3, pos:true},
+  {key:'ftm',  label:'Free Throw', pts:1, pos:true},
+  {key:'reb',  label:'Rebound',    pts:0},
+  {key:'ast',  label:'Assist',     pts:0},
+  {key:'stl',  label:'Steal',      pts:0},
+  {key:'blk',  label:'Block',      pts:0},
+  {key:'to',   label:'Turnover',   pts:0, neg:true},
+  {key:'miss', label:'FG Miss',    pts:0, neg:true},
+];
+
+function pKey(side, num) { return side + '_' + num; }
+
+// ─── ADMIN ──────────────────────────────────────────────────────
+function setTeamName(side) {
+  const val = document.getElementById(side + '-team-name').value.trim();
+  if (!val) return;
+  TEAMS[side].name = val;
+  document.getElementById(side + '-team-tag').textContent = val;
+  renderSeasonRecordsForm();
 }
 
-function setQ(q) {
-  quarter = q;
-  document.querySelectorAll('.q-btn').forEach((b,i) => b.classList.toggle('active', i+1===q));
+function addPlayer(side) {
+  const num = document.getElementById(side + '-num').value.trim();
+  const name = document.getElementById(side + '-pname').value.trim();
+  if (!num || !name) return;
+  // prevent duplicate jersey numbers
+  if (TEAMS[side].players.find(p => p.num == num)) {
+    alert('Jersey #' + num + ' already exists on this team.');
+    return;
+  }
+  TEAMS[side].players.push({ num: parseInt(num), name });
+  document.getElementById(side + '-num').value = '';
+  document.getElementById(side + '-pname').value = '';
+  document.getElementById(side + '-pname').focus();
+  renderPlayerList(side);
+  renderSeasonRecordsForm();
+}
+
+function removePlayer(side, num) {
+  TEAMS[side].players = TEAMS[side].players.filter(p => p.num != num);
+  renderPlayerList(side);
+}
+
+function renderPlayerList(side) {
+  const list = document.getElementById(side + '-player-list');
+  if (!TEAMS[side].players.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0;">No players added yet.</div>'; return; }
+  list.innerHTML = TEAMS[side].players
+    .sort((a,b) => a.num - b.num)
+    .map(p => `<div class="player-item">
+      <span class="p-num">#${p.num}</span>
+      <span class="p-name">${p.name}</span>
+      <button class="btn-red" onclick="removePlayer('${side}', ${p.num})">✕</button>
+    </div>`).join('');
+}
+
+function renderSeasonRecordsForm() {
+  const form = document.getElementById('season-records-form');
+  const teams = [
+    { key: TEAMS.home.name, label: TEAMS.home.name + ' (Home)' },
+    { key: TEAMS.away.name, label: TEAMS.away.name + ' (Away)' }
+  ];
+  form.innerHTML = teams.map(t => {
+    const rec = SEASON[t.key] || {w:0,l:0,pf:0,pa:0};
+    return `<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="min-width:120px;font-size:14px;font-weight:600;color:var(--white);">${t.label}</div>
+      <div class="form-group" style="flex:none;width:70px"><label>Wins</label><input class="form-input" type="number" min="0" id="rec-w-${t.key}" value="${rec.w}" oninput="updateRecord('${t.key}')" /></div>
+      <div class="form-group" style="flex:none;width:70px"><label>Losses</label><input class="form-input" type="number" min="0" id="rec-l-${t.key}" value="${rec.l}" oninput="updateRecord('${t.key}')" /></div>
+      <div class="form-group" style="flex:none;width:80px"><label>Pts For</label><input class="form-input" type="number" min="0" id="rec-pf-${t.key}" value="${rec.pf}" oninput="updateRecord('${t.key}')" /></div>
+      <div class="form-group" style="flex:none;width:80px"><label>Pts Against</label><input class="form-input" type="number" min="0" id="rec-pa-${t.key}" value="${rec.pa}" oninput="updateRecord('${t.key}')" /></div>
+    </div>`;
+  }).join('');
+}
+
+function updateRecord(teamKey) {
+  SEASON[teamKey] = {
+    w:  parseInt(document.getElementById('rec-w-' + teamKey)?.value)  || 0,
+    l:  parseInt(document.getElementById('rec-l-' + teamKey)?.value)  || 0,
+    pf: parseInt(document.getElementById('rec-pf-' + teamKey)?.value) || 0,
+    pa: parseInt(document.getElementById('rec-pa-' + teamKey)?.value) || 0,
+  };
+}
+
+function startGame() {
+  if (!TEAMS.home.players.length || !TEAMS.away.players.length) {
+    alert('Please add at least one player to each team before starting.');
+    return;
+  }
+  // init stats
+  ST = {};
+  [...TEAMS.home.players, ...TEAMS.away.players].forEach(p => {
+    const side = TEAMS.home.players.includes(p) ? 'home' : 'away';
+    ST[pKey(side, p.num)] = {pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0};
+  });
+  homeScore = 0; awayScore = 0; logStack = []; selectedKey = null; quarter = 1;
+  document.getElementById('home-pts').textContent = '0';
+  document.getElementById('away-pts').textContent = '0';
+  document.getElementById('scoreboard-home-name').textContent = TEAMS.home.name;
+  document.getElementById('scoreboard-away-name').textContent = TEAMS.away.name;
+  document.getElementById('toggle-home-label').textContent = TEAMS.home.name;
+  document.getElementById('toggle-away-label').textContent = TEAMS.away.name;
+  document.getElementById('log-body').innerHTML = '<div style="padding:20px 16px;font-size:13px;color:var(--muted);font-style:italic;">Game started! Select a player to track stats.</div>';
+  activeTeam = 'home';
+  renderChips();
+  renderStatBtns();
+  showPage('track');
+}
+
+// ─── TRACKING ───────────────────────────────────────────────────
+function switchTeam(side) {
+  activeTeam = side;
+  selectedKey = null;
+  document.getElementById('toggle-home').className = 'team-toggle-btn' + (side==='home'?' home-active':'');
+  document.getElementById('toggle-away').className = 'team-toggle-btn' + (side==='away'?' away-active':'');
+  renderChips();
+  renderStatBtns();
+  updateLabel();
 }
 
 function renderChips() {
   const c = document.getElementById('player-chips');
   c.innerHTML = '';
-  PLAYERS.forEach(p => {
+  const players = TEAMS[activeTeam].players.sort((a,b)=>a.num-b.num);
+  if (!players.length) { c.innerHTML = '<div style="font-size:13px;color:var(--muted);">No players — go to Setup to add players.</div>'; return; }
+  players.forEach(p => {
+    const key = pKey(activeTeam, p.num);
+    const isAway = activeTeam === 'away';
     const el = document.createElement('div');
-    el.className = 'player-chip' + (selectedNum===p.num?' selected':'');
-    el.innerHTML = `<span class="jersey">${p.num}</span><div><div class="pname">${p.short}</div><div class="ppts">${ST[p.num].pts} pts</div></div>`;
-    el.onclick = () => { selectedNum=p.num; renderChips(); renderStatBtns(); updateLabel(); };
+    el.className = 'player-chip' + (isAway?' away-chip':'') + (selectedKey===key?' selected':'');
+    el.innerHTML = `<span class="jersey">#${p.num}</span><div><div class="pname">${p.name.split(' ').pop()}</div><div class="ppts">${ST[key]?.pts||0} pts</div></div>`;
+    el.onclick = () => { selectedKey = key; renderChips(); renderStatBtns(); updateLabel(); };
     c.appendChild(el);
   });
 }
 
 function updateLabel() {
-  const p = PLAYERS.find(x=>x.num===selectedNum);
-  document.getElementById('tracking-label').textContent = p ? `Tracking: ${p.name} (#${p.num})` : 'No player selected';
+  if (!selectedKey) { document.getElementById('tracking-label').textContent = 'No player selected — tap a player above'; return; }
+  const side = selectedKey.startsWith('home') ? 'home' : 'away';
+  const num = selectedKey.split('_')[1];
+  const p = TEAMS[side].players.find(x => x.num == num);
+  document.getElementById('tracking-label').textContent = p ? `Tracking: ${p.name} (#${p.num}) — ${TEAMS[side].name}` : '';
 }
 
 function renderStatBtns() {
@@ -384,131 +606,173 @@ function renderStatBtns() {
   STAT_DEFS.forEach(s => {
     const btn = document.createElement('div');
     btn.className = 'stat-btn' + (s.pos?' pts-btn':'');
-    const count = selectedNum ? (ST[selectedNum][s.key]||0) : 0;
-    btn.innerHTML = `
-      <span class="sb-plus">+</span>
-      <div class="sb-label">${s.label}</div>
-      <div class="sb-count">${count}</div>
-      ${s.pts ? `<div class="pts-tag">+${s.pts} PTS</div>` : ''}
-    `;
+    const count = selectedKey ? (ST[selectedKey]?.[s.key]||0) : 0;
+    btn.innerHTML = `<span class="sb-plus">+</span><div class="sb-label">${s.label}</div><div class="sb-count">${count}</div>${s.pts?`<div class="pts-tag">+${s.pts} PTS</div>`:''}`;
     btn.onclick = () => recordStat(s);
     g.appendChild(btn);
   });
 }
 
 function recordStat(s) {
-  if(!selectedNum) return;
-  if(s.key !== 'miss') {
-    ST[selectedNum][s.key] = (ST[selectedNum][s.key]||0) + 1;
+  if (!selectedKey) { alert('Select a player first!'); return; }
+  if (s.key !== 'miss') ST[selectedKey][s.key] = (ST[selectedKey][s.key]||0) + 1;
+  else ST[selectedKey].miss = (ST[selectedKey].miss||0) + 1;
+
+  const side = selectedKey.startsWith('home') ? 'home' : 'away';
+  if (s.pts) {
+    ST[selectedKey].pts = (ST[selectedKey].pts||0) + s.pts;
+    if (side === 'home') { homeScore += s.pts; document.getElementById('home-pts').textContent = homeScore; animFlash('home-pts'); }
+    else { awayScore += s.pts; document.getElementById('away-pts').textContent = awayScore; animFlash('away-pts'); }
   }
-  if(s.pts) {
-    ST[selectedNum].pts += s.pts;
-    homeScore += s.pts;
-    document.getElementById('home-pts').textContent = homeScore;
-    animFlash('home-pts');
-  }
-  logStack.push({num:selectedNum, s, pts:s.pts});
-  addLog(selectedNum, s);
+  logStack.push({ key: selectedKey, s, pts: s.pts, side });
+  addLog(selectedKey, s, side);
   renderChips();
   renderStatBtns();
 }
 
 function undoLast() {
-  if(!logStack.length) return;
+  if (!logStack.length) return;
   const last = logStack.pop();
-  if(last.s.key !== 'miss') {
-    if(ST[last.num][last.s.key] > 0) ST[last.num][last.s.key]--;
-  }
-  if(last.pts) {
-    ST[last.num].pts -= last.pts;
-    homeScore -= last.pts;
-    document.getElementById('home-pts').textContent = homeScore;
+  if (last.s.key !== 'miss') { if (ST[last.key][last.s.key] > 0) ST[last.key][last.s.key]--; }
+  else { if (ST[last.key].miss > 0) ST[last.key].miss--; }
+  if (last.pts) {
+    ST[last.key].pts -= last.pts;
+    if (last.side === 'home') { homeScore -= last.pts; document.getElementById('home-pts').textContent = homeScore; }
+    else { awayScore -= last.pts; document.getElementById('away-pts').textContent = awayScore; }
   }
   const lb = document.getElementById('log-body');
-  if(lb.lastChild && lb.children.length > 0) lb.removeChild(lb.lastChild);
+  if (lb.lastChild && lb.children.length > 0) lb.removeChild(lb.lastChild);
   renderChips(); renderStatBtns();
 }
 
 function animFlash(id) {
   const el = document.getElementById(id);
-  el.classList.remove('flash');
-  void el.offsetWidth;
-  el.classList.add('flash');
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
-function addLog(num, s) {
-  const p = PLAYERS.find(x=>x.num===num);
+function addLog(key, s, side) {
+  const num = key.split('_')[1];
+  const p = TEAMS[side].players.find(x => x.num == num);
   const lb = document.getElementById('log-body');
-  if(lb.children[0] && lb.children[0].style.fontStyle==='italic') lb.innerHTML='';
+  if (lb.children[0]?.style?.fontStyle === 'italic') lb.innerHTML = '';
   const row = document.createElement('div');
   row.className = 'log-entry';
-  const dotClass = s.neg ? 'neg' : (s.pts ? '' : 'neutral');
-  row.innerHTML = `
-    <div class="log-dot ${dotClass}"></div>
-    <span class="log-player">${p.short}</span>
-    <span class="log-action">${s.label}</span>
-    ${s.pts ? `<span class="log-pts pos">+${s.pts}</span>` : ''}
-  `;
+  const dotClass = s.neg ? 'neg' : s.pts ? (side==='away'?'blue':'') : 'neutral';
+  row.innerHTML = `<div class="log-dot ${dotClass}"></div><span class="log-player">${p?.name.split(' ').pop()||key}</span><span class="log-action">${s.label}</span>${s.pts?`<span class="log-pts pos">+${s.pts}</span>`:''}`;
   lb.appendChild(row);
   lb.scrollTop = lb.scrollHeight;
 }
 
+function setQ(q) {
+  quarter = q;
+  document.querySelectorAll('.q-btn').forEach((b,i) => b.classList.toggle('active', i+1===q));
+}
+
+// ─── BOX SCORE ──────────────────────────────────────────────────
 function renderBoxScore() {
-  const tbody = document.getElementById('box-score-body');
-  tbody.innerHTML = PLAYERS.map(p => {
-    const s = ST[p.num];
-    const fgm = s.fgm||0; const fga = fgm + (ST[p.num]['miss']||0);
-    const fgpct = fga > 0 ? Math.round(fgm/fga*100) : 0;
-    return `<tr>
-      <td>#${p.num}</td><td>${p.name}</td>
-      <td class="pts-cell">${s.pts}</td>
-      <td>${s.reb||0}</td><td>${s.ast||0}</td><td>${s.stl||0}</td>
-      <td>${s.blk||0}</td><td>${s.to||0}</td>
-      <td>${fgm}/${fga}</td><td>${s['3pm']||0}</td><td>${s.ftm||0}</td>
+  ['home','away'].forEach(side => {
+    document.getElementById('box-' + side + '-label').textContent = TEAMS[side].name;
+    const tbody = document.getElementById('box-' + side + '-body');
+    const players = TEAMS[side].players.sort((a,b)=>a.num-b.num);
+    if (!players.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);">No players added</td></tr>'; return; }
+    tbody.innerHTML = players.map(p => {
+      const s = ST[pKey(side, p.num)] || {};
+      const fgm = s.fgm||0; const fga = fgm + (s.miss||0);
+      return `<tr><td>#${p.num}</td><td>${p.name}</td><td class="pts-cell">${s.pts||0}</td><td>${s.reb||0}</td><td>${s.ast||0}</td><td>${s.stl||0}</td><td>${s.blk||0}</td><td>${s.to||0}</td><td>${fgm}/${fga}</td><td>${s['3pm']||0}</td><td>${s.ftm||0}</td></tr>`;
+    }).join('');
+  });
+}
+
+// ─── STANDINGS ──────────────────────────────────────────────────
+function renderStandings() {
+  const tbody = document.getElementById('standings-body');
+  // Build standings from SEASON + current game
+  const allTeams = new Set([TEAMS.home.name, TEAMS.away.name, ...Object.keys(SEASON)]);
+  let rows = [];
+  allTeams.forEach(name => {
+    const base = SEASON[name] || {w:0,l:0,pf:0,pa:0};
+    let w = base.w, l = base.l, pf = base.pf, pa = base.pa;
+    // add current game if finished (optional — just shows season totals)
+    rows.push({ name, w, l, pf, pa });
+  });
+  // sort by wins, then pf as tiebreaker
+  rows.sort((a,b) => b.w - a.w || b.pf - a.pf);
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">Add teams in Setup to see standings.</td></tr>'; return; }
+  tbody.innerHTML = rows.map((r,i) => {
+    const diff = r.pf - r.pa;
+    return `<tr class="standings-row">
+      <td>${i+1}</td><td>${r.name}</td>
+      <td class="w-cell">${r.w}</td><td class="l-cell">${r.l}</td>
+      <td>${r.w+r.l}</td><td>${r.pf}</td><td>${r.pa}</td>
+      <td style="color:${diff>=0?'#22c55e':'#ef4444'}">${diff>0?'+':''}${diff}</td>
     </tr>`;
   }).join('');
 }
 
+// ─── PUBLIC VIEW ─────────────────────────────────────────────────
 function renderPublic() {
   document.getElementById('pub-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('pub-home-name').textContent = TEAMS.home.name;
+  document.getElementById('pub-away-name').textContent = TEAMS.away.name;
 
-  // highlights
-  const sorted_pts = [...PLAYERS].sort((a,b) => ST[b.num].pts - ST[a.num].pts);
-  const sorted_reb = [...PLAYERS].sort((a,b) => (ST[b.num].reb||0) - (ST[a.num].reb||0));
-  const sorted_ast = [...PLAYERS].sort((a,b) => (ST[b.num].ast||0) - (ST[a.num].ast||0));
-  const total_pts = PLAYERS.reduce((sum,p)=>sum+ST[p.num].pts,0);
+  const allPlayers = [
+    ...TEAMS.home.players.map(p => ({...p, side:'home'})),
+    ...TEAMS.away.players.map(p => ({...p, side:'away'}))
+  ];
+  if (!allPlayers.length) {
+    document.getElementById('highlights').innerHTML = '<div style="color:var(--muted);font-size:14px;">No players yet — set up teams first.</div>';
+    return;
+  }
+
+  const getS = p => ST[pKey(p.side, p.num)] || {pts:0,reb:0,ast:0,stl:0,blk:0};
+  const byPts = [...allPlayers].sort((a,b) => getS(b).pts - getS(a).pts);
+  const byReb = [...allPlayers].sort((a,b) => (getS(b).reb||0) - (getS(a).reb||0));
+  const byAst = [...allPlayers].sort((a,b) => (getS(b).ast||0) - (getS(a).ast||0));
 
   document.getElementById('highlights').innerHTML = `
-    <div class="stat-card highlight"><div class="sc-label">Points Leader</div><div class="sc-val">${ST[sorted_pts[0].num].pts}</div><div class="sc-name">${sorted_pts[0].short}</div></div>
-    <div class="stat-card"><div class="sc-label">Rebound Leader</div><div class="sc-val">${ST[sorted_reb[0].num].reb||0}</div><div class="sc-name">${sorted_reb[0].short}</div></div>
-    <div class="stat-card"><div class="sc-label">Assists Leader</div><div class="sc-val">${ST[sorted_ast[0].num].ast||0}</div><div class="sc-name">${sorted_ast[0].short}</div></div>
-    <div class="stat-card"><div class="sc-label">Team Points</div><div class="sc-val">${total_pts}</div><div class="sc-name">Lakers</div></div>
+    <div class="stat-card highlight"><div class="sc-label">Points Leader</div><div class="sc-val">${getS(byPts[0]).pts}</div><div class="sc-name">${byPts[0].name}</div></div>
+    <div class="stat-card"><div class="sc-label">Rebound Leader</div><div class="sc-val">${getS(byReb[0]).reb||0}</div><div class="sc-name">${byReb[0].name}</div></div>
+    <div class="stat-card"><div class="sc-label">Assists Leader</div><div class="sc-val">${getS(byAst[0]).ast||0}</div><div class="sc-name">${byAst[0].name}</div></div>
+    <div class="stat-card"><div class="sc-label">Home Score</div><div class="sc-val">${homeScore}</div><div class="sc-name">${TEAMS.home.name}</div></div>
   `;
 
-  // leaderboards
-  const lbHtml = (sorted, key) => sorted.map((p,i) => {
-    const initials = p.short.split(' ').map(w=>w[0]).join('').slice(0,2);
+  const lbHtml = (sorted, key) => sorted.slice(0,5).map((p,i) => {
+    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2);
     const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
+    const teamName = TEAMS[p.side].name;
     return `<div class="lb-row">
-      <div class="lb-rank ${rankClass}">${i===0?'1':i===1?'2':i===2?'3':i+1}</div>
+      <div class="lb-rank ${rankClass}">${i+1}</div>
       <div class="lb-avatar">${initials}</div>
-      <div class="lb-info"><div class="lb-name">${p.short}</div><div class="lb-pos">#${p.num} · ${p.pos}</div></div>
-      <div><div class="lb-stat">${ST[p.num][key]||0}</div><div class="lb-stat-label">${key.toUpperCase()}</div></div>
+      <div class="lb-info"><div class="lb-name">${p.name}</div><div class="lb-pos">#${p.num} · ${teamName}</div></div>
+      <div><div class="lb-stat">${getS(p)[key]||0}</div><div class="lb-stat-label">${key.toUpperCase()}</div></div>
     </div>`;
   }).join('');
 
-  document.getElementById('lb-pts').innerHTML = lbHtml(sorted_pts, 'pts');
-  document.getElementById('lb-reb').innerHTML = lbHtml(sorted_reb, 'reb');
-  document.getElementById('lb-ast').innerHTML = lbHtml(sorted_ast, 'ast');
-
-  document.getElementById('pub-box').innerHTML = PLAYERS.map(p =>
-    `<tr><td>#${p.num}</td><td>${p.short}</td><td class="pts-cell">${ST[p.num].pts}</td><td>${ST[p.num].reb||0}</td><td>${ST[p.num].ast||0}</td></tr>`
+  document.getElementById('lb-pts').innerHTML = lbHtml(byPts, 'pts');
+  document.getElementById('lb-reb').innerHTML = lbHtml(byReb, 'reb');
+  document.getElementById('lb-ast').innerHTML = lbHtml(byAst, 'ast');
+  document.getElementById('pub-box').innerHTML = allPlayers.map(p =>
+    `<tr><td>#${p.num}</td><td>${p.name}</td><td style="color:var(--muted);font-size:12px;">${TEAMS[p.side].name}</td><td class="pts-cell">${getS(p).pts}</td><td>${getS(p).reb||0}</td><td>${getS(p).ast||0}</td></tr>`
   ).join('');
 }
 
-// init
-renderChips();
-renderStatBtns();
+// ─── NAV ────────────────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  const tabs = ['admin','track','stats','standings','public'];
+  const idx = tabs.indexOf(p);
+  document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+  if (p==='stats') renderBoxScore();
+  if (p==='standings') renderStandings();
+  if (p==='public') renderPublic();
+}
+
+// ─── INIT ───────────────────────────────────────────────────────
+renderPlayerList('home');
+renderPlayerList('away');
+renderSeasonRecordsForm();
 </script>
 </body>
 </html>
