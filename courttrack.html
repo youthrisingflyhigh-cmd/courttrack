@@ -463,7 +463,9 @@ function save(){
 function clearGame(){ remove(ref(db,'ct/game')); }
 
 let _loaded=0;
-function _check(){ if(++_loaded>=6) onAllLoaded(); }
+const _TOTAL=6;
+function _check(){ if(++_loaded>=_TOTAL) onAllLoaded(); }
+setTimeout(()=>{ if(_loaded<_TOTAL) onAllLoaded(); }, 4000);
 onValue(ref(db,'ct/teams'),       s=>{teams=s.val()||[];       _check();},{onlyOnce:true});
 onValue(ref(db,'ct/game'),        s=>{game=s.val()||null;      _check();},{onlyOnce:true});
 onValue(ref(db,'ct/standings'),   s=>{standings=s.val()||{};   _check();},{onlyOnce:true});
@@ -549,14 +551,42 @@ function renderRoster(){
   const pl=teams[selTeam].players;
   if(!pl.length){el.innerHTML='<div class="empty-state">No players yet</div>';return;}
   const tc=teams[selTeam].color;
-  el.innerHTML=pl.map((p,i)=>`<div class="player-item" style="border-left:3px solid ${tc};">
-    <div class="p-jersey" style="color:${tc}">#${p.num}</div>
-    <div class="p-info"><div class="pname">${p.name}</div><div class="ppos">${p.pos}</div></div>
-    <button class="btn-red" onclick="delPlayer(${i})">✕</button>
-  </div>`).join('');
+  el.innerHTML=pl.map((p,i)=>`
+    <div class="player-item" style="border-left:3px solid ${tc};" id="prow-${i}">
+      <div class="p-jersey" style="color:${tc}">#${p.num}</div>
+      <div class="p-info"><div class="pname">${p.name}</div><div class="ppos">${p.pos}</div></div>
+      <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="editPlayer(${i})">✏️ Edit</button>
+      <button class="btn-red" onclick="delPlayer(${i})">✕</button>
+    </div>`).join('');
 }
 
-function delPlayer(i){
+function editPlayer(i){
+  const p=teams[selTeam].players[i];
+  const tc=teams[selTeam].color;
+  const row=document.getElementById(`prow-${i}`);
+  row.innerHTML=`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;">
+      <input type="text" id="ep-name-${i}" value="${p.name}" placeholder="Name" style="flex:1;min-width:100px;"/>
+      <input type="number" id="ep-num-${i}" value="${p.num}" placeholder="#" style="width:60px;" min="0" max="99"/>
+      <select id="ep-pos-${i}" style="min-width:70px;">
+        ${['PG','SG','SF','PF','C'].map(pos=>`<option ${pos===p.pos?'selected':''}>${pos}</option>`).join('')}
+      </select>
+      <button class="btn btn-orange" style="padding:6px 12px;font-size:12px;" onclick="savePlayer(${i})">Save</button>
+      <button class="btn-ghost" style="font-size:12px;padding:6px 10px;" onclick="renderRoster()">Cancel</button>
+    </div>`;
+}
+
+function savePlayer(i){
+  const name=document.getElementById(`ep-name-${i}`).value.trim();
+  const num=parseInt(document.getElementById(`ep-num-${i}`).value);
+  const pos=document.getElementById(`ep-pos-${i}`).value;
+  if(!name||isNaN(num)){alert('Name and jersey number required.');return;}
+  const dup=teams[selTeam].players.find((p,idx)=>p.num===num&&idx!==i);
+  if(dup){alert(`#${num} is already taken by ${dup.name}.`);return;}
+  teams[selTeam].players[i]={...teams[selTeam].players[i],name,num,pos};
+  save();renderRoster();renderTeams();
+}
+window.editPlayer=editPlayer; window.savePlayer=savePlayer;
   if(!confirm(`Remove ${teams[selTeam].players[i].name}?`))return;
   teams[selTeam].players.splice(i,1);
   save();renderRoster();renderTeams();
@@ -594,62 +624,47 @@ function generateSchedule(){
   const gamesPerTeam=parseInt(document.getElementById('sched-games-per-team').value)||4;
   const interval=parseInt(document.getElementById('sched-interval').value)||7;
   const location=document.getElementById('sched-location').value.trim()||'TBD';
-  const [hh,mm]=timeVal.split(':');
-  const fmt12=h=>{const hour=parseInt(h);return `${hour%12||12}:${mm} ${hour>=12?'PM':'AM'}`;};
-  const timeStr=fmt12(hh);
+  const [startHH,startMM]=timeVal.split(':').map(Number);
+
+  function fmt12(hh,mm){const h=hh%24;const ampm=h>=12?'PM':'AM';return `${h%12||12}:${String(mm).padStart(2,'0')} ${ampm}`;}
 
   // Build rotation list — add BYE (-1) if odd number of teams
   const t=[...teams.map((_,i)=>i)];
-  if(t.length%2!==0) t.push(-1); // BYE slot
-  const teamsPerRound=t.length;
-  const gamesPerRound=teamsPerRound/2;
-  const roundsNeeded=Math.ceil(gamesPerTeam/(teamsPerRound/2)*gamesPerRound);
-
+  if(t.length%2!==0) t.push(-1);
+  const slots=t.length/2;
   const games=[];
   let date=new Date(startVal+'T12:00:00');
   let round=1;
   const teamGameCount={};
   teams.forEach((_,i)=>teamGameCount[i]=0);
-
-  // Keep rotating and generating rounds until every team has enough games
   const rotation=[...t];
+
   while(true){
     let addedThisRound=0;
-    for(let g=0;g<gamesPerRound;g++){
-      const h=rotation[g], a=rotation[teamsPerRound-1-g];
+    let slotIndex=0; // tracks time offset within round
+    for(let g=0;g<slots;g++){
+      const h=rotation[g], a=rotation[t.length-1-g];
+      const gameHH=startHH+slotIndex;
+      const timeStr=fmt12(gameHH,startMM);
+      const dateStr=date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
       if(h===-1||a===-1){
-        // BYE round — record it
         const realTeam=h===-1?a:h;
         if(realTeam!==-1&&teamGameCount[realTeam]<gamesPerTeam){
-          games.push({
-            home:teams[realTeam].name, away:'BYE',
-            homeColor:teams[realTeam].color, awayColor:'#444',
-            date:date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-            time:timeStr, location, status:'bye', homeScore:null, awayScore:null, round, isBye:true
-          });
-          addedThisRound++;
+          games.push({home:teams[realTeam].name,away:'BYE',homeColor:teams[realTeam].color,awayColor:'#444',date:dateStr,time:timeStr,location,status:'bye',homeScore:null,awayScore:null,round,isBye:true});
+          addedThisRound++;slotIndex++;
         }
       } else if(teamGameCount[h]<gamesPerTeam||teamGameCount[a]<gamesPerTeam){
-        games.push({
-          home:teams[h].name, away:teams[a].name,
-          homeColor:teams[h].color, awayColor:teams[a].color,
-          date:date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-          time:timeStr, location, status:'upcoming', homeScore:null, awayScore:null, round, isBye:false
-        });
-        teamGameCount[h]++;
-        teamGameCount[a]++;
-        addedThisRound++;
+        games.push({home:teams[h].name,away:teams[a].name,homeColor:teams[h].color,awayColor:teams[a].color,date:dateStr,time:timeStr,location,status:'upcoming',homeScore:null,awayScore:null,round,isBye:false});
+        teamGameCount[h]++;teamGameCount[a]++;
+        addedThisRound++;slotIndex++;
       }
     }
-    // Rotate: keep first element fixed, rotate the rest
     rotation.splice(1,0,rotation.pop());
     round++;
     date=new Date(date.getTime()+interval*86400000);
-    // Stop when all teams have hit their game count or no progress
     if(addedThisRound===0||Object.values(teamGameCount).every(c=>c>=gamesPerTeam)) break;
-    if(round>200) break; // safety
+    if(round>200) break;
   }
-
   schedule=games;
   save();renderSchedule();
 }
@@ -667,27 +682,60 @@ function renderSchedule(){
     <div class="schedule-week">
       <div class="schedule-week-header">Week ${round}</div>
       ${games.map(g=>{
-        if(g.isBye) return `<div class="schedule-game-row" style="opacity:0.6;">
+        if(g.isBye) return `<div class="schedule-game-row" id="sgrow-${g.idx}" style="opacity:0.6;">
           <span class="sgr-date">${g.date}</span>
           <span class="sgr-time">${g.time}</span>
-          <span class="sgr-teams"><span style="color:${g.homeColor};font-weight:700;">${g.home}</span> <span style="color:var(--muted);font-weight:400;">—</span> <span style="color:#555;font-weight:700;">BYE</span></span>
+          <span class="sgr-teams"><span style="color:${g.homeColor};font-weight:700;">${g.home}</span> <span style="color:var(--muted);">—</span> <span style="color:#555;font-weight:700;">BYE</span></span>
           <span class="sgr-location">📍 ${g.location}</span>
           <span class="sgr-status" style="background:rgba(136,136,136,0.1);color:var(--muted);">Bye</span>
         </div>`;
         const isFinal=g.status==='final';
         const resultHtml=isFinal?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${g.homeScore>g.awayScore?g.homeColor:g.awayColor}">${g.homeScore}–${g.awayScore}</span>`:'';
-        return `<div class="schedule-game-row">
+        return `<div class="schedule-game-row" id="sgrow-${g.idx}">
           <span class="sgr-date">${g.date}</span>
           <span class="sgr-time">${g.time}</span>
           <span class="sgr-teams"><span style="color:${g.homeColor};font-weight:700;">${g.home}</span> <span style="color:var(--muted);font-weight:400;">vs</span> <span style="color:${g.awayColor};font-weight:700;">${g.away}</span></span>
           <span class="sgr-location">📍 ${g.location}</span>
           ${resultHtml}
           <span class="sgr-status ${g.status}">${isFinal?'Final':g.status==='live'?'Live':'Upcoming'}</span>
+          <button onclick="editGame(${g.idx})" style="background:transparent;border:1px solid #333;border-radius:5px;color:var(--muted);padding:3px 8px;font-size:11px;cursor:pointer;margin-left:auto;font-family:'Barlow',sans-serif;">✏️ Edit</button>
         </div>`;
       }).join('')}
     </div>`).join('');
 }
 window.renderSchedule=renderSchedule;
+
+function editGame(idx){
+  const g=schedule[idx];
+  const row=document.getElementById(`sgrow-${idx}`);
+  const d=new Date(g.date+'T12:00:00');
+  const ymd=isNaN(d.getTime())?'':`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const t24=(str)=>{const m=str.match(/(\d+):(\d+)\s*(AM|PM)/i);if(!m)return '18:00';let h=parseInt(m[1]);if(m[3].toUpperCase()==='PM'&&h!==12)h+=12;if(m[3].toUpperCase()==='AM'&&h===12)h=0;return `${String(h).padStart(2,'0')}:${m[2]}`;};
+  row.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;padding:4px 0;">
+    <input type="date" id="eg-date-${idx}" value="${ymd}" style="min-width:140px;"/>
+    <input type="time" id="eg-time-${idx}" value="${t24(g.time)}" style="min-width:110px;"/>
+    <input type="text" id="eg-loc-${idx}" value="${g.location}" placeholder="Location" style="flex:1;min-width:120px;"/>
+    <button class="btn btn-orange" style="padding:5px 12px;font-size:12px;" onclick="saveGame(${idx})">Save</button>
+    <button class="btn-ghost" style="font-size:12px;padding:5px 10px;" onclick="renderSchedule()">Cancel</button>
+  </div>`;
+}
+
+function saveGame(idx){
+  const dateVal=document.getElementById(`eg-date-${idx}`).value;
+  const timeVal=document.getElementById(`eg-time-${idx}`).value;
+  const locVal=document.getElementById(`eg-loc-${idx}`).value.trim();
+  if(dateVal){
+    const d=new Date(dateVal+'T12:00:00');
+    schedule[idx].date=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  }
+  if(timeVal){
+    const [hh,mm]=timeVal.split(':').map(Number);
+    schedule[idx].time=`${hh%12||12}:${String(mm).padStart(2,'0')} ${hh>=12?'PM':'AM'}`;
+  }
+  if(locVal) schedule[idx].location=locVal;
+  save();renderSchedule();
+}
+window.editGame=editGame; window.saveGame=saveGame;
 
 function clearSchedule(){
   if(!confirm('Clear the entire schedule?'))return;

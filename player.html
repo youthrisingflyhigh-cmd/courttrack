@@ -336,20 +336,27 @@ window.showTab=showTab;
 
 /* ── FIREBASE LISTENERS ── */
 let loaded=0;
-function check(){if(++loaded>=5)initDone();}
-onValue(ref(db,'ct/teams'),       s=>{teams=s.val()||[];      check();},{onlyOnce:true});
-onValue(ref(db,'ct/standings'),   s=>{standings=s.val()||{};  check();},{onlyOnce:true});
-onValue(ref(db,'ct/history'),     s=>{history=s.val()||[];    check();},{onlyOnce:true});
-onValue(ref(db,'ct/playerStats'), s=>{playerStats=s.val()||{};check();},{onlyOnce:true});
-onValue(ref(db,'ct/schedule'),    s=>{schedule=s.val()||[];   check();},{onlyOnce:true});
+const TOTAL_KEYS=6;
+function check(){if(++loaded>=TOTAL_KEYS)initDone();}
 
-// Live game updates
+// Fallback timeout in case any key is missing from Firebase (e.g. never been set)
+setTimeout(()=>{ if(loaded<TOTAL_KEYS) initDone(); }, 4000);
+
+onValue(ref(db,'ct/teams'),       s=>{teams=s.val()||[];       check();},{onlyOnce:true});
+onValue(ref(db,'ct/standings'),   s=>{standings=s.val()||{};   check();},{onlyOnce:true});
+onValue(ref(db,'ct/history'),     s=>{history=s.val()||[];     check();},{onlyOnce:true});
+onValue(ref(db,'ct/playerStats'), s=>{playerStats=s.val()||{}; check();},{onlyOnce:true});
+onValue(ref(db,'ct/schedule'),    s=>{schedule=s.val()||[];    check();},{onlyOnce:true});
+onValue(ref(db,'ct/game'),        s=>{game=s.val()||null;      check();},{onlyOnce:true});
+
+// Live game updates after initial load
 onValue(ref(db,'ct/game'), s=>{
   game=s.val()||null;
-  if(currentTab==='live')renderLive();
+  if(loaded>=TOTAL_KEYS&&currentTab==='live')renderLive();
 });
 
 function initDone(){
+  loaded=TOTAL_KEYS; // prevent double-init from timeout
   showTab('live');
 }
 </script>
