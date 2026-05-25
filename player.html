@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CourtTrack — Player View</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--orange:#FF5C00;--dark:#0d0d0d;--dark2:#161616;--dark3:#1e1e1e;--dark4:#272727;--muted:#888;--light:#f0f0f0;--white:#fff;--green:#22c55e;--red:#ef4444;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--light);min-height:100vh;}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:56px;background:var(--dark2);border-bottom:1px solid #2a2a2a;position:sticky;top:0;z-index:100;}
+.nav-logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:1px;color:var(--white);}
+.nav-logo span{color:var(--orange);}
+.nav-logo small{display:block;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--muted);line-height:1;margin-top:1px;}
+.pub-badge{display:inline-block;background:#1a3a5c;color:#7ab8f5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+.page{padding:2rem;max-width:1100px;margin:0 auto;}
+.no-game{padding:80px 20px;text-align:center;color:var(--muted);}
+.no-game h2{font-size:28px;color:var(--light);margin-bottom:8px;}
+.hero-banner{background:linear-gradient(135deg,#1a0a00 0%,#0d0d0d 60%);border:1px solid #2a2a2a;border-radius:12px;padding:2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;}
+.hero-bg-text{position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:96px;font-weight:900;color:rgba(255,92,0,0.06);letter-spacing:-2px;pointer-events:none;white-space:nowrap;}
+.hero-subtitle{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+.hero-title{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--white);line-height:1;margin-bottom:10px;}
+.hero-meta{font-size:13px;color:var(--muted);}
+.score-row{display:flex;gap:16px;margin-bottom:2rem;justify-content:center;flex-wrap:wrap;}
+.score-box{text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:1.5rem 2.5rem;}
+.score-name{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.score-num{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;}
+.score-vs{display:flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-size:28px;color:#333;font-weight:900;}
+.highlights{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem;}
+@media(max-width:700px){.highlights{grid-template-columns:repeat(2,1fr)!important;}.lb-two{grid-template-columns:1fr!important;}}
+.stat-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;}
+.sc-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.sc-val{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--white);line-height:1;}
+.sc-name{font-size:12px;color:var(--muted);margin-top:4px;}
+.stat-card.hl{border-color:rgba(255,92,0,0.4);background:rgba(255,92,0,0.06);}
+.stat-card.hl .sc-val{color:var(--orange);}
+.lb-two{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+.section-label{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.stats-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+table{width:100%;border-collapse:collapse;}
+th{padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:right;border-bottom:1px solid #2a2a2a;white-space:nowrap;}
+th:first-child,th:nth-child(2){text-align:left;}
+td{padding:10px 12px;font-size:13px;color:var(--light);text-align:right;border-bottom:1px solid #1c1c1c;white-space:nowrap;}
+td:first-child{color:var(--muted);font-size:12px;font-weight:700;text-align:left;}
+td:nth-child(2){font-weight:600;color:var(--white);text-align:left;}
+td.pts-cell{color:var(--orange);font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.lb-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid #1c1c1c;}
+.lb-row:last-child{border-bottom:none;}
+.lb-rank{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;color:var(--muted);min-width:20px;text-align:center;}
+.lb-rank.r1{color:#f5a623;}.lb-rank.r2{color:#b0b0b0;}.lb-rank.r3{color:#cd7f32;}
+.lb-avatar{width:32px;height:32px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;flex-shrink:0;}
+.lb-info{flex:1;}
+.lb-name{font-size:14px;font-weight:600;color:var(--white);}
+.lb-sub{font-size:11px;color:var(--muted);}
+.lb-stat{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--white);min-width:48px;text-align:right;}
+.lb-stat-label{font-size:10px;color:var(--muted);text-align:right;}
+.refresh-bar{margin-top:2rem;padding:14px 20px;background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;font-size:12px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:12px;}
+.refresh-btn{padding:5px 14px;border-radius:6px;border:1px solid #333;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;}
+.refresh-btn:hover{border-color:#555;color:var(--white);}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">COURT<span>TRACK</span><small>by YUNG RIZZO</small></div>
+  <div class="pub-badge" style="margin:0;">👁 Player View</div>
+</nav>
+
+<div class="page" id="root"></div>
+
+<script>
+function hexToRgb(hex){const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);return r?`${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}`:null;}
+
+function render(){
+  const teams   = JSON.parse(localStorage.getItem('ct_teams') || '[]');
+  const game    = JSON.parse(localStorage.getItem('ct_game')  || 'null');
+  const root    = document.getElementById('root');
+
+  if(!game){
+    root.innerHTML=`<div class="no-game">
+      <div style="font-size:48px;margin-bottom:16px;">🏀</div>
+      <h2>No game in progress</h2>
+      <p>Check back when a game has started.</p>
+    </div>`;
+    return;
+  }
+
+  const ht=teams[game.hi], at=teams[game.ai];
+  if(!ht||!at){root.innerHTML='<div class="no-game"><h2>Game data unavailable.</h2></div>';return;}
+
+  const all=[
+    ...ht.players.map(p=>({...p,st:game.hStats[p.num]||{},team:ht.name,color:ht.color||'#FF5C00'})),
+    ...at.players.map(p=>({...p,st:game.aStats[p.num]||{},team:at.name,color:at.color||'#888'})),
+  ];
+  const byPts=[...all].sort((a,b)=>(b.st.pts||0)-(a.st.pts||0));
+  const byReb=[...all].sort((a,b)=>(b.st.reb||0)-(a.st.reb||0));
+  const byAst=[...all].sort((a,b)=>(b.st.ast||0)-(a.st.ast||0));
+
+  const lbH=(sorted,key)=>sorted.slice(0,5).map((p,i)=>{
+    const ini=p.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    return `<div class="lb-row">
+      <div class="lb-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</div>
+      <div class="lb-avatar" style="color:${p.color}">${ini}</div>
+      <div class="lb-info"><div class="lb-name">${p.name}</div><div class="lb-sub">${p.team} · #${p.num}</div></div>
+      <div><div class="lb-stat">${p.st[key]||0}</div><div class="lb-stat-label">${key.toUpperCase()}</div></div>
+    </div>`;
+  }).join('');
+
+  const allS=[...all].sort((a,b)=>a.team.localeCompare(b.team)||(b.st.pts||0)-(a.st.pts||0));
+  const boxRows=allS.map(p=>`<tr>
+    <td><span style="color:${p.color};font-weight:700;">#${p.num}</span></td>
+    <td>${p.name}</td>
+    <td class="pts-cell">${p.st.pts||0}</td>
+    <td>${p.st.reb||0}</td><td>${p.st.ast||0}</td><td>${p.st.stl||0}</td><td>${p.st.to||0}</td>
+  </tr>`).join('');
+
+  root.innerHTML=`
+    <div class="pub-badge">👁 Player View — Read Only</div>
+    <div class="hero-banner">
+      <div class="hero-bg-text">${ht.name.toUpperCase()}</div>
+      <div class="hero-subtitle">Live Game Stats</div>
+      <div class="hero-title">${ht.name} vs ${at.name}</div>
+      <div class="hero-meta">${game.date} · Q${game.q}</div>
+    </div>
+    <div class="score-row">
+      <div class="score-box">
+        <div class="score-name">${ht.name}</div>
+        <div class="score-num" style="color:${ht.color||'var(--orange)'}">${game.homeScore}</div>
+      </div>
+      <div class="score-vs">vs</div>
+      <div class="score-box">
+        <div class="score-name">${at.name}</div>
+        <div class="score-num" style="color:${at.color||'var(--white)'}">${game.awayScore}</div>
+      </div>
+    </div>
+    <div class="highlights">
+      <div class="stat-card hl"><div class="sc-label">Points Leader</div><div class="sc-val">${byPts[0]?.st.pts||0}</div><div class="sc-name">${byPts[0]?.name||'—'}</div></div>
+      <div class="stat-card"><div class="sc-label">Reb Leader</div><div class="sc-val">${byReb[0]?.st.reb||0}</div><div class="sc-name">${byReb[0]?.name||'—'}</div></div>
+      <div class="stat-card"><div class="sc-label">Ast Leader</div><div class="sc-val">${byAst[0]?.st.ast||0}</div><div class="sc-name">${byAst[0]?.name||'—'}</div></div>
+      <div class="stat-card"><div class="sc-label">Quarter</div><div class="sc-val">Q${game.q}</div><div class="sc-name">Current</div></div>
+    </div>
+    <div class="lb-two">
+      <div><div class="section-label" style="margin-bottom:10px;">Points Leaders</div><div class="stats-card"><div>${lbH(byPts,'pts')}</div></div></div>
+      <div><div class="section-label" style="margin-bottom:10px;">Rebounds Leaders</div><div class="stats-card"><div>${lbH(byReb,'reb')}</div></div></div>
+      <div><div class="section-label" style="margin-bottom:10px;">Assists Leaders</div><div class="stats-card"><div>${lbH(byAst,'ast')}</div></div></div>
+      <div>
+        <div class="section-label" style="margin-bottom:10px;">Full Box Score</div>
+        <div class="stats-card">
+          <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>TO</th></tr></thead>
+          <tbody>${boxRows}</tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="refresh-bar">
+      Stats updated live by coach.
+      <button class="refresh-btn" onclick="render()">↻ Refresh</button>
+    </div>`;
+}
+
+render();
+// Auto-refresh every 30 seconds
+setInterval(render, 30000);
+</script>
+</body>
+</html>
