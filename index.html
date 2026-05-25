@@ -500,6 +500,17 @@ let playerStats = JSON.parse(localStorage.getItem('ct_playerstats') || '{}');
 
 let selTeam=null, selPlayer=null, trackSide='home', logStack=[];
 
+const TEAM_COLORS=['#FF5C00','#3b82f6','#22c55e','#a855f7','#ef4444','#f59e0b','#06b6d4','#ec4899','#84cc16','#f97316'];
+function nextTeamColor(){
+  const used=teams.map(t=>t.color);
+  return TEAM_COLORS.find(c=>!used.includes(c))||TEAM_COLORS[teams.length%TEAM_COLORS.length];
+}
+function setColorInputs(hex){
+  document.getElementById('team-color-picker').value=hex;
+  document.getElementById('team-color-input').value=hex;
+  document.getElementById('color-preview-swatch').style.background=hex;
+}
+
 const STATS=[
   {key:'fgm',  label:'2pt Made',   pts:2, pos:true},
   {key:'3pm',  label:'3pt Made',   pts:3, pos:true},
@@ -552,10 +563,8 @@ function addTeam(){
   if(!n)return;
   teams.push({name:n,color:c,players:[]});
   document.getElementById('team-name-input').value='';
-  document.getElementById('team-color-input').value='';
-  document.getElementById('team-color-picker').value='#FF5C00';
-  document.getElementById('color-preview-swatch').style.background='#FF5C00';
   save();renderTeams();renderSelects();
+  setColorInputs(nextTeamColor());
 }
 
 function renderTeams(){
@@ -1081,6 +1090,7 @@ function showPage(p){
 
 /* ─── INIT ─── */
 renderTeams();renderRoster();renderSelects();
+setColorInputs(nextTeamColor());
 if(game){
   const b=document.getElementById('game-banner');b.style.display='block';
   b.textContent=`✓ Active game: ${teams[game.hi]?.name||'?'} vs ${teams[game.ai]?.name||'?'}`;
