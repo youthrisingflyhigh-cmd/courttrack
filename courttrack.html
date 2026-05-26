@@ -181,6 +181,11 @@ tr.totals-row td.pts-cell{color:var(--orange);}
   </div>
 </nav>
 
+<div id="loading-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0d0d;z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:#fff;">COURT<span style="color:#FF5C00;">TRACK</span></div>
+  <div style="font-size:13px;color:#888;">Connecting to database…</div>
+</div>
+
 <!-- SETUP -->
 <div class="page active" id="page-setup">
   <div style="margin-bottom:1.5rem;">
@@ -410,16 +415,22 @@ tr.totals-row td.pts-cell{color:var(--orange);}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
 // ── Firebase init ──
-firebase.initializeApp({
-  apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
-  authDomain:"court-track-39271.firebaseapp.com",
-  databaseURL:"https://court-track-39271-default-rtdb.firebaseio.com",
-  projectId:"court-track-39271",
-  storageBucket:"court-track-39271.firebasestorage.app",
-  messagingSenderId:"559684754695",
-  appId:"1:559684754695:web:0d8b12f3519329d8fc79a2"
-});
-var db = firebase.database();
+var db;
+try {
+  firebase.initializeApp({
+    apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+    authDomain:"court-track-39271.firebaseapp.com",
+    databaseURL:"https://court-track-39271-default-rtdb.firebaseio.com",
+    projectId:"court-track-39271",
+    storageBucket:"court-track-39271.firebasestorage.app",
+    messagingSenderId:"559684754695",
+    appId:"1:559684754695:web:0d8b12f3519329d8fc79a2"
+  });
+  db = firebase.database();
+} catch(e) {
+  // already initialized (e.g. hot reload)
+  db = firebase.database();
+}
 
 // ── State ──
 var teams=[],game=null,standings={},history=[],playerStats={},schedule=[];
@@ -438,10 +449,10 @@ var STATS=[
 ];
 
 // ── Firebase helpers ──
-function fbSet(path,val){ db.ref(path).set(val); }
-function fbRemove(path){ db.ref(path).remove(); }
-function fbOnce(path,cb){ db.ref(path).once('value').then(function(s){cb(s.val());}); }
-function fbListen(path,cb){ db.ref(path).on('value',function(s){cb(s.val());}); }
+function fbSet(path,val){ if(db) db.ref(path).set(val); }
+function fbRemove(path){ if(db) db.ref(path).remove(); }
+function fbOnce(path,cb){ if(db) db.ref(path).once('value').then(function(s){cb(s.val());}); else cb(null); }
+function fbListen(path,cb){ if(db) db.ref(path).on('value',function(s){cb(s.val());}); }
 
 function save(){
   fbSet('ct/teams',teams);
@@ -454,20 +465,20 @@ function save(){
 function clearGame(){ fbRemove('ct/game'); }
 
 // ── Boot: load all data then init ──
-var _loaded=0;
-function _check(){ if(++_loaded>=6) onAllLoaded(); }
-setTimeout(function(){ if(_loaded<6) onAllLoaded(); },5000);
-fbOnce('ct/teams',    function(v){teams=v||[];        _check();});
-fbOnce('ct/game',     function(v){game=v||null;       _check();});
-fbOnce('ct/standings',function(v){standings=v||{};    _check();});
-fbOnce('ct/history',  function(v){history=v||[];      _check();});
-fbOnce('ct/playerStats',function(v){playerStats=v||{};_check();});
-fbOnce('ct/schedule', function(v){schedule=v||[];     _check();});
-// Live game listener
-fbListen('ct/game',function(v){ game=v||null; });
+var _loaded=0, _booted=false;
+function _check(){ if(++_loaded>=6 && !_booted) { _booted=true; onAllLoaded(); } }
+setTimeout(function(){ if(!_booted){ _booted=true; onAllLoaded(); } },5000);
+fbOnce('ct/teams',      function(v){teams=v||[];         _check();});
+fbOnce('ct/game',       function(v){game=v||null;        _check();});
+fbOnce('ct/standings',  function(v){standings=v||{};     _check();});
+fbOnce('ct/history',    function(v){history=v||[];       _check();});
+fbOnce('ct/playerStats',function(v){playerStats=v||{};   _check();});
+fbOnce('ct/schedule',   function(v){schedule=v||[];      _check();});
+fbListen('ct/game',     function(v){ game=v||null; });
 
 function onAllLoaded(){
-  _loaded=99;
+  var overlay=document.getElementById('loading-overlay');
+  if(overlay) overlay.style.display='none';
   renderTeams(); renderRoster(); renderSelects();
   document.getElementById('color-preview-swatch').style.background='transparent';
   if(game){
@@ -488,7 +499,7 @@ function fmt12(hh,mm){var h=hh%24;return (h%12||12)+':'+(mm<10?'0':'')+mm+(h>=12
 function addTeam(){
   var n=document.getElementById('team-name-input').value.trim();
   var c=document.getElementById('team-color-picker').value||'#FF5C00';
-  if(!n)return;
+  if(!n){ alert('Please enter a team name.'); return; }
   teams.push({name:n,color:c,players:[]});
   document.getElementById('team-name-input').value='';
   document.getElementById('team-color-input').value='';
