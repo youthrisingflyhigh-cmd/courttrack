@@ -810,9 +810,10 @@ function renderSchedule(){
   var el=document.getElementById('tab-schedule');
   var leagueTeamNames=getLeagueTeams().map(function(t){return t.name;});
   var filteredSchedule=schedule.filter(function(g){
-    if(!currentLeague) return true;
-    if(g.isBye===true||g.isBye==='true'||g.away==='BYE') return false; // filter bye entries from Firebase
-    return leagueTeamNames.indexOf(g.home)>=0||leagueTeamNames.indexOf(g.away)>=0||g.isPlayoff;
+    if(!g) return false;
+    if(g.isBye===true||g.isBye==='true'||g.away==='BYE') return false;
+    if(g.isPlayoff) return false; // handle playoffs separately
+    return true; // show all regular season games
   });
   if(!filteredSchedule.length){el.innerHTML='<div style="padding:2rem;"><h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Schedule</h2><p style="color:var(--muted);font-style:italic;">No schedule generated yet.</p></div>';return;}
 
