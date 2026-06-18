@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Southbay Hoops — OBS Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+/* OBS requires transparent background */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:transparent !important;
+  overflow:hidden;
+  width:1920px;
+  height:1080px;
+  font-family:'Barlow Condensed',sans-serif;
+}
+
+/* ── SCOREBUG — top center ── */
+.scorebug{
+  position:absolute;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:stretch;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,0.7);
+  opacity:0;
+  transition:opacity 0.5s;
+}
+.scorebug.visible{opacity:1;}
+
+.team-block{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 20px;
+  min-width:220px;
+}
+.team-block.home{background:rgba(10,10,10,0.92);border-right:1px solid #222;}
+.team-block.away{background:rgba(10,10,10,0.92);border-left:1px solid #222;}
+
+.team-color-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.team-name-sb{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#fff;flex:1;}
+.team-score-sb{font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;color:#FF4500;}
+
+/* Center divider */
+.center-sb{
+  background:rgba(255,69,0,0.95);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:8px 16px;
+  min-width:100px;
+}
+.clock-sb{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:26px;
+  color:#fff;
+  letter-spacing:2px;
+  line-height:1;
+}
+.half-sb{
+  font-size:12px;
+  color:rgba(255,255,255,0.7);
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:48px;
+  background:rgba(10,10,10,0.88);
+  border-top:3px solid #FF4500;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 40px;
+  opacity:0;
+  transition:opacity 0.5s;
+}
+.bottom-bar.visible{opacity:1;}
+.bottom-left{font-size:14px;color:#888;letter-spacing:1px;}
+.bottom-center{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#FF4500;letter-spacing:3px;}
+.bottom-right{font-size:13px;color:#555;letter-spacing:1px;}
+
+/* ── PLAYER ACTION POPUP ── */
+.action-popup{
+  position:absolute;
+  bottom:70px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(10,10,10,0.92);
+  border:2px solid #FF4500;
+  border-radius:10px;
+  padding:12px 24px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  opacity:0;
+  transition:opacity 0.3s;
+  pointer-events:none;
+}
+.action-popup.show{opacity:1;}
+.popup-player{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#FF4500;letter-spacing:2px;}
+.popup-action{font-size:15px;color:#fff;letter-spacing:1px;}
+.popup-pts{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#22c55e;}
+
+/* Clock warning states */
+.clock-sb.warning{color:#eab308;}
+.clock-sb.urgent{animation:blink 0.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* Foul out banner */
+.foul-banner{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(239,68,68,0.95);
+  border-radius:12px;
+  padding:16px 40px;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:48px;
+  color:#fff;
+  letter-spacing:4px;
+  text-align:center;
+  opacity:0;
+  transition:opacity 0.3s;
+  pointer-events:none;
+  z-index:100;
+}
+.foul-banner.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- Scorebug -->
+<div class="scorebug" id="scorebug">
+  <div class="team-block home">
+    <div class="team-color-dot" id="obs-home-dot"></div>
+    <div class="team-name-sb" id="obs-home-name">HOME</div>
+    <div class="team-score-sb" id="obs-home-score">0</div>
+  </div>
+  <div class="center-sb">
+    <div class="clock-sb" id="obs-clock">20:00</div>
+    <div class="half-sb" id="obs-half">H1</div>
+  </div>
+  <div class="team-block away">
+    <div class="team-score-sb" id="obs-away-score">0</div>
+    <div class="team-name-sb" id="obs-away-name" style="text-align:right;">AWAY</div>
+    <div class="team-color-dot" id="obs-away-dot"></div>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar" id="obs-bottom">
+  <div class="bottom-left" id="obs-bottom-left">San Jose High School</div>
+  <div class="bottom-center">SOUTHBAY HOOPS</div>
+  <div class="bottom-right">southbayhoops.org · Powered by YRFH</div>
+</div>
+
+<!-- Action popup -->
+<div class="action-popup" id="action-popup">
+  <div class="popup-player" id="popup-player">PLAYER</div>
+  <div class="popup-action" id="popup-action">2PT MADE</div>
+  <div class="popup-pts" id="popup-pts">+2</div>
+</div>
+
+<!-- Foul banner -->
+<div class="foul-banner" id="foul-banner">FOUL OUT</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+  authDomain:"court-track-39271.firebaseapp.com",
+  databaseURL:"https://court-track-39271-default-rtdb.firebaseio.com",
+  projectId:"court-track-39271",
+  storageBucket:"court-track-39271.firebasestorage.app",
+  messagingSenderId:"559684754695",
+  appId:"1:559684754695:web:0d8b12f3519329d8fc79a2"
+});
+var db = firebase.database();
+var teams = [];
+var lastPlayLogLen = 0;
+var popupTimeout = null;
+
+function fmtClock(s){
+  var m=Math.floor(s/60), sec=s%60;
+  return m+':'+(sec<10?'0':'')+sec;
+}
+
+db.ref('ct/teams').on('value',function(s){
+  var v=s.val();
+  if(!v) return;
+  teams=Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean);
+});
+
+db.ref('ct/game').on('value',function(s){
+  var game=s.val();
+  var bug=document.getElementById('scorebug');
+  var bot=document.getElementById('obs-bottom');
+
+  if(!game||game.homeScore==null){
+    bug.classList.remove('visible');
+    bot.classList.remove('visible');
+    return;
+  }
+
+  bug.classList.add('visible');
+  bot.classList.add('visible');
+
+  var ht=teams[game.hi]||{};
+  var at=teams[game.ai]||{};
+
+  document.getElementById('obs-home-name').textContent=(ht.name||'HOME').toUpperCase();
+  document.getElementById('obs-away-name').textContent=(at.name||'AWAY').toUpperCase();
+  document.getElementById('obs-home-score').textContent=game.homeScore||0;
+  document.getElementById('obs-away-score').textContent=game.awayScore||0;
+  document.getElementById('obs-home-score').style.color=ht.color||'#FF4500';
+  document.getElementById('obs-away-score').style.color=at.color||'#ffffff';
+  document.getElementById('obs-home-dot').style.background=ht.color||'#FF4500';
+  document.getElementById('obs-away-dot').style.background=at.color||'#888';
+  document.getElementById('obs-half').textContent='H'+(game.q||1);
+
+  // Clock
+  if(game.clock){
+    var secs=game.clock.seconds||0;
+    var clockEl=document.getElementById('obs-clock');
+    clockEl.textContent=fmtClock(secs);
+    clockEl.className='clock-sb'+(secs<=30?' urgent':secs<=60?' warning':'');
+  }
+
+  // Bottom bar
+  document.getElementById('obs-bottom-left').textContent=
+    (ht.name||'Home')+' '+( game.homeScore||0)+' — '+(game.awayScore||0)+' '+(at.name||'Away')+
+    '  ·  '+(game.date||'')+'  ·  San Jose High School';
+
+  // Action popup from play log
+  if(game.playLog && game.playLog.length > lastPlayLogLen){
+    var entry = game.playLog[game.playLog.length-1];
+    lastPlayLogLen = game.playLog.length;
+    showActionPopup(entry, game);
+  }
+});
+
+function showActionPopup(entry, game){
+  if(!entry || !entry.pts) return; // only show scoring plays
+  var popup = document.getElementById('action-popup');
+  document.getElementById('popup-player').textContent = (entry.playerName||'PLAYER').toUpperCase();
+  document.getElementById('popup-action').textContent = (entry.label||'').toUpperCase();
+  document.getElementById('popup-pts').textContent = '+'+entry.pts;
+  popup.classList.add('show');
+  if(popupTimeout) clearTimeout(popupTimeout);
+  popupTimeout = setTimeout(function(){ popup.classList.remove('show'); }, 3000);
+}
+</script>
+</body>
+</html>
