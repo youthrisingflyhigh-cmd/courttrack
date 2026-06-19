@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Southbay Hoops — Season 1 Schedule Loader</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:#0a0a0a;color:#f0f0f0;padding:24px;max-width:900px;margin:0 auto;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#FF4500;letter-spacing:3px;margin-bottom:4px;}
+.sub{font-size:13px;color:#666;margin-bottom:24px;}
+.warning{background:rgba(239,68,68,0.08);border:1px solid #ef4444;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#ef4444;}
+.btn{padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:'Barlow',sans-serif;}
+.btn-orange{background:#FF4500;color:#fff;}
+.btn-orange:hover{background:#cc3700;}
+.btn-dark{background:#111;border:1px solid #333;color:#888;}
+.btn-dark:hover{border-color:#FF4500;color:#FF4500;}
+.status{margin-top:16px;font-size:13px;color:#888;line-height:2;}
+.ok{color:#22c55e;} .err{color:#ef4444;} .info{color:#FF4500;}
+.section{margin-top:32px;}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:2px;margin-bottom:12px;border-bottom:2px solid #FF4500;padding-bottom:6px;}
+
+/* Schedule table */
+.sched-table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+.sched-table th{background:#1a1a1a;color:#FF4500;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:10px 12px;text-align:left;}
+.sched-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #1a1a1a;}
+.sched-table tr:nth-child(even) td{background:#0d0d0d;}
+.bye-tag{background:#eab30822;color:#eab308;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:1px;}
+.playoff-row td{background:#FF450011!important;color:#FF4500;font-weight:700;}
+.game-num{color:#555;font-size:11px;}
+
+/* Bracket */
+.bracket{display:flex;gap:0;align-items:center;justify-content:center;margin-top:16px;}
+.bracket-round{display:flex;flex-direction:column;gap:0;align-items:center;}
+.round-label{font-family:'Bebas Neue',sans-serif;font-size:13px;color:#FF4500;letter-spacing:2px;text-align:center;margin-bottom:16px;}
+.matchup{background:#111;border:1px solid #2a2a2a;border-radius:8px;width:180px;overflow:hidden;margin:8px 0;}
+.matchup-team{padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.matchup-team:first-child{border-bottom:1px solid #1a1a1a;}
+.seed{font-size:11px;color:#FF4500;font-weight:700;min-width:20px;}
+.matchup-date{font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;}
+.connector{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.connector-line{width:40px;height:2px;background:#333;}
+.champ-box{background:linear-gradient(135deg,#FF450022,#FF450044);border:2px solid #FF4500;border-radius:12px;padding:20px;text-align:center;width:180px;}
+.champ-label{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#FF4500;letter-spacing:3px;}
+.champ-date{font-size:12px;color:#888;margin-top:4px;letter-spacing:1px;}
+.champ-icon{font-size:36px;margin-bottom:8px;}
+.tbd{color:#555;font-style:italic;}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<h1>📅 Season 1 Schedule Loader</h1>
+<p class="sub">Southbay Hoops · 35+ Men's League · Summer 2026</p>
+
+<div class="warning">⚠️ This will replace any existing schedule in Firebase. Run only once at season start.</div>
+
+<div class="btn-row">
+  <button class="btn btn-orange" onclick="loadSchedule()">📥 Load Schedule into Firebase</button>
+  <button class="btn btn-dark" onclick="previewCurrent()">👁 Preview Current Firebase Schedule</button>
+</div>
+<div id="status" class="status"></div>
+
+<!-- Schedule Preview -->
+<div class="section">
+  <div class="section-title">Regular Season Schedule</div>
+  <table class="sched-table">
+    <thead><tr><th>Day</th><th>Date</th><th>Time</th><th>Home</th><th>Away</th><th>Bye</th></tr></thead>
+    <tbody id="sched-body"></tbody>
+  </table>
+</div>
+
+<!-- Playoff Bracket -->
+<div class="section">
+  <div class="section-title">Playoff Bracket — Top 4 Teams</div>
+  <div class="bracket">
+
+    <!-- Semis -->
+    <div class="bracket-round">
+      <div class="round-label">SEMIFINALS · AUG 19</div>
+      <div class="matchup">
+        <div class="matchup-team"><span class="seed">#1</span> <span>TBD</span></div>
+        <div class="matchup-team"><span class="seed">#4</span> <span class="tbd">TBD</span></div>
+        <div class="matchup-date">WED · AUG 19 · 6:30 PM</div>
+      </div>
+      <div style="height:80px;"></div>
+      <div class="matchup">
+        <div class="matchup-team"><span class="seed">#2</span> <span class="tbd">TBD</span></div>
+        <div class="matchup-team"><span class="seed">#3</span> <span class="tbd">TBD</span></div>
+        <div class="matchup-date">WED · AUG 19 · 7:30 PM</div>
+      </div>
+    </div>
+
+    <!-- Connectors -->
+    <div class="connector" style="height:200px;position:relative;">
+      <div style="position:absolute;top:45px;left:0;right:0;height:2px;background:#333;"></div>
+      <div style="position:absolute;top:45px;right:0;width:2px;height:120px;background:#333;"></div>
+      <div style="position:absolute;top:165px;left:0;right:0;height:2px;background:#333;"></div>
+      <div style="position:absolute;top:105px;left:0;right:50%;height:2px;background:#FF4500;"></div>
+    </div>
+
+    <!-- Championship -->
+    <div class="bracket-round">
+      <div class="round-label">CHAMPIONSHIP · AUG 26</div>
+      <div style="height:80px;"></div>
+      <div class="champ-box">
+        <div class="champ-icon">🏆</div>
+        <div class="champ-label">CHAMPION</div>
+        <div class="champ-date">WED · AUG 26 · 6:30 PM</div>
+        <div style="font-size:11px;color:#555;margin-top:8px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:20px;font-size:12px;color:#555;text-align:center;letter-spacing:1px;">
+    Top 4 teams by winning % advance · Bottom 3 eliminated after regular season · Championship rings for winners
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+  authDomain:"court-track-39271.firebaseapp.com",
+  databaseURL:"https://court-track-39271-default-rtdb.firebaseio.com",
+  projectId:"court-track-39271",
+  storageBucket:"court-track-39271.firebasestorage.app",
+  messagingSenderId:"559684754695",
+  appId:"1:559684754695:web:0d8b12f3519329d8fc79a2"
+});
+var db = firebase.database();
+
+var SCHEDULE = [
+  // Day 1 — BYE: TREEZ
+  {date:'Wed, Jul 1, 2026',  time:'6:30 PM', home:'FLY HIGH',    away:'MONEYBALL',   bye:'TREEZ',      round:1, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 1, 2026',  time:'7:30 PM', home:'FLEETWORK',   away:'SB HOOPS', bye:'TREEZ',      round:1, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 1, 2026',  time:'8:30 PM', home:'UNITED',      away:'OHANA',       bye:'TREEZ',      round:1, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 1, 2026',  time:'—',       home:'TREEZ',       away:'BYE',         bye:'TREEZ',      round:1, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 2 — BYE: SB HOOPS
+  {date:'Wed, Jul 8, 2026',  time:'6:30 PM', home:'TREEZ',       away:'MONEYBALL',   bye:'SB HOOPS',round:2, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 8, 2026',  time:'7:30 PM', home:'FLEETWORK',   away:'OHANA',       bye:'SB HOOPS',round:2, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 8, 2026',  time:'8:30 PM', home:'FLY HIGH',    away:'UNITED',      bye:'SB HOOPS',round:2, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 8, 2026',  time:'—',       home:'SB HOOPS', away:'BYE',         bye:'SB HOOPS',round:2, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 3 — BYE: MONEYBALL
+  {date:'Wed, Jul 15, 2026', time:'6:30 PM', home:'SB HOOPS', away:'OHANA',       bye:'MONEYBALL',  round:3, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 15, 2026', time:'7:30 PM', home:'TREEZ',       away:'UNITED',      bye:'MONEYBALL',  round:3, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 15, 2026', time:'8:30 PM', home:'FLEETWORK',   away:'FLY HIGH',    bye:'MONEYBALL',  round:3, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 15, 2026', time:'—',       home:'MONEYBALL',   away:'BYE',         bye:'MONEYBALL',  round:3, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 4 — BYE: OHANA
+  {date:'Wed, Jul 22, 2026', time:'6:30 PM', home:'MONEYBALL',   away:'UNITED',      bye:'OHANA',      round:4, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 22, 2026', time:'7:30 PM', home:'SB HOOPS', away:'FLY HIGH',    bye:'OHANA',      round:4, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 22, 2026', time:'8:30 PM', home:'TREEZ',       away:'FLEETWORK',   bye:'OHANA',      round:4, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 22, 2026', time:'—',       home:'OHANA',       away:'BYE',         bye:'OHANA',      round:4, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 5 — BYE: UNITED
+  {date:'Wed, Jul 29, 2026', time:'6:30 PM', home:'OHANA',       away:'FLY HIGH',    bye:'UNITED',     round:5, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 29, 2026', time:'7:30 PM', home:'MONEYBALL',   away:'FLEETWORK',   bye:'UNITED',     round:5, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 29, 2026', time:'8:30 PM', home:'SB HOOPS', away:'TREEZ',       bye:'UNITED',     round:5, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Jul 29, 2026', time:'—',       home:'UNITED',      away:'BYE',         bye:'UNITED',     round:5, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 6 — BYE: FLY HIGH
+  {date:'Wed, Aug 5, 2026',  time:'6:30 PM', home:'OHANA',       away:'TREEZ',       bye:'FLY HIGH',   round:6, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 5, 2026',  time:'7:30 PM', home:'UNITED',      away:'FLEETWORK',   bye:'FLY HIGH',   round:6, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 5, 2026',  time:'8:30 PM', home:'MONEYBALL',   away:'SB HOOPS', bye:'FLY HIGH',   round:6, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 5, 2026',  time:'—',       home:'FLY HIGH',    away:'BYE',         bye:'FLY HIGH',   round:6, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Day 7 — BYE: FLEETWORK
+  {date:'Wed, Aug 12, 2026', time:'6:30 PM', home:'FLY HIGH',    away:'TREEZ',       bye:'FLEETWORK',  round:7, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 12, 2026', time:'7:30 PM', home:'UNITED',      away:'SB HOOPS', bye:'FLEETWORK',  round:7, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 12, 2026', time:'8:30 PM', home:'OHANA',       away:'MONEYBALL',   bye:'FLEETWORK',  round:7, status:'upcoming', homeScore:null, awayScore:null, isBye:false},
+  {date:'Wed, Aug 12, 2026', time:'—',       home:'FLEETWORK',   away:'BYE',         bye:'FLEETWORK',  round:7, status:'bye',      homeScore:null, awayScore:null, isBye:true},
+  // Playoffs
+  {date:'Wed, Aug 19, 2026', time:'6:30 PM', home:'#1 Seed',     away:'#4 Seed',     bye:null,         round:8, status:'upcoming', homeScore:null, awayScore:null, isBye:false, isPlayoff:true, label:'Semifinal 1'},
+  {date:'Wed, Aug 19, 2026', time:'7:30 PM', home:'#2 Seed',     away:'#3 Seed',     bye:null,         round:8, status:'upcoming', homeScore:null, awayScore:null, isBye:false, isPlayoff:true, label:'Semifinal 2'},
+  {date:'Wed, Aug 26, 2026', time:'6:30 PM', home:'SF1 Winner',  away:'SF2 Winner',  bye:null,         round:9, status:'upcoming', homeScore:null, awayScore:null, isBye:false, isPlayoff:true, label:'Championship 🏆'},
+];
+
+// Render schedule table
+function renderTable(){
+  var html = '';
+  var lastRound = 0;
+  var gameNum = 0;
+  SCHEDULE.forEach(function(g){
+    if(g.isBye) return; // skip bye rows in table
+    if(g.round !== lastRound){
+      var isPlayoff = g.isPlayoff;
+      html += '<tr style="background:'+(isPlayoff?'#FF450018':'#1a1a1a')+'"><td colspan="6" style="font-family:\'Bebas Neue\',sans-serif;font-size:13px;color:'+(isPlayoff?'#FF4500':'#888')+';letter-spacing:2px;padding:8px 12px;">'+(isPlayoff?'🏆 PLAYOFFS':'GAME DAY '+g.round+' — '+g.date.replace('Wed, ',''))+(g.isPlayoff?'':' — BYE: '+SCHEDULE.find(function(x){return x.round===g.round&&x.isBye;})?.bye)+'</td></tr>';
+      lastRound = g.round;
+    }
+    gameNum++;
+    html += '<tr class="'+(g.isPlayoff?'playoff-row':'')+'">'+
+      '<td class="game-num">G'+gameNum+'</td>'+
+      '<td>'+g.date+'</td>'+
+      '<td>'+g.time+'</td>'+
+      '<td style="font-weight:600;">'+g.home+'</td>'+
+      '<td>'+g.away+'</td>'+
+      '<td>'+(g.bye?'<span class="bye-tag">'+g.bye+'</span>':'—')+'</td>'+
+      '</tr>';
+  });
+  document.getElementById('sched-body').innerHTML = html;
+}
+
+function loadSchedule(){
+  var status = document.getElementById('status');
+  status.innerHTML = '<span class="info">⏳ Loading schedule into Firebase...</span>';
+  db.ref('ct/schedule').set(SCHEDULE).then(function(){
+    status.innerHTML = '<span class="ok">✅ Done! '+SCHEDULE.filter(function(g){return !g.isBye;}).length+' games loaded into Firebase.</span><br>'+
+      '<span class="ok">✅ 7 regular season game days (Jul 1 – Aug 12)</span><br>'+
+      '<span class="ok">✅ 2 playoff days (Aug 19 & 26)</span><br>'+
+      '<span class="ok">✅ TREEZ has bye on Game Day 1 ✓</span>';
+  }).catch(function(err){
+    status.innerHTML = '<span class="err">❌ Error: '+err.message+'</span>';
+  });
+}
+
+function previewCurrent(){
+  var status = document.getElementById('status');
+  status.innerHTML = '<span class="info">⏳ Reading Firebase...</span>';
+  db.ref('ct/schedule').once('value').then(function(s){
+    var v = s.val();
+    if(!v){ status.innerHTML = '<span class="err">No schedule found in Firebase.</span>'; return; }
+    var games = Array.isArray(v) ? v : Object.values(v);
+    var real = games.filter(function(g){return g&&!g.isBye;});
+    status.innerHTML = '<span class="ok">Current Firebase schedule has '+real.length+' games.</span>';
+  });
+}
+
+renderTable();
+</script>
+</body>
+</html>
