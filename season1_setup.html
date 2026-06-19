@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CourtTrack — Season 1 Setup</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;padding:24px;max-width:700px;margin:0 auto;}
+h1{font-size:28px;font-weight:900;color:#FF4500;margin-bottom:4px;}
+.sub{font-size:13px;color:#888;margin-bottom:24px;}
+.team-card{background:#111;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:14px;}
+.team-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.team-name{font-size:16px;font-weight:700;color:#fff;}
+.player-count{font-size:12px;color:#888;margin-left:auto;}
+.players{display:flex;flex-wrap:wrap;gap:6px;}
+.player-tag{background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:4px 10px;font-size:12px;color:#ccc;}
+.warning{background:rgba(234,179,8,0.1);border:1px solid #eab308;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#eab308;line-height:1.6;}
+.warning strong{color:#fff;}
+.btn-row{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;}
+.btn{padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:Arial,sans-serif;}
+.btn-red{background:#ef4444;color:#fff;}
+.btn-red:hover{background:#dc2626;}
+.btn-orange{background:#FF4500;color:#fff;}
+.btn-orange:hover{background:#cc3700;}
+.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.status{margin-top:16px;font-size:13px;color:#888;line-height:2;}
+.status .ok{color:#22c55e;}
+.status .err{color:#ef4444;}
+.status .info{color:#FF4500;}
+.divider{height:1px;background:#222;margin:20px 0;}
+.section-title{font-size:11px;font-weight:700;color:#666;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<h1>🏀 CourtTrack — Season 1 Setup</h1>
+<p class="sub">Southbay Hoops • 35+ Men's League • Summer 2026</p>
+
+<div class="warning">
+  ⚠️ <strong>Warning:</strong> Clicking "Reset & Load Season 1" will <strong>wipe all existing data</strong> in Firebase including teams, rosters, standings, schedule, stats, and game history. This cannot be undone. Only run this once at the start of the season.
+</div>
+
+<div class="section-title">Teams to be loaded</div>
+
+<div id="team-preview"></div>
+
+<div class="divider"></div>
+
+<div class="btn-row">
+  <button class="btn btn-red" id="reset-btn" onclick="confirmReset()">🔄 Reset & Load Season 1</button>
+  <button class="btn btn-orange" id="preview-btn" onclick="previewFirebase()">👁 Preview Current Firebase Data</button>
+</div>
+
+<div id="status" class="status"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
+  authDomain:"court-track-39271.firebaseapp.com",
+  databaseURL:"https://court-track-39271-default-rtdb.firebaseio.com",
+  projectId:"court-track-39271",
+  storageBucket:"court-track-39271.firebasestorage.app",
+  messagingSenderId:"559684754695",
+  appId:"1:559684754695:web:0d8b12f3519329d8fc79a2"
+});
+var db = firebase.database();
+
+// ── SEASON 1 DATA ──
+var season1Teams = [
+  {
+    name: 'FLEETWORK',
+    color: '#1d4ed8',
+    league: '35+ Mens League',
+    players: [
+      {num:1,  name:'Rizzo',   pos:'G'},
+      {num:2,  name:'JC',      pos:'G'},
+      {num:3,  name:'Josh',    pos:'G'},
+      {num:4,  name:'Zack',    pos:'G'},
+      {num:5,  name:'Janssen', pos:'F'},
+      {num:6,  name:'Ed',      pos:'F'},
+      {num:7,  name:'Tuan',    pos:'G'},
+      {num:8,  name:'Jesse',   pos:'G'},
+      {num:9,  name:'CJ',      pos:'G'},
+      {num:10, name:'Marvin',  pos:'F'},
+      {num:11, name:'Ray',     pos:'G'},
+    ]
+  },
+  {
+    name: 'OHANA',
+    color: '#16a34a',
+    league: '35+ Mens League',
+    players: [
+      {num:1, name:'Shaun', pos:'G'},
+      {num:2, name:'Kel',   pos:'G'},
+      {num:3, name:'Davin', pos:'F'},
+      {num:4, name:'Jan',   pos:'G'},
+      {num:5, name:'Shane', pos:'F'},
+    ]
+  },
+  {
+    name: 'MONEYBALL',
+    color: '#FF4500',
+    league: '35+ Mens League',
+    players: [
+      {num:1, name:'Ant',    pos:'G'},
+      {num:2, name:'KG',     pos:'F'},
+      {num:3, name:'Alex',   pos:'G'},
+      {num:4, name:'Hef',    pos:'G'},
+      {num:5, name:'City',   pos:'G'},
+      {num:6, name:'Johnny', pos:'F'},
+      {num:7, name:'Lewis',  pos:'G'},
+      {num:8, name:'Nate',   pos:'G'},
+    ]
+  },
+  {
+    name: 'UNITED',
+    color: '#7c3aed',
+    league: '35+ Mens League',
+    players: [
+      {num:1, name:'Rex',   pos:'G'},
+      {num:2, name:'Arlo',  pos:'F'},
+      {num:3, name:'Loren', pos:'G'},
+    ]
+  },
+  {
+    name: 'FLY HIGH',
+    color: '#eab308',
+    league: '35+ Mens League',
+    players: [
+      {num:1, name:'Aldrin',  pos:'G'},
+      {num:2, name:'Max',     pos:'G'},
+      {num:3, name:'Jesse',   pos:'G'},
+      {num:4, name:'Jah',     pos:'F'},
+      {num:5, name:'Jordan',  pos:'G'},
+      {num:6, name:'Derriq',  pos:'F'},
+      {num:7, name:'Daniel',  pos:'G'},
+    ]
+  },
+  {
+    name: 'SB HOOPS',
+    color: '#888888',
+    league: '35+ Mens League',
+    players: [
+      {num:1, name:'Broderick',  pos:'G', height:"5'8\""},
+      {num:2, name:'Anthony',    pos:'F', height:"6'2\""},
+      {num:3, name:'Marco',      pos:'G', height:"5'8\""},
+      {num:4, name:'Argi',       pos:'G', height:"5'8\""},
+      {num:5, name:'CJ',         pos:'G', height:"5'10\""},
+      {num:6, name:'Anthony 2',  pos:'F', height:"5'11\""},
+      {num:7, name:'Reggie',     pos:'G', height:"5'8\""},
+    ]
+  },
+  {
+    name: 'TREEZ',
+    color: '#15803d',
+    league: '35+ Mens League',
+    players: []
+  }
+];
+
+// Render preview
+function renderPreview(){
+  var html = '';
+  season1Teams.forEach(function(t){
+    html += '<div class="team-card">';
+    html += '<div class="team-header">';
+    html += '<div class="color-dot" style="background:'+t.color+'"></div>';
+    html += '<div class="team-name">'+t.name+'</div>';
+    html += '<div class="player-count">'+t.players.length+' players</div>';
+    html += '</div>';
+    if(t.players.length){
+      html += '<div class="players">';
+      t.players.forEach(function(p){
+        html += '<div class="player-tag">#'+p.num+' '+p.name+'</div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:12px;color:#555;font-style:italic;">No players yet — add in admin after setup</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById('team-preview').innerHTML = html;
+}
+
+function confirmReset(){
+  if(!confirm('⚠️ This will DELETE all existing CourtTrack data and load Season 1 fresh. Are you sure?')) return;
+  if(!confirm('Last chance — are you absolutely sure? This cannot be undone.')) return;
+  runReset();
+}
+
+function runReset(){
+  var btn = document.getElementById('reset-btn');
+  var status = document.getElementById('status');
+  btn.disabled = true;
+  btn.textContent = 'Resetting...';
+  status.innerHTML = '<span class="info">⏳ Wiping existing data...</span>';
+
+  // Build initial standings
+  var standings = {};
+  season1Teams.forEach(function(t){
+    standings[t.name] = {w:0,l:0,pts:0,ptsA:0};
+  });
+
+  // Build fresh data object
+  var freshData = {
+    teams: season1Teams,
+    standings: standings,
+    schedule: [],
+    history: {},
+    game: {active:false},
+    playerStats: {},
+    settings: {
+      leagueName: 'Southbay Hoops — 35+ Men\'s League',
+      season: 'Season 1 — Summer 2026',
+      locations: ['San Jose Unified — Gym A'],
+      streamURL: '',
+      potw: ''
+    }
+  };
+
+  db.ref('ct').set(freshData).then(function(){
+    status.innerHTML =
+      '<span class="ok">✅ Done! Season 1 loaded successfully.</span><br>' +
+      '<span class="ok">✅ '+season1Teams.length+' teams loaded</span><br>' +
+      '<span class="ok">✅ Standings initialized</span><br>' +
+      '<span class="ok">✅ Settings configured</span><br><br>' +
+      '<span class="info">Next steps:</span><br>' +
+      '1. Open admin.html and go to Setup to add jersey numbers<br>' +
+      '2. Add FLY HIGH roster in admin<br>' +
+      '3. Build your schedule in the Schedule tab<br>' +
+      '4. You\'re ready for Season 1! 🏀';
+    btn.textContent = '✓ Done';
+  }).catch(function(err){
+    status.innerHTML = '<span class="err">❌ Error: '+err.message+'</span>';
+    btn.disabled = false;
+    btn.textContent = '🔄 Reset & Load Season 1';
+  });
+}
+
+function previewFirebase(){
+  var status = document.getElementById('status');
+  status.innerHTML = '<span class="info">⏳ Reading Firebase...</span>';
+  db.ref('ct').once('value').then(function(s){
+    var val = s.val();
+    if(!val){
+      status.innerHTML = '<span class="err">No data found in Firebase.</span>';
+      return;
+    }
+    var teams = val.teams || [];
+    if(!Array.isArray(teams)) teams = Object.values(teams).filter(Boolean);
+    var teamNames = teams.map(function(t){return t.name;}).join(', ');
+    status.innerHTML =
+      '<span class="ok">Current Firebase data:</span><br>' +
+      'Teams: <strong style="color:#fff;">'+teamNames+'</strong><br>' +
+      'Schedule games: <strong style="color:#fff;">'+(val.schedule?val.schedule.length:0)+'</strong><br>' +
+      'History games: <strong style="color:#fff;">'+(val.history?Object.keys(val.history).length:0)+'</strong>';
+  }).catch(function(err){
+    status.innerHTML = '<span class="err">Error: '+err.message+'</span>';
+  });
+}
+
+renderPreview();
+</script>
+</body>
+</html>
