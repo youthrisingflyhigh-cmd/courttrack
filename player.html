@@ -595,6 +595,72 @@ function getAllPlayers(){
 }
 
 function renderPOTW(){
+  var card=document.getElementById('potw-card');
+  if(!card)return;
+  loadPotwGallery(card);
+}
+
+// Upload posters to /assets/potw/ as sequential numbered files —
+// 1.jpg or 1.png, 2.jpg or 2.png, 3.jpg or 3.png, etc. (either extension
+// works). The site probes upward from 1 until a number is missing, so you
+// never have to edit any code or list — just drop in the next number.
+function probeImage(src){
+  return new Promise(function(resolve){
+    var img=new Image();
+    img.onload=function(){resolve(true);};
+    img.onerror=function(){resolve(false);};
+    img.src=src;
+  });
+}
+function probePotwSlot(n,v){
+  var jpg='assets/potw/'+n+'.jpg?v='+v;
+  var png='assets/potw/'+n+'.png?v='+v;
+  return probeImage(jpg).then(function(ok){
+    if(ok) return jpg;
+    return probeImage(png).then(function(ok2){ return ok2?png:null; });
+  });
+}
+function loadPotwGallery(card){
+  var v=new Date().toISOString().slice(0,10);
+  var found=[];
+  var MAX=50; // safety cap so a typo/missing gap can't loop forever
+  function step(n){
+    if(n>MAX) return finish();
+    return probePotwSlot(n,v).then(function(src){
+      if(!src) return finish();
+      found.push(src);
+      return step(n+1);
+    });
+  }
+  function finish(){
+    if(!found.length){ renderPOTWFallback(card); return; }
+    renderPOTWGallery(card,found);
+  }
+  step(1);
+}
+function renderPOTWGallery(card,srcs){
+  var thumbs=srcs.slice().reverse(); // newest (highest number) first
+  var html='<div class="potw-header">⭐ MVP of the Week</div>'
+    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">';
+  thumbs.forEach(function(src){
+    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid #2a2a2a;background:#000;">'
+      +'<img src="'+src+'" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover;" loading="lazy">'
+    +'</div>';
+  });
+  html+='</div>';
+  card.innerHTML=html;
+}
+function openPotwLightbox(src){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;';
+  ov.onclick=function(){ov.remove();};
+  ov.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.6);">';
+  document.body.appendChild(ov);
+}
+
+function renderPOTWFallback(card){
+  card.innerHTML='<div class="potw-header">⭐ Player of the Week</div>'
+    +'<div class="potw-body" id="potw-body"><div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
   var el=document.getElementById('potw-body');
   var allP=getAllPlayers();
   // Find the player with the best single game (use pts as proxy from season totals / gp)
