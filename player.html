@@ -162,6 +162,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 /* ── HOME PAGE ── */
 .home-welcome{margin-bottom:1.5rem;}
 .home-season-label{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;}
+.division-pill{padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.5px;background:var(--dark3);color:var(--muted);border:1px solid #2a2a2a;cursor:pointer;font-family:'Barlow',sans-serif;transition:all 0.15s;}
+.division-pill:hover{color:var(--white);border-color:#444;}
+.division-pill.active{background:var(--orange);color:#fff;border-color:var(--orange);}
 .home-welcome h1{font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:900;color:var(--white);line-height:1.05;}
 .home-search-wrap{position:relative;margin-bottom:1.5rem;}
 .home-search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:0.4;}
@@ -312,8 +315,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 <!-- HOME -->
 <div class="page active" id="tab-home">
   <div class="home-welcome">
-    <div class="home-season-label" id="home-season-label">COURTTRACK LEAGUE</div>
-    <h1>Welcome back.</h1>
+    <div class="home-season-label" id="home-season-label">SOUTHBAY HOOPS</div>
+    <h1 id="home-division-title">35+ Division</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="division-pill active" data-division="35+" onclick="selectDivision('35+',this)">35+ Division</button>
+      <button class="division-pill" data-division="open" onclick="selectDivision('open',this)">Open Division</button>
+      <button class="division-pill" data-division="under" onclick="selectDivision('under',this)">6'2 &amp; Under</button>
+    </div>
   </div>
 
   <div class="home-search-wrap">
@@ -570,12 +578,38 @@ function buildTicker(){
   bar.style.display='flex';
 }
 
+// ── DIVISION SWITCHER ──
+// Only the 35+ Division has live teams/schedule/stats right now. Open and
+// 6'2 & Under are shown as upcoming — tapping them lets people know
+// they're on the way without breaking into an empty page.
+function selectDivision(div,btn){
+  document.querySelectorAll('.division-pill').forEach(function(p){p.classList.remove('active');});
+  if(div==='35+'){
+    btn.classList.add('active');
+    document.getElementById('home-division-title').textContent="35+ Division";
+    return;
+  }
+  // Not live yet — flash it active briefly, show a toast, then snap back.
+  btn.classList.add('active');
+  var label=div==='open'?'Open Division':"6'2 & Under Division";
+  document.getElementById('home-division-title').textContent=label;
+  showToast(label+' is launching soon — check back for teams & schedule!');
+  setTimeout(function(){
+    document.querySelectorAll('.division-pill').forEach(function(p){p.classList.remove('active');});
+    document.querySelector('.division-pill[data-division="35+"]').classList.add('active');
+    document.getElementById('home-division-title').textContent='35+ Division';
+  },1800);
+}
+function showToast(msg){
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e1e1e;border:1px solid #333;color:#fff;padding:12px 20px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:4000;max-width:90vw;text-align:center;';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity 0.3s'; t.style.opacity='0'; setTimeout(function(){t.remove();},300); },2200);
+}
+
 // ── HOME PAGE ──
 function renderHome(){
-  // Season label
-  var label=document.getElementById('home-season-label');
-  if(label) label.textContent='COURTTRACK — '+(new Date().getFullYear())+' SEASON';
-
   renderPOTW();
   renderHomeRecentScores();
   renderHomeUpcoming();
