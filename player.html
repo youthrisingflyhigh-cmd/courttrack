@@ -601,9 +601,10 @@ function renderPOTW(){
 }
 
 // Upload posters to the repo root as sequential numbered files —
-// 1.jpg or 1.png, 2.jpg or 2.png, 3.jpg or 3.png, etc. (either extension
-// works). The site probes upward from 1 until a number is missing, so you
-// never have to edit any code or list — just drop in the next number.
+// potw-1.jpg or potw-1.png, potw-2.jpg or potw-2.png, etc. (either
+// extension works). The site probes upward from 1 until a number is
+// missing, so you never have to edit any code or list — just drop in the
+// next number and keep the older ones in place.
 function probeImage(src){
   return new Promise(function(resolve){
     var img=new Image();
@@ -641,9 +642,9 @@ function loadPotwGallery(card){
 function renderPOTWGallery(card,srcs){
   var thumbs=srcs.slice().reverse(); // newest (highest number) first
   var html='<div class="potw-header">⭐ MVP of the Week</div>'
-    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">';
+    +'<div style="padding:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:16px;">';
   thumbs.forEach(function(src){
-    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid #2a2a2a;background:#000;">'
+    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid #2a2a2a;background:#000;width:180px;flex-shrink:0;">'
       +'<img src="'+src+'" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover;" loading="lazy">'
     +'</div>';
   });
