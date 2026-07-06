@@ -482,7 +482,7 @@ th, td { padding: 10px 8px !important; }
 
     <!-- GAME CLOCK -->
     <div style="flex:2;min-width:220px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;">
-      <div id="game-timer-display" style="font-family:'Barlow Condensed',sans-serif;font-size:64px;font-weight:900;color:#ffffff;letter-spacing:2px;line-height:1;">20:00</div>
+      <div id="game-timer-display" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(56px, 9vw, 96px);font-weight:900;color:#ffffff;letter-spacing:2px;line-height:1;">20:00</div>
       <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">GAME CLOCK</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
         <button onclick="timerStart()" id="timer-start-btn" style="padding:10px 20px;border-radius:8px;background:#FF4500;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;min-height:44px;">▶ Start</button>
@@ -514,7 +514,7 @@ th, td { padding: 10px 8px !important; }
 
     <!-- SHOT CLOCK -->
     <div style="flex:1;min-width:160px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;">
-      <div id="shot-clock-display" style="font-family:'Barlow Condensed',sans-serif;font-size:80px;font-weight:900;color:#FF4500;letter-spacing:2px;line-height:1;">30</div>
+      <div id="shot-clock-display" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(64px, 12vw, 120px);font-weight:900;color:#FF4500;letter-spacing:2px;line-height:1;">30</div>
       <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">SHOT CLOCK</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;">
         <button onclick="shotClockStart()" id="shot-clock-start-btn" style="padding:10px 16px;border-radius:8px;background:#FF4500;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;min-height:44px;flex:1;">▶</button>
@@ -541,6 +541,7 @@ th, td { padding: 10px 8px !important; }
     <!-- MANUAL HORN -->
     <div style="min-width:120px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;">
       <button onclick="manualHorn()" style="padding:16px 14px;border-radius:10px;background:#7c2d2d;color:#fff;border:1px solid #ef4444;font-size:15px;font-weight:800;cursor:pointer;min-height:60px;">🔊 HORN</button>
+      <button onclick="manualStopHorn()" style="margin-top:8px;padding:10px 14px;border-radius:10px;background:var(--dark3);color:#ccc;border:1px solid #444;font-size:13px;font-weight:700;cursor:pointer;min-height:40px;">⏹ Stop Horn</button>
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:8px;">TAP ANYTIME</div>
     </div>
 
@@ -880,6 +881,8 @@ function getAudioCtx(){
   if(audioCtx && audioCtx.state==='suspended'){ audioCtx.resume(); }
   return audioCtx;
 }
+var _activeHornOscs=[]; // every oscillator currently sounding, so Stop can kill them instantly
+
 function playHorn(dur){
   var ctx=getAudioCtx();
   if(!ctx)return;
@@ -908,6 +911,7 @@ function playHorn(dur){
   lfoDepth.connect(tremGain.gain);
   lfo.start(now);
   lfo.stop(now+dur);
+  _activeHornOscs.push({osc:lfo,gain:out});
 
   // Detuned sawtooth stack + a low square for grit/body, all through the
   // tremolo stage above
@@ -918,6 +922,7 @@ function playHorn(dur){
     osc.connect(tremGain);
     osc.start(now);
     osc.stop(now+dur);
+    _activeHornOscs.push({osc:osc,gain:out});
   });
   var buzz=ctx.createOscillator();
   buzz.type='square';
@@ -928,9 +933,33 @@ function playHorn(dur){
   buzzGain.connect(tremGain);
   buzz.start(now);
   buzz.stop(now+dur);
+  _activeHornOscs.push({osc:buzz,gain:out});
+
+  // Auto-clear finished entries so the list doesn't grow forever
+  setTimeout(function(){
+    _activeHornOscs = _activeHornOscs.filter(function(e){ return e.gain!==out; });
+  }, (dur*1000)+100);
 }
+
+// Cuts off whatever horn is currently sounding, right now, on this device.
+function stopHorn(){
+  if(!audioCtx)return;
+  var now=audioCtx.currentTime;
+  var silenced=[];
+  _activeHornOscs.forEach(function(e){
+    try{
+      e.gain.gain.cancelScheduledValues(now);
+      e.gain.gain.setValueAtTime(e.gain.gain.value, now);
+      e.gain.gain.linearRampToValueAtTime(0, now+0.05);
+    }catch(err){}
+    try{ e.osc.stop(now+0.06); }catch(err){}
+    silenced.push(e.gain);
+  });
+  _activeHornOscs = _activeHornOscs.filter(function(e){ return silenced.indexOf(e.gain)===-1; });
+}
+
 // Push a signal to Firebase so scoreboard.html (or any other open display)
-// plays the horn too, in sync with this manual button press.
+// plays (or stops) the horn too, in sync with this admin device.
 function broadcastHorn(type){
   if(db) db.ref('ct/game/hornSignal').set({ts:Date.now(), type:type||'manual'});
 }
@@ -938,6 +967,10 @@ function manualHorn(){
   getAudioCtx();
   playHorn();
   broadcastHorn('manual');
+}
+function manualStopHorn(){
+  stopHorn();
+  broadcastHorn('stop');
 }
 function flashClock(ms){
   var el=document.getElementById('game-timer-display');
