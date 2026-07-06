@@ -230,6 +230,15 @@ body{
 </head>
 <body>
 
+<!-- Tap to enable sound — browsers block audio until a real tap/click,
+     and this screen usually just sits on a TV with nobody clicking it.
+     One tap anywhere unlocks it for the rest of the session. -->
+<div id="sound-unlock" onclick="enableSound()" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-family:'Barlow Condensed',sans-serif;">
+  <div style="font-size:56px;margin-bottom:16px;">🔊</div>
+  <div style="font-size:28px;font-weight:900;letter-spacing:1px;">TAP TO ENABLE HORN</div>
+  <div style="font-size:14px;color:#888;margin-top:8px;letter-spacing:1px;">Needed once so this screen can play the buzzer</div>
+</div>
+
 <!-- Top bar -->
 <div class="top-bar">
   <div class="brand">COURT<span>TRACK</span></div>
@@ -296,6 +305,61 @@ firebase.initializeApp({
 var db = firebase.database();
 
 var teams = [];
+
+// ── SOUND UNLOCK ──
+var audioCtx=null, soundEnabled=false;
+function enableSound(){
+  try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+  soundEnabled=true;
+  var ov=document.getElementById('sound-unlock');
+  if(ov) ov.style.display='none';
+}
+
+// ── HORN / BUZZER (same synthesized buzzer as admin.html) ──
+function playHorn(dur){
+  if(!soundEnabled||!audioCtx)return;
+  dur=dur||7;
+  var now=audioCtx.currentTime;
+  var out=audioCtx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(0.6, now+0.08);
+  out.gain.setValueAtTime(0.6, now+dur-0.25);
+  out.gain.linearRampToValueAtTime(0, now+dur);
+  out.connect(audioCtx.destination);
+  var tremGain=audioCtx.createGain();
+  tremGain.gain.value=1;
+  tremGain.connect(out);
+  var lfo=audioCtx.createOscillator();
+  lfo.type='square';
+  lfo.frequency.setValueAtTime(28, now);
+  var lfoDepth=audioCtx.createGain();
+  lfoDepth.gain.value=0.35;
+  lfo.connect(lfoDepth);
+  lfoDepth.connect(tremGain.gain);
+  lfo.start(now);
+  lfo.stop(now+dur);
+  [150,153,75].forEach(function(freq){
+    var osc=audioCtx.createOscillator();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.connect(tremGain);
+    osc.start(now);
+    osc.stop(now+dur);
+  });
+  var buzz=audioCtx.createOscillator();
+  buzz.type='square';
+  buzz.frequency.setValueAtTime(75, now);
+  var buzzGain=audioCtx.createGain();
+  buzzGain.gain.value=0.5;
+  buzz.connect(buzzGain);
+  buzzGain.connect(tremGain);
+  buzz.start(now);
+  buzz.stop(now+dur);
+}
+// Track previous values so we fire exactly once on the 0-crossing, not on
+// every Firebase snapshot that happens to read 0.
+var _prevClockSecs=null, _prevShotSecs=null;
 
 function fmtClock(seconds){
   var m = Math.floor(seconds/60);
@@ -368,6 +432,10 @@ db.ref('ct/game').on('value', function(s){
     var clockEl = document.getElementById('sb-clock');
     clockEl.textContent = fmtClock(secs);
     clockEl.className = 'clock' + (secs <= 30 ? ' urgent' : secs <= 60 ? ' warning' : '');
+    if(secs===0 && _prevClockSecs!==null && _prevClockSecs>0){
+      playHorn(7);
+    }
+    _prevClockSecs = secs;
   }
 
   // Shot clock
@@ -376,6 +444,10 @@ db.ref('ct/game').on('value', function(s){
     var scEl = document.getElementById('sb-shotclock');
     scEl.textContent = scSecs;
     scEl.className = 'shotclock-num' + (scSecs <= 5 ? ' urgent' : scSecs <= 10 ? ' warning' : '');
+    if(scSecs===0 && _prevShotSecs!==null && _prevShotSecs>0){
+      playHorn(0.6);
+    }
+    _prevShotSecs = scSecs;
   }
 
   // Bottom ticker

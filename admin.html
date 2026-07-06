@@ -800,7 +800,7 @@ function shotClockStart(){
       var el = document.getElementById('shot-clock-display');
       if(el) el.style.color = '#ef4444';
       playHorn(0.6);
-      flashClock();
+      flashClock(600);
     }
   }, 1000);
   shotClockUpdate();
@@ -843,32 +843,63 @@ function getAudioCtx(){
 function playHorn(dur){
   var ctx=getAudioCtx();
   if(!ctx)return;
-  dur=dur||1.8;
+  dur=dur||7;
   var now=ctx.currentTime;
-  var gain=ctx.createGain();
-  gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.55, now+0.06);
-  gain.gain.setValueAtTime(0.55, now+dur-0.2);
-  gain.gain.linearRampToValueAtTime(0, now+dur);
-  gain.connect(ctx.destination);
-  [220,224,110].forEach(function(freq){
+
+  // Main output gain — sustained buzzer, quick attack, quick release
+  var out=ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(0.6, now+0.08);
+  out.gain.setValueAtTime(0.6, now+dur-0.25);
+  out.gain.linearRampToValueAtTime(0, now+dur);
+  out.connect(ctx.destination);
+
+  // Tremolo (amplitude-modulate the buzzer for that harsh "buzz" texture
+  // instead of a clean sustained tone)
+  var tremGain=ctx.createGain();
+  tremGain.gain.value=1;
+  tremGain.connect(out);
+  var lfo=ctx.createOscillator();
+  lfo.type='square';
+  lfo.frequency.setValueAtTime(28, now); // ~28Hz buzz rate
+  var lfoDepth=ctx.createGain();
+  lfoDepth.gain.value=0.35;
+  lfo.connect(lfoDepth);
+  lfoDepth.connect(tremGain.gain);
+  lfo.start(now);
+  lfo.stop(now+dur);
+
+  // Detuned sawtooth stack + a low square for grit/body, all through the
+  // tremolo stage above
+  [150,153,75].forEach(function(freq){
     var osc=ctx.createOscillator();
     osc.type='sawtooth';
     osc.frequency.setValueAtTime(freq, now);
-    osc.connect(gain);
+    osc.connect(tremGain);
     osc.start(now);
     osc.stop(now+dur);
   });
+  var buzz=ctx.createOscillator();
+  buzz.type='square';
+  buzz.frequency.setValueAtTime(75, now);
+  var buzzGain=ctx.createGain();
+  buzzGain.gain.value=0.5;
+  buzz.connect(buzzGain);
+  buzzGain.connect(tremGain);
+  buzz.start(now);
+  buzz.stop(now+dur);
 }
-function flashClock(){
+function flashClock(ms){
   var el=document.getElementById('game-timer-display');
   if(!el)return;
+  ms=ms||7000;
   var orig=el.style.color;
+  var steps=Math.round(ms/250);
   var n=0;
   var iv=setInterval(function(){
     el.style.color = (n%2===0)?'#ef4444':orig;
     n++;
-    if(n>5){ clearInterval(iv); el.style.color=orig; }
+    if(n>steps){ clearInterval(iv); el.style.color=orig; }
   },250);
 }
 
