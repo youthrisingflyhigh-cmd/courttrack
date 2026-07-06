@@ -1522,13 +1522,14 @@ function confirmStartGame(){
       game.playLog.push({id:'log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),side:'away',num:p.num,playerName:p.name,teamName:teams[ai].name,teamColor:teams[ai].color,key:'sub',label:'Starting Lineup',pts:0,neg:false,score:'0-0',half:1,clock:timerFmt(timerSeconds),timestamp:Date.now()});
     }
   });
+  getAudioCtx(); // unlock audio synchronously within this tap, before the delayed clock start below
   logStack=[]; save();
   closeLineupModal();
   var b=document.getElementById('game-banner');
   b.style.display='block';
   b.textContent='✓ Game started: '+teams[hi].name+' vs '+teams[ai].name;
-  // Auto-navigate to Live Tracking
-  setTimeout(function(){ showPage('track'); }, 300);
+  // Auto-navigate to Live Tracking and start the clock — tip-off!
+  setTimeout(function(){ showPage('track'); timerStart(); }, 300);
 }
 
 // ── SCHEDULE ──
