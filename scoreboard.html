@@ -293,6 +293,23 @@ body{
 </div>
 
 <script>
+// ── ONE-TIME CLEANUP ──
+// An older build of this app registered a Service Worker for offline mode.
+// Service workers persist on the device independently of the page code, so
+// even after uploading fresh files, a lingering one could silently keep
+// serving a cached, stale copy. Nothing currently re-registers it, so it's
+// safe to forcibly unregister it and clear its cache here.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(reg){ reg.unregister(); });
+  }).catch(function(){});
+}
+if (window.caches && caches.keys) {
+  caches.keys().then(function(names){
+    names.forEach(function(name){ caches.delete(name); });
+  }).catch(function(){});
+}
+
 firebase.initializeApp({
   apiKey:"AIzaSyAmITPV5C-xbVAqTAJcVsRB7ROO7s_cwzQ",
   authDomain:"court-track-39271.firebaseapp.com",
