@@ -495,6 +495,21 @@ th, td { padding: 10px 8px !important; }
           <option value="1500">25 min</option>
         </select>
       </div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px;">
+        <button onclick="adjustGameClock(-60)" title="Subtract 1 minute" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">-1:00</button>
+        <button onclick="adjustGameClock(-10)" title="Subtract 10 seconds" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">-0:10</button>
+        <button onclick="adjustGameClock(-1)" title="Subtract 1 second" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">-0:01</button>
+        <button onclick="adjustGameClock(1)" title="Add 1 second" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">+0:01</button>
+        <button onclick="adjustGameClock(10)" title="Add 10 seconds" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">+0:10</button>
+        <button onclick="adjustGameClock(60)" title="Add 1 minute" style="padding:6px 10px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">+1:00</button>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center;margin-top:8px;">
+        <span style="font-size:10px;color:var(--muted);letter-spacing:1px;">SET TO</span>
+        <input type="number" id="gc-custom-min" placeholder="MM" min="0" style="width:52px;padding:6px 8px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;text-align:center;">
+        <span style="color:var(--muted);">:</span>
+        <input type="number" id="gc-custom-sec" placeholder="SS" min="0" max="59" style="width:52px;padding:6px 8px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;text-align:center;">
+        <button onclick="setGameClockCustom()" style="padding:6px 12px;border-radius:6px;background:var(--orange);border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">Set</button>
+      </div>
     </div>
 
     <!-- SHOT CLOCK -->
@@ -506,10 +521,20 @@ th, td { padding: 10px 8px !important; }
         <button onclick="shotClockStop()" style="padding:10px 16px;border-radius:8px;background:#eab308;color:#000;border:none;font-size:14px;font-weight:700;cursor:pointer;min-height:44px;flex:1;">⏸</button>
         <button onclick="shotClockReset()" style="padding:10px 16px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;min-height:44px;flex:1;">↺</button>
       </div>
-      <div style="display:flex;gap:6px;justify-content:center;">
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">
         <button onclick="shotClockSet(30)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">30s</button>
         <button onclick="shotClockSet(24)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">24s</button>
         <button onclick="shotClockSet(14)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">14s</button>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">
+        <button onclick="adjustShotClock(-5)" title="Subtract 5 seconds" style="padding:5px 9px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;min-height:30px;flex:1;">-5</button>
+        <button onclick="adjustShotClock(-1)" title="Subtract 1 second" style="padding:5px 9px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;min-height:30px;flex:1;">-1</button>
+        <button onclick="adjustShotClock(1)" title="Add 1 second" style="padding:5px 9px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;min-height:30px;flex:1;">+1</button>
+        <button onclick="adjustShotClock(5)" title="Add 5 seconds" style="padding:5px 9px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;min-height:30px;flex:1;">+5</button>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center;">
+        <input type="number" id="sc-custom" placeholder="secs" min="0" style="width:64px;padding:6px 8px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;text-align:center;">
+        <button onclick="setShotClockCustom()" style="padding:6px 12px;border-radius:6px;background:var(--orange);border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;min-height:34px;">Set</button>
       </div>
     </div>
 
@@ -827,6 +852,21 @@ function shotClockSet(secs){
   shotClockUpdate();
 }
 
+// Quick nudge — doesn't stop a running shot clock.
+function adjustShotClock(delta){
+  shotClockSeconds = Math.max(0, shotClockSeconds + delta);
+  shotClockUpdate();
+}
+
+function setShotClockCustom(){
+  var el=document.getElementById('sc-custom');
+  var v=parseInt(el.value);
+  if(isNaN(v)||v<0) v=0;
+  shotClockSeconds = v;
+  shotClockUpdate();
+  el.value='';
+}
+
 
 // ── HORN / BUZZER ──
 // Synthesized so it needs no audio file in the repo — plays through
@@ -965,6 +1005,23 @@ function timerSetDuration(val){
   timerStop();
   timerSeconds = parseInt(val);
   timerUpdate();
+}
+
+// Quick nudge — doesn't stop a running clock, so a ref correction
+// ("put :47 back on it") can happen without breaking the flow.
+function adjustGameClock(delta){
+  timerSeconds = Math.max(0, timerSeconds + delta);
+  timerUpdate();
+}
+
+function setGameClockCustom(){
+  var mEl=document.getElementById('gc-custom-min'), sEl=document.getElementById('gc-custom-sec');
+  var m=parseInt(mEl.value), s=parseInt(sEl.value);
+  if(isNaN(m)) m=0;
+  if(isNaN(s)) s=0;
+  timerSeconds = Math.max(0, m*60+s);
+  timerUpdate();
+  mEl.value=''; sEl.value='';
 }
 
 
