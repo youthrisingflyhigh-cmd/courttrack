@@ -1451,7 +1451,7 @@ function confirmStartGame(){
   if(hi==null||ai==null)return;
   if(lineupHomeSel.length!==lineupNeeded(hi)||lineupAwaySel.length!==lineupNeeded(ai))return;
   function mk(pl){var s={};pl.forEach(function(p){s[p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0};});return s;}
-  function mkStatus(pl,starters){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':'OUT';});return s;}
+  function mkStatus(pl,starters){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':'SUB';});return s;}
   var homeSelSnap=lineupHomeSel.slice(), awaySelSnap=lineupAwaySel.slice();
   game={hi:hi,ai:ai,homeScore:0,awayScore:0,hStats:mk(teams[hi].players),aStats:mk(teams[ai].players),
     hStatus:mkStatus(teams[hi].players,homeSelSnap),aStatus:mkStatus(teams[ai].players,awaySelSnap),
@@ -1821,14 +1821,19 @@ function renderDualChips(){
     var fouls=pStats.foul||0;
     var foulColor=fouls>=5?'#ef4444':fouls===4?'#eab308':fouls>=2?'#FF4500':'#555';
     var fouledOut=fouls>=5;
-    var status=(statusMap&&statusMap[p.num]!==undefined)?statusMap[p.num]:(statusMap&&statusMap[String(p.num)]!==undefined?statusMap[String(p.num)]:'IN');
+    var status=(statusMap&&statusMap[p.num]!==undefined)?statusMap[p.num]:(statusMap&&statusMap[String(p.num)]!==undefined?statusMap[String(p.num)]:'SUB');
+    var statusStyle={
+      IN:{border:'var(--green)',color:'var(--green)',bg:'rgba(34,197,94,0.12)'},
+      SUB:{border:'#3b82f6',color:'#60a5fa',bg:'rgba(59,130,246,0.12)'},
+      OUT:{border:'#ef4444',color:'#f87171',bg:'rgba(239,68,68,0.12)'}
+    }[status]||{border:'#555',color:'#999',bg:'rgba(255,255,255,0.04)'};
     var color=teamObj.color;
     return '<div class="player-chip" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+'">'
       +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
       +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+'</div>'
       +'<div class="ppts">'+pStats.pts+' pts</div>'
       +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F</div></div>'
-      +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to toggle IN/OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+(status==='IN'?'var(--green)':'#555')+';color:'+(status==='IN'?'var(--green)':'#999')+';background:'+(status==='IN'?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.04)')+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
+      +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
       +'</div>';
   }
 
@@ -1863,17 +1868,19 @@ function toggleSub(side,num){
   if(!isHome && !game.aStatus) game.aStatus={};
   var status=isHome?game.hStatus:game.aStatus;
   var key=status[num]!==undefined?num:(status[String(num)]!==undefined?String(num):num);
-  var cur=status[key]!==undefined?status[key]:'IN';
-  var next=cur==='IN'?'OUT':'IN';
+  var cur=status[key]!==undefined?status[key]:'SUB';
+  var cycle={IN:'SUB',SUB:'OUT',OUT:'IN'};
+  var next=cycle[cur]||'IN';
   status[key]=next;
   var ti=isHome?game.hi:game.ai;
   var p=teams[ti].players.find(function(x){return x.num==num;});
   if(!game.playLog) game.playLog=[];
   var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  var labels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
   var entry={
     id:entryId, side:side, num:key,
     playerName:p?p.name:'', teamName:teams[ti].name, teamColor:teams[ti].color,
-    key:'sub', label:next==='IN'?'Sub In':'Sub Out', pts:0, neg:next==='OUT',
+    key:'sub', label:labels[next]||next, pts:0, neg:next==='OUT',
     score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds),
     timestamp:Date.now(), prevStatus:cur
   };
@@ -2084,7 +2091,9 @@ function openLogEntryEditor(entryId){
   // reassigning a substitution or a manual point tweak to another player
   // doesn't have a sensible meaning the way reassigning a stat does.
   if(entry.key==='sub'||entry.key==='manual'){
-    var descLabel=entry.key==='sub'?(entry.prevStatus==='IN'?'Sub Out':'Sub In'):((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts');
+    var subCycle={IN:'SUB',SUB:'OUT',OUT:'IN'};
+    var subLabels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
+    var descLabel=entry.key==='sub'?(subLabels[subCycle[entry.prevStatus]]||'Sub'):((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts');
     var overlay2=document.createElement('div');
     overlay2.id='log-edit-overlay';
     overlay2.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -2173,7 +2182,7 @@ function rebuildLogBody(){
       addSubLogRow({
         id:entry.id, teamColor:teams[ti].color, teamName:teams[ti].name,
         playerName:p?p.name:'',
-        label:entry.key==='sub'?(entry.prevStatus==='IN'?'Sub Out':'Sub In'):((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
+        label:entry.key==='sub'?(function(){var c={IN:'SUB',SUB:'OUT',OUT:'IN'};var l={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};return l[c[entry.prevStatus]]||'Sub';})():((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
         pts:entry.pts, neg:entry.neg, clock:timerFmt(timerSeconds)
       });
     } else {
