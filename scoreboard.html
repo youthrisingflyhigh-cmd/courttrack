@@ -319,7 +319,7 @@ function enableSound(){
 // ── HORN / BUZZER (same synthesized buzzer as admin.html) ──
 function playHorn(dur){
   if(!soundEnabled||!audioCtx)return;
-  dur=dur||7;
+  dur=dur||8;
   var now=audioCtx.currentTime;
   var out=audioCtx.createGain();
   out.gain.setValueAtTime(0, now);
@@ -360,6 +360,17 @@ function playHorn(dur){
 // Track previous values so we fire exactly once on the 0-crossing, not on
 // every Firebase snapshot that happens to read 0.
 var _prevClockSecs=null, _prevShotSecs=null;
+
+// Listen for manual horn presses from admin.html so this screen plays the
+// same horn in sync. Firebase's .on('value') fires immediately with
+// whatever is already stored, so skip that very first callback — otherwise
+// every fresh page load would replay the last horn that was ever pushed.
+var _hornSignalReady=false;
+db.ref('ct/game/hornSignal').on('value', function(s){
+  if(!_hornSignalReady){ _hornSignalReady=true; return; }
+  var v=s.val();
+  if(v && v.ts){ playHorn(8); }
+});
 
 function fmtClock(seconds){
   var m = Math.floor(seconds/60);

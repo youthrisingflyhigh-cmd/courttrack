@@ -515,7 +515,7 @@ th, td { padding: 10px 8px !important; }
 
     <!-- MANUAL HORN -->
     <div style="min-width:120px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;">
-      <button onclick="getAudioCtx();playHorn();" style="padding:16px 14px;border-radius:10px;background:#7c2d2d;color:#fff;border:1px solid #ef4444;font-size:15px;font-weight:800;cursor:pointer;min-height:60px;">🔊 HORN</button>
+      <button onclick="manualHorn()" style="padding:16px 14px;border-radius:10px;background:#7c2d2d;color:#fff;border:1px solid #ef4444;font-size:15px;font-weight:800;cursor:pointer;min-height:60px;">🔊 HORN</button>
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:8px;">TAP ANYTIME</div>
     </div>
 
@@ -843,7 +843,7 @@ function getAudioCtx(){
 function playHorn(dur){
   var ctx=getAudioCtx();
   if(!ctx)return;
-  dur=dur||7;
+  dur=dur||8;
   var now=ctx.currentTime;
 
   // Main output gain — sustained buzzer, quick attack, quick release
@@ -888,6 +888,16 @@ function playHorn(dur){
   buzzGain.connect(tremGain);
   buzz.start(now);
   buzz.stop(now+dur);
+}
+// Push a signal to Firebase so scoreboard.html (or any other open display)
+// plays the horn too, in sync with this manual button press.
+function broadcastHorn(type){
+  if(db) db.ref('ct/game/hornSignal').set({ts:Date.now(), type:type||'manual'});
+}
+function manualHorn(){
+  getAudioCtx();
+  playHorn();
+  broadcastHorn('manual');
 }
 function flashClock(ms){
   var el=document.getElementById('game-timer-display');
