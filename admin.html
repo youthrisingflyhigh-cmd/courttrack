@@ -513,6 +513,12 @@ th, td { padding: 10px 8px !important; }
       </div>
     </div>
 
+    <!-- MANUAL HORN -->
+    <div style="min-width:120px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;">
+      <button onclick="getAudioCtx();playHorn();" style="padding:16px 14px;border-radius:10px;background:#7c2d2d;color:#fff;border:1px solid #ef4444;font-size:15px;font-weight:800;cursor:pointer;min-height:60px;">🔊 HORN</button>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:8px;">TAP ANYTIME</div>
+    </div>
+
   </div>
 
   <div id="no-game-track" class="no-game">
@@ -782,6 +788,7 @@ function shotClockUpdate(){
 function shotClockStart(){
   if(shotClockRunning) return;
   shotClockRunning = true;
+  getAudioCtx();
   var btn = document.getElementById('shot-clock-start-btn');
   if(btn){ btn.style.background = '#22c55e'; btn.textContent = '▶'; }
   shotClockInterval = setInterval(function(){
@@ -790,10 +797,10 @@ function shotClockStart(){
       shotClockUpdate();
     } else {
       shotClockStop();
-      // Flash red and alert
       var el = document.getElementById('shot-clock-display');
       if(el) el.style.color = '#ef4444';
-      alert('🚨 SHOT CLOCK VIOLATION!');
+      playHorn(0.6);
+      flashClock();
     }
   }, 1000);
   shotClockUpdate();
@@ -821,6 +828,50 @@ function shotClockSet(secs){
 }
 
 
+// ── HORN / BUZZER ──
+// Synthesized so it needs no audio file in the repo — plays through
+// whatever speakers/output the device is connected to (including a
+// bluetooth/wired speaker hooked up to the phone or tablet running this).
+var audioCtx=null;
+function getAudioCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+  }
+  if(audioCtx && audioCtx.state==='suspended'){ audioCtx.resume(); }
+  return audioCtx;
+}
+function playHorn(dur){
+  var ctx=getAudioCtx();
+  if(!ctx)return;
+  dur=dur||1.8;
+  var now=ctx.currentTime;
+  var gain=ctx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.55, now+0.06);
+  gain.gain.setValueAtTime(0.55, now+dur-0.2);
+  gain.gain.linearRampToValueAtTime(0, now+dur);
+  gain.connect(ctx.destination);
+  [220,224,110].forEach(function(freq){
+    var osc=ctx.createOscillator();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.connect(gain);
+    osc.start(now);
+    osc.stop(now+dur);
+  });
+}
+function flashClock(){
+  var el=document.getElementById('game-timer-display');
+  if(!el)return;
+  var orig=el.style.color;
+  var n=0;
+  var iv=setInterval(function(){
+    el.style.color = (n%2===0)?'#ef4444':orig;
+    n++;
+    if(n>5){ clearInterval(iv); el.style.color=orig; }
+  },250);
+}
+
 function timerFmt(s){
   var m = Math.floor(s/60);
   var sec = s%60;
@@ -837,6 +888,7 @@ function timerUpdate(){
 function timerStart(){
   if(timerRunning) return;
   timerRunning = true;
+  getAudioCtx(); // unlock audio now, on a real tap, so the horn can fire later without another gesture
   document.getElementById('timer-start-btn').style.background = '#22c55e';
   document.getElementById('timer-start-btn').textContent = '▶ Running';
   timerInterval = setInterval(function(){
@@ -845,7 +897,8 @@ function timerStart(){
       timerUpdate();
     } else {
       timerStop();
-      alert('🔔 BUZZER! Half time is up!');
+      playHorn();
+      flashClock();
     }
   }, 1000);
   timerUpdate();
