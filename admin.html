@@ -541,6 +541,7 @@ th, td { padding: 10px 8px !important; }
     <!-- MANUAL HORN -->
     <div style="min-width:120px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;">
       <button onclick="manualHorn()" style="padding:16px 14px;border-radius:10px;background:#7c2d2d;color:#fff;border:1px solid #ef4444;font-size:15px;font-weight:800;cursor:pointer;min-height:60px;">🔊 HORN</button>
+      <button onclick="manualSubHorn()" style="margin-top:8px;padding:10px 14px;border-radius:10px;background:#1e3a5f;color:#fff;border:1px solid #3b82f6;font-size:13px;font-weight:700;cursor:pointer;min-height:40px;">🔁 Sub Horn (1s)</button>
       <button onclick="manualStopHorn()" style="margin-top:8px;padding:10px 14px;border-radius:10px;background:var(--dark3);color:#ccc;border:1px solid #444;font-size:13px;font-weight:700;cursor:pointer;min-height:40px;">⏹ Stop Horn</button>
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:8px;">TAP ANYTIME</div>
     </div>
@@ -932,6 +933,11 @@ function manualHorn(){
   unlockHornAudio();
   playHorn();
   broadcastHorn('manual');
+}
+function manualSubHorn(){
+  unlockHornAudio();
+  playHorn(1);
+  broadcastHorn('sub');
 }
 function manualStopHorn(){
   stopHorn();

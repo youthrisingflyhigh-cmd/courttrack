@@ -379,6 +379,7 @@ db.ref('ct/game/hornSignal').on('value', function(s){
   var v=s.val();
   if(!v || !v.ts) return;
   if(v.type==='stop'){ stopHorn(); }
+  else if(v.type==='sub'){ playHorn(1); }
   else { playHorn(); }
 });
 
