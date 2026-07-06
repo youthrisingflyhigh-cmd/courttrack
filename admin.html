@@ -1837,11 +1837,22 @@ function renderDualChips(){
       +'</div>';
   }
 
+  function sortByStatus(players, statusMap){
+    var order={IN:0,SUB:1,OUT:2};
+    return players.map(function(p,i){return {p:p,i:i};}).sort(function(a,b){
+      var sa=(statusMap&&(statusMap[a.p.num]!==undefined?statusMap[a.p.num]:statusMap[String(a.p.num)]))||'SUB';
+      var sb=(statusMap&&(statusMap[b.p.num]!==undefined?statusMap[b.p.num]:statusMap[String(b.p.num)]))||'SUB';
+      var oa=order[sa]!==undefined?order[sa]:1, ob=order[sb]!==undefined?order[sb]:1;
+      if(oa!==ob) return oa-ob;
+      return a.i-b.i; // stable: keep original order within the same status
+    }).map(function(x){return x.p;});
+  }
+
   // Home chips
-  document.getElementById('player-chips-home').innerHTML=ht.players.map(function(p){ return chipHtml('home',p); }).join('');
+  document.getElementById('player-chips-home').innerHTML=sortByStatus(ht.players,game.hStatus).map(function(p){ return chipHtml('home',p); }).join('');
 
   // Away chips
-  document.getElementById('player-chips-away').innerHTML=at.players.map(function(p){ return chipHtml('away',p); }).join('');
+  document.getElementById('player-chips-away').innerHTML=sortByStatus(at.players,game.aStatus).map(function(p){ return chipHtml('away',p); }).join('');
 }
 
 function pickPlayerSide(side,num){
