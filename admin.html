@@ -549,7 +549,8 @@ th, td { padding: 10px 8px !important; }
     </div>
 
     <!-- Finish button -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:1.2rem;">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:1.2rem;">
+      <button class="btn-ghost" style="border:1px solid #7c2d2d;color:#fca5a5;" onclick="discardGame()" title="Wipe this in-progress game without saving it to schedule/standings/history — use for testing.">🗑 Discard Game</button>
       <button class="finish-btn" onclick="finishGame()">✓ Finish & Save Game</button>
     </div>
     <!-- Side-by-side Home / Away tracking -->
@@ -1139,6 +1140,35 @@ function save(){
   if(game) fbSet('ct/game',game);
 }
 function clearGame(){ fbRemove('ct/game'); }
+
+// Wipe an in-progress game completely — no schedule/standings/history
+// writes happen. Safe to use for testing lineup/subs/points features
+// without touching real season data.
+function discardGame(){
+  if(!game){ alert('No game in progress to discard.'); return; }
+  if(!confirm("Discard this game? This wipes it completely — nothing gets saved to schedule, standings, or history.\n\nGood for testing new features. Just make sure this isn't a real game you meant to finish!")) return;
+  try{ clearInterval(timerInterval); }catch(e){}
+  try{ clearInterval(shotClockInterval); }catch(e){}
+  clearGame();
+  game=null;
+  selPlayerHome=null; selPlayerAway=null; logStack=[];
+  document.getElementById('log-body').innerHTML='<div style="padding:20px 16px;font-size:13px;color:var(--muted);font-style:italic;">Game log will appear here…</div>';
+  document.getElementById('home-pts').textContent='0';
+  document.getElementById('away-pts').textContent='0';
+  document.getElementById('home-lbl').textContent='Home';
+  document.getElementById('away-lbl').textContent='Away';
+  document.getElementById('player-chips-home').innerHTML='';
+  document.getElementById('player-chips-away').innerHTML='';
+  document.getElementById('stat-btns-home').innerHTML='';
+  document.getElementById('stat-btns-away').innerHTML='';
+  document.getElementById('track-lbl-home').textContent='No player selected';
+  document.getElementById('track-lbl-away').textContent='No player selected';
+  var mpH=document.getElementById('manual-pts-home'), mpA=document.getElementById('manual-pts-away');
+  if(mpH) mpH.value=1;
+  if(mpA) mpA.value=1;
+  showPage('setup');
+  alert('✓ Test game discarded — nothing was saved.');
+}
 
 // ── Boot: load all data then init ──
 var _loaded=0, _booted=false;
