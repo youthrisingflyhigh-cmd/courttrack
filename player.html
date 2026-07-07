@@ -689,8 +689,8 @@ function openFilm(encodedUrl){
 
 // ── LOAD ──
 var _loaded=0, _booted=false;
-function _check(){if(++_loaded>=6 && !_booted){_booted=true;_ready=true;showTab('home');}}
-setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},2500);
+function _check(){if(++_loaded>=1 && !_booted){_booted=true;_ready=true;showTab('home');}}
+setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},1500);
 // Auto-show league overlay on first load
 if(document.getElementById('league-overlay') && !localStorage.getItem('sbh_league')){
   document.getElementById('league-overlay').style.display='flex';
