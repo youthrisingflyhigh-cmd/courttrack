@@ -281,6 +281,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     <button class="nav-tab" onclick="showTab('teams')">🏀 Teams</button>
     <button class="nav-tab" onclick="showTab('playerstats')">👤 Player Stats</button>
     <button class="nav-tab" onclick="showTab('rankings')">⭐ Rankings</button>
+    <button class="nav-tab" onclick="showTab('film')">🎬 Film</button>
     <button class="nav-tab" onclick="showTab('locations')">📍 Locations</button>
   </div>
   <!-- Mobile hamburger -->
@@ -298,6 +299,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
   <button class="mobile-tab" onclick="showTab('teams');closeMenu()">🏀 Teams</button>
   <button class="mobile-tab" onclick="showTab('playerstats');closeMenu()">👤 Player Stats</button>
+  <button class="mobile-tab" onclick="showTab('rankings');closeMenu()">⭐ Rankings</button>
+  <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎬 Film</button>
+  <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>owTab('playerstats');closeMenu()">👤 Player Stats</button>
   <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>
 </div>
 
@@ -404,6 +408,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
 <!-- RANKINGS -->
 <div class="page" id="tab-rankings"></div>
+
+<!-- FILM -->
+<div class="page" id="tab-film"></div>
 
 <!-- LOCATIONS -->
 <div class="page" id="tab-locations">
@@ -598,6 +605,88 @@ function renderRankings(){
   el.innerHTML = html;
 }
 
+
+// ── GAME FILM ──
+function renderFilm(){
+  var el = document.getElementById('tab-film');
+  if(!el) return;
+
+  var html = '<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:6px;">Game Film</h2>';
+  html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Add YouTube links for each game in the admin Settings tab.</p>';
+
+  // Get film data from settings
+  var films = (settings && settings.gameFilm) || {};
+  var filmList = typeof films === 'object' ? Object.values(films).filter(Boolean) : [];
+
+  if(!filmList.length){
+    html += '<div style="text-align:center;padding:40px 20px;">'
+      +'<div style="font-size:48px;margin-bottom:12px;">🎬</div>'
+      +'<div style="font-size:16px;color:var(--muted);">No game film uploaded yet.</div>'
+      +'<div style="font-size:13px;color:#444;margin-top:8px;">Add YouTube links in admin → Settings → Game Film</div>'
+      +'</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  // Group by season then week
+  var seasons = {};
+  filmList.forEach(function(f){
+    var s = f.season || 'Season 1';
+    var w = f.week || 'Week 1';
+    if(!seasons[s]) seasons[s] = {};
+    if(!seasons[s][w]) seasons[s][w] = [];
+    seasons[s][w].push(f);
+  });
+
+  Object.keys(seasons).sort().forEach(function(season){
+    html += '<div style="margin-bottom:28px;">';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;margin-bottom:14px;border-bottom:2px solid #FF4500;padding-bottom:6px;">'+season+'</div>';
+
+    Object.keys(seasons[season]).sort(function(a,b){
+      var na=parseInt(a.replace(/\D/g,''))||0;
+      var nb=parseInt(b.replace(/\D/g,''))||0;
+      return na-nb;
+    }).forEach(function(week){
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="font-size:13px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">'+week+'</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:12px;">';
+
+      seasons[season][week].forEach(function(f){
+        var thumbId = getYouTubeId(f.url||'');
+        var thumb = thumbId ? 'https://img.youtube.com/vi/'+thumbId+'/hqdefault.jpg' : '';
+        html += '<div onclick="openFilm(''+encodeURIComponent(f.url||'')+'')" style="cursor:pointer;width:calc(50% - 6px);max-width:280px;background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#FF4500'" onmouseout="this.style.borderColor='#2a2a2a'">'
+          +(thumb?'<div style="position:relative;padding-top:56.25%;background:#0d0d0d;"><img src="'+thumb+'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\"display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;\">🏀</div>'"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div style="width:44px;height:44px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;"><div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:16px solid #fff;margin-left:4px;"></div></div></div></div>':'<div style="height:120px;background:#0d0d0d;display:flex;align-items:center;justify-content:center;font-size:40px;">🎬</div>')
+          +'<div style="padding:10px 12px;">'
+            +'<div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:2px;">'+(f.label||f.home+' vs '+f.away||'Game')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted);">'+(f.date||'')+(f.home&&f.away?' · '+f.home+' vs '+f.away:'')+'</div>'
+          +'</div>'
+        +'</div>';
+      });
+
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+function getYouTubeId(url){
+  var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function openFilm(encodedUrl){
+  var url = decodeURIComponent(encodedUrl);
+  var id = getYouTubeId(url);
+  var embedUrl = id ? 'https://www.youtube.com/embed/'+id+'?autoplay=1' : url;
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer;">✕</button>'
+    +'<iframe src="'+embedUrl+'" style="width:min(100vw,900px);height:min(56.25vw,506px);border:none;border-radius:8px;" allowfullscreen allow="autoplay; encrypted-media"></iframe>';
+  document.body.appendChild(overlay);
+}
+
 // ── LOAD ──
 var _loaded=0, _booted=false;
 function _check(){if(++_loaded>=6 && !_booted){_booted=true;_ready=true;showTab('home');}}
@@ -608,7 +697,14 @@ if(document.getElementById('league-overlay') && !localStorage.getItem('sbh_leagu
 }
 db.ref('ct/teams').once('value').then(function(s){teams=toTeamArr(s.val());_check();}).catch(function(){_check();});
 db.ref('ct/standings').on('value',function(s){standings=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref('ct/history').on('value',function(s){history=toArr(s.val());if(_booted)renderAll();else _check();});
+db.ref('ct/history').on('value',function(s){
+  var v = s.val();
+  if(!v){ history=[]; }
+  else if(Array.isArray(v)){ history=v.filter(Boolean); }
+  else { history=Object.values(v).filter(Boolean); }
+  history.sort(function(a,b){ return (b.timestamp||0)-(a.timestamp||0); });
+  if(_booted) renderAll(); else _check();
+});
 db.ref('ct/playerStats').on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
 db.ref('ct/schedule').on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
 
@@ -1194,6 +1290,7 @@ function showTab(t){
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();
   if(t==='rankings') renderRankings();
+  if(t==='film') renderFilm();
   if(t==='locations')   renderLocations();
 }
 </script>
