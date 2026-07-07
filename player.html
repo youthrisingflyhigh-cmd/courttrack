@@ -132,30 +132,6 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 /* ── FOOTER ── */
 .footer-bar{margin-top:2rem;padding:14px 20px;background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;font-size:12px;color:var(--muted);text-align:center;}
 
-/* ── HAMBURGER MENU ── */
-.nav-tabs-desktop{display:flex;gap:4px;flex-wrap:nowrap;}
-.hamburger-btn{display:none;flex-direction:column;justify-content:center;gap:5px;background:transparent;border:none;cursor:pointer;padding:8px;z-index:200;}
-.hamburger-btn span{display:block;width:22px;height:2px;background:var(--light);border-radius:2px;transition:all 0.2s;}
-.hamburger-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
-.hamburger-btn.open span:nth-child(2){opacity:0;}
-.hamburger-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
-
-.mobile-menu{display:none;position:fixed;top:56px;left:0;right:0;background:#0d0d0d;border-bottom:2px solid var(--orange);z-index:99;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.6);}
-.mobile-menu.open{display:flex;}
-.mobile-tab{padding:14px 20px;font-size:15px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:1px solid #1e1e1e;text-align:left;cursor:pointer;font-family:'Barlow',sans-serif;transition:all 0.1s;}
-.mobile-tab:hover,.mobile-tab:active{background:#1a1a1a;color:var(--white);}
-.mobile-tab.active{color:var(--orange);}
-
-@media(max-width:768px){
-  .nav-tabs-desktop{display:none;}
-  .hamburger-btn{display:flex;}
-  nav{height:56px;flex-wrap:nowrap;}
-}
-@media(min-width:769px){
-  .hamburger-btn{display:none;}
-  .mobile-menu{display:none!important;}
-}
-
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
 
@@ -271,8 +247,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 <!-- ── NAV ── -->
 <nav>
   <div class="nav-logo" onclick="showTab('home')">COURT<span>TRACK</span><small>by YUNG RIZZO</small></div>
-  <!-- Desktop tabs -->
-  <div class="nav-tabs nav-tabs-desktop">
+  <div class="nav-tabs">
     <button class="nav-tab active" onclick="showTab('home')">🏠 Home</button>
     <button class="nav-tab" onclick="showTab('live')">🔴 Live</button>
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
@@ -280,30 +255,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     <button class="nav-tab" onclick="showTab('standings')">📊 Standings</button>
     <button class="nav-tab" onclick="showTab('teams')">🏀 Teams</button>
     <button class="nav-tab" onclick="showTab('playerstats')">👤 Player Stats</button>
-    <button class="nav-tab" onclick="showTab('rankings')">⭐ Rankings</button>
-    <button class="nav-tab" onclick="showTab('film')">🎬 Film</button>
     <button class="nav-tab" onclick="showTab('locations')">📍 Locations</button>
   </div>
-  <!-- Mobile hamburger -->
-  <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
 </nav>
-
-<!-- Mobile dropdown menu -->
-<div class="mobile-menu" id="mobile-menu">
-  <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
-  <button class="mobile-tab" onclick="showTab('live');closeMenu()">🔴 Live</button>
-  <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
-  <button class="mobile-tab" onclick="showTab('schedule');closeMenu()">📅 Schedule</button>
-  <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
-  <button class="mobile-tab" onclick="showTab('teams');closeMenu()">🏀 Teams</button>
-  <button class="mobile-tab" onclick="showTab('playerstats');closeMenu()">👤 Player Stats</button>
-  <button class="mobile-tab" onclick="showTab('rankings');closeMenu()">⭐ Rankings</button>
-  <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎬 Film</button>
-  <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>owTab('playerstats');closeMenu()">👤 Player Stats</button>
-  <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>
-</div>
 
 <!-- ── TICKER ── -->
 <div class="ticker-bar" id="ticker-bar" style="display:none;">
@@ -406,12 +360,6 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   </div>
 </div>
 
-<!-- RANKINGS -->
-<div class="page" id="tab-rankings"></div>
-
-<!-- FILM -->
-<div class="page" id="tab-film"></div>
-
 <!-- LOCATIONS -->
 <div class="page" id="tab-locations">
   <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">Locations</h2>
@@ -471,243 +419,28 @@ try {
 var teams=[],game=null,standings={},history=[],playerStats={},schedule=[];
 var currentTab='home', _ready=false, currentStatTab='pts', currentStreamPlatform='youtube';
 
-
-// ── LEAGUE SELECT ──
-var _currentLeague = localStorage.getItem('sbh_league') || '';
-function selectLeague(league){
-  _currentLeague = league;
-  localStorage.setItem('sbh_league', league);
-  var ov = document.getElementById('league-overlay');
-  if(ov) ov.style.display='none';
-  var btn = document.getElementById('current-league-label');
-  if(btn) btn.textContent = league.replace('Mens League',"Men's League").replace('Under Division',"& Under");
-}
-// ── HAMBURGER MENU ──
-function toggleMenu(){
-  var menu = document.getElementById('mobile-menu');
-  var btn = document.getElementById('hamburger-btn');
-  menu.classList.toggle('open');
-  btn.classList.toggle('open');
-}
-function closeMenu(){
-  document.getElementById('mobile-menu').classList.remove('open');
-  document.getElementById('hamburger-btn').classList.remove('open');
-}
-// Close menu when tapping outside
-document.addEventListener('click', function(e){
-  if(!e.target.closest('nav') && !e.target.closest('.mobile-menu')){
-    closeMenu();
-  }
-});
-
 function teamInitials(n){return n.split(' ').map(function(w){return w[0];}).join('').slice(0,3).toUpperCase()||'??';}
 
 function toArr(v){
   if(!v) return [];
-  return Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean);
-}
-function toTeamArr(v){
-  if(!v) return [];
   var arr=Array.isArray(v)?v:Object.values(v);
-  return arr.filter(Boolean).map(function(t){
+  return arr.map(function(t){
     if(t&&t.players&&!Array.isArray(t.players)) t.players=Object.values(t.players);
     if(t&&!t.players) t.players=[];
     return t;
   });
 }
 
-
-// ── PLAYER RANKINGS ──
-function renderRankings(){
-  var el = document.getElementById('tab-rankings');
-  if(!el) return;
-
-  // Gather all player stats
-  var allPlayers = [];
-  teams.forEach(function(team){
-    if(!team||!team.players) return;
-    team.players.forEach(function(p){
-      var ps = (playerStats[team.name]&&(playerStats[team.name][p.num]||playerStats[team.name][String(p.num)]))||{};
-      var pts=ps.pts||0, reb=ps.reb||0, ast=ps.ast||0, stl=ps.stl||0, blk=ps.blk||0, to=ps.to||0, foul=ps.foul||0, gp=ps.gp||1;
-      if(pts+reb+ast+stl+blk === 0) return; // skip players with no stats
-      var rating = (pts*1.0 + reb*0.7 + ast*0.8 + stl*1.2 + blk*1.0 - to*0.5 - foul*0.3) / gp;
-      allPlayers.push({
-        name:p.name, num:p.num, team:team.name, color:team.color||'#FF4500',
-        pts:pts, reb:reb, ast:ast, stl:stl, blk:blk, to:to, foul:foul, gp:gp,
-        ppg:(pts/gp).toFixed(1), rpg:(reb/gp).toFixed(1), apg:(ast/gp).toFixed(1),
-        spg:((stl+blk)/gp).toFixed(1), rating:rating
-      });
-    });
-  });
-
-  if(!allPlayers.length){
-    el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Rankings</h2>'
-      +'<p style="color:var(--muted);font-style:italic;">Rankings will appear after games are played.</p>';
-    return;
-  }
-
-  function topN(arr, key, n){
-    return arr.slice().sort(function(a,b){return b[key]-a[key];}).slice(0,n);
-  }
-
-  function playerCard(p, rank, statKey, statLabel, highlight){
-    var statVal = p[statKey];
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--dark3);border:1px solid '+(rank===1?p.color:'#2a2a2a')+';border-radius:8px;margin-bottom:6px;">'
-      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:'+(rank===1?'#eab308':rank===2?'#888':rank===3?'#cd7f32':'#444')+';min-width:24px;">#'+rank+'</div>'
-      +'<div style="width:8px;height:8px;border-radius:50%;background:'+p.color+';flex-shrink:0;"></div>'
-      +'<div style="flex:1;">'
-        +'<div style="font-weight:700;font-size:14px;">'+(p.name||'')+'</div>'
-        +'<div style="font-size:12px;color:var(--muted);">'+(p.team||'')+' · #'+p.num+' · '+p.gp+' GP</div>'
-      +'</div>'
-      +'<div style="text-align:right;">'
-        +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:'+p.color+';">'+statVal+'</div>'
-        +'<div style="font-size:10px;color:var(--muted);letter-spacing:1px;">'+statLabel+'</div>'
-      +'</div>'
-    +'</div>';
-  }
-
-  function section(title, icon, players, statKey, statLabel){
-    if(!players.length) return '';
-    return '<div style="margin-bottom:24px;">'
-      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:700;color:var(--white);letter-spacing:2px;margin-bottom:10px;border-left:3px solid #FF4500;padding-left:10px;">'+icon+' '+title+'</div>'
-      +players.map(function(p,i){ return playerCard(p,i+1,statKey,statLabel); }).join('')
-      +'</div>';
-  }
-
-  // MVP = highest overall rating
-  var mvp = allPlayers.slice().sort(function(a,b){return b.rating-a.rating;})[0];
-
-  var html = '<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Player Rankings</h2>';
-
-  // MVP Card
-  if(mvp){
-    html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.2),rgba(255,69,0,0.05));border:2px solid #FF4500;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:14px;">'
-      +'<div style="font-size:40px;">⭐</div>'
-      +'<div style="flex:1;">'
-        +'<div style="font-size:11px;font-weight:700;color:#FF4500;letter-spacing:2px;text-transform:uppercase;">Season MVP Leader</div>'
-        +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:900;color:var(--white);">'+(mvp.name||'')+'</div>'
-        +'<div style="font-size:13px;color:var(--muted);">'+(mvp.team||'')+' · '+mvp.ppg+' PPG · '+mvp.rpg+' RPG · '+mvp.apg+' APG</div>'
-      +'</div>'
-      +'<div style="text-align:right;">'
-        +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:#FF4500;">'+mvp.rating.toFixed(1)+'</div>'
-        +'<div style="font-size:10px;color:var(--muted);letter-spacing:1px;">RATING</div>'
-      +'</div>'
-    +'</div>';
-  }
-
-  html += section('Top Scorers', '🏀', topN(allPlayers,'ppg',5), 'ppg', 'PPG');
-  html += section('Top Rebounders', '💪', topN(allPlayers,'rpg',5), 'rpg', 'RPG');
-  html += section('Top Playmakers', '🎯', topN(allPlayers,'apg',5), 'apg', 'APG');
-  html += section('Best Defenders', '🔒', topN(allPlayers,'spg',5), 'spg', 'SPG+BPG');
-
-  html += '<div style="font-size:11px;color:#444;text-align:center;margin-top:16px;letter-spacing:1px;">Rating = (PTS×1.0 + REB×0.7 + AST×0.8 + STL×1.2 + BLK×1.0 − TO×0.5 − FOUL×0.3) ÷ GP</div>';
-
-  el.innerHTML = html;
-}
-
-
-// ── GAME FILM ──
-function renderFilm(){
-  var el = document.getElementById('tab-film');
-  if(!el) return;
-
-  var html = '<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:6px;">Game Film</h2>';
-  html += '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Add YouTube links for each game in the admin Settings tab.</p>';
-
-  // Get film data from settings
-  var films = (settings && settings.gameFilm) || {};
-  var filmList = typeof films === 'object' ? Object.values(films).filter(Boolean) : [];
-
-  if(!filmList.length){
-    html += '<div style="text-align:center;padding:40px 20px;">'
-      +'<div style="font-size:48px;margin-bottom:12px;">🎬</div>'
-      +'<div style="font-size:16px;color:var(--muted);">No game film uploaded yet.</div>'
-      +'<div style="font-size:13px;color:#444;margin-top:8px;">Add YouTube links in admin → Settings → Game Film</div>'
-      +'</div>';
-    el.innerHTML = html;
-    return;
-  }
-
-  // Group by season then week
-  var seasons = {};
-  filmList.forEach(function(f){
-    var s = f.season || 'Season 1';
-    var w = f.week || 'Week 1';
-    if(!seasons[s]) seasons[s] = {};
-    if(!seasons[s][w]) seasons[s][w] = [];
-    seasons[s][w].push(f);
-  });
-
-  Object.keys(seasons).sort().forEach(function(season){
-    html += '<div style="margin-bottom:28px;">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;margin-bottom:14px;border-bottom:2px solid #FF4500;padding-bottom:6px;">'+season+'</div>';
-
-    Object.keys(seasons[season]).sort(function(a,b){
-      var na=parseInt(a.replace(/\D/g,''))||0;
-      var nb=parseInt(b.replace(/\D/g,''))||0;
-      return na-nb;
-    }).forEach(function(week){
-      html += '<div style="margin-bottom:16px;">';
-      html += '<div style="font-size:13px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">'+week+'</div>';
-      html += '<div style="display:flex;flex-wrap:wrap;gap:12px;">';
-
-      seasons[season][week].forEach(function(f){
-        var thumbId = getYouTubeId(f.url||'');
-        var thumb = thumbId ? 'https://img.youtube.com/vi/'+thumbId+'/hqdefault.jpg' : '';
-        html += '<div onclick="openFilm(''+encodeURIComponent(f.url||'')+'')" style="cursor:pointer;width:calc(50% - 6px);max-width:280px;background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#FF4500'" onmouseout="this.style.borderColor='#2a2a2a'">'
-          +(thumb?'<div style="position:relative;padding-top:56.25%;background:#0d0d0d;"><img src="'+thumb+'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\"display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;\">🏀</div>'"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div style="width:44px;height:44px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;"><div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:16px solid #fff;margin-left:4px;"></div></div></div></div>':'<div style="height:120px;background:#0d0d0d;display:flex;align-items:center;justify-content:center;font-size:40px;">🎬</div>')
-          +'<div style="padding:10px 12px;">'
-            +'<div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:2px;">'+(f.label||f.home+' vs '+f.away||'Game')+'</div>'
-            +'<div style="font-size:11px;color:var(--muted);">'+(f.date||'')+(f.home&&f.away?' · '+f.home+' vs '+f.away:'')+'</div>'
-          +'</div>'
-        +'</div>';
-      });
-
-      html += '</div></div>';
-    });
-    html += '</div>';
-  });
-
-  el.innerHTML = html;
-}
-
-function getYouTubeId(url){
-  var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
-
-function openFilm(encodedUrl){
-  var url = decodeURIComponent(encodedUrl);
-  var id = getYouTubeId(url);
-  var embedUrl = id ? 'https://www.youtube.com/embed/'+id+'?autoplay=1' : url;
-  var overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer;">✕</button>'
-    +'<iframe src="'+embedUrl+'" style="width:min(100vw,900px);height:min(56.25vw,506px);border:none;border-radius:8px;" allowfullscreen allow="autoplay; encrypted-media"></iframe>';
-  document.body.appendChild(overlay);
-}
-
 // ── LOAD ──
 var _loaded=0, _booted=false;
-function _check(){if(++_loaded>=1 && !_booted){_booted=true;_ready=true;showTab('home');}}
-setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},1500);
-// Auto-show league overlay on first load
-if(document.getElementById('league-overlay') && !localStorage.getItem('sbh_league')){
-  document.getElementById('league-overlay').style.display='flex';
-}
-db.ref('ct/teams').once('value').then(function(s){teams=toTeamArr(s.val());_check();}).catch(function(){_check();});
-db.ref('ct/standings').on('value',function(s){standings=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref('ct/history').on('value',function(s){
-  var v = s.val();
-  if(!v){ history=[]; }
-  else if(Array.isArray(v)){ history=v.filter(Boolean); }
-  else { history=Object.values(v).filter(Boolean); }
-  history.sort(function(a,b){ return (b.timestamp||0)-(a.timestamp||0); });
-  if(_booted) renderAll(); else _check();
-});
-db.ref('ct/playerStats').on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref('ct/schedule').on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
-
+function _check(){if(++_loaded>=6 && !_booted){_booted=true;_ready=true;showTab('home');}}
+setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},2500);
+db.ref('ct/teams').once('value').then(function(s){teams=toArr(s.val());_check();}).catch(function(){_check();});
+db.ref('ct/standings').once('value').then(function(s){standings=s.val()||{};_check();}).catch(function(){_check();});
+db.ref('ct/history').once('value').then(function(s){history=toArr(s.val());_check();}).catch(function(){_check();});
+db.ref('ct/playerStats').once('value').then(function(s){playerStats=s.val()||{};_check();}).catch(function(){_check();});
+db.ref('ct/schedule').once('value').then(function(s){schedule=toArr(s.val());_check();}).catch(function(){_check();});
+db.ref('ct/game').once('value').then(function(s){game=s.val()||null;_check();}).catch(function(){_check();});
 db.ref('ct/game').on('value',function(s){
   game=s.val()||null;
   if(_ready&&currentTab==='live') renderLive();
@@ -1013,40 +746,7 @@ function renderSchedule(){
     });
     html+='</div>';
   });
-  // Playoff Bracket
-    // Playoff Bracket
-  html += '<div style="margin-top:2rem;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
-  html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:flex-start;gap:16px;min-width:580px;">';
-
-  // Play-In Aug 19
-  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#FF4500;letter-spacing:2px;text-align:center;margin-bottom:6px;">PLAY-IN &middot; AUG 19</div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">6:30 PM</div></div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">7:30 PM</div></div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">8:30 PM</div></div>';
-  html += '</div>';
-
-  // Semis Aug 26
-  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-align:center;margin-bottom:6px;">SEMIS &middot; AUG 26</div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#1</span><span style="color:#FF4500;">BYE ✓</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">Best Winner</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">6:30 PM</div></div>';
-  html += '<div style="height:6px;"></div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">7:30 PM</div></div>';
-  html += '</div>';
-
-  // Championship Sep 2
-  html += '<div style="display:flex;flex-direction:column;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-align:center;margin-bottom:6px;">CHAMPIONSHIP &middot; SEP 2</div>';
-  html += '<div style="height:50px;"></div>';
-  html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:20px 16px;text-align:center;width:175px;"><div style="font-size:32px;margin-bottom:6px;">&#127942;</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div><div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">TUE &middot; SEP 2 &middot; 7:00 PM</div></div>';
-  html += '</div>';
-
-  html += '</div></div>';
-  html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs &middot; #1 seed gets bye &middot; Play-In Aug 19 &middot; Semis Aug 26 &middot; Championship Sep 2</div>';
-  html += '</div>';
-
-    el.innerHTML=html;
+  el.innerHTML=html;
 }
 
 // ── STANDINGS ──
@@ -1055,11 +755,7 @@ function renderStandings(){
   var entries=[];
   try {
     entries=Object.keys(standings).map(function(name){
-      var s=standings[name]||{};
-      var gp=(s.w||0)+(s.l||0);
-      // Support both pf/pa (old) and pts/ptsA (new) key names
-      var pf=(s.pts||s.pf||0), pa=(s.ptsA||s.pa||0);
-      var diff=pf-pa;
+      var s=standings[name]||{}; var gp=(s.w||0)+(s.l||0), pf=(s.pts||s.pf||0), pa=(s.ptsA||s.pa||0), diff=pf-pa;
       return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:pf,pa:pa,diff:diff,
         pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
         ppg:gp>0?(pf/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
@@ -1100,8 +796,7 @@ function openTeamDetail(name){
   renderPlayerStats();
   window.scrollTo(0,0);
   var team=teams.find(function(t){return t.name===name;});
-  var st=standings[name]||{w:0,l:0,pts:0,ptsA:0};
-  var stPf=(st.pts||st.pf||0), stPa=(st.ptsA||st.pa||0);
+  var st=standings[name]||{w:0,l:0,pf:0,pa:0};
   var ps=playerStats[name]||{};
   var color=(team&&team.color)||'#FF5C00';
   var gp=st.w+st.l;
@@ -1275,13 +970,10 @@ function showTab(t){
   currentTab=t;
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
-  document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
   var idx={home:0,live:1,scores:2,schedule:3,standings:4,teams:5,playerstats:6,locations:7}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
-  var mtabs=document.querySelectorAll('.mobile-tab');
-  if(mtabs[idx]) mtabs[idx].classList.add('active');
   if(t==='home')        renderHome();
   if(t==='live')        renderLive();
   if(t==='scores')      renderScores();
@@ -1289,8 +981,6 @@ function showTab(t){
   if(t==='standings')   renderStandings();
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();
-  if(t==='rankings') renderRankings();
-  if(t==='film') renderFilm();
   if(t==='locations')   renderLocations();
 }
 </script>
