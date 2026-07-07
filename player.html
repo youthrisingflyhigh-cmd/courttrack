@@ -825,40 +825,39 @@ function renderSchedule(){
     html+='</div>';
   });
   // Playoff Bracket
+    // Playoff Bracket
   html += '<div style="margin-top:2rem;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
-  html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:520px;">';
-  // Semis
-  html += '<div style="display:flex;flex-direction:column;gap:0;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">SEMIFINALS · AUG 19</div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:20px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#1</span><span>TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">WED · AUG 19 · 6:30 PM</div></div>';
-  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">WED · AUG 19 · 7:30 PM</div></div></div>';
-  // Connector
-  html += '<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
-  html += '<div style="position:absolute;top:42px;left:0;right:0;height:2px;background:#333;"></div>';
-  html += '<div style="position:absolute;top:42px;right:0;width:2px;height:118px;background:#333;"></div>';
-  html += '<div style="position:absolute;top:158px;left:0;right:0;height:2px;background:#333;"></div>';
-  html += '<div style="position:absolute;top:100px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
-  // Champ
-  html += '<div style="display:flex;flex-direction:column;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">CHAMPIONSHIP · AUG 26</div>';
-  html += '<div style="height:60px;"></div>';
-  html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:20px 16px;text-align:center;width:180px;">';
-  html += '<div style="font-size:32px;margin-bottom:6px;">🏆</div>';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
-  html += '<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WED · AUG 26 · 6:30 PM</div>';
-  html += '<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div></div></div>';
-  html += '</div></div>';
-  html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 teams advance · Championship rings for winners</div>';
+  html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:flex-start;gap:16px;min-width:580px;">';
+
+  // Play-In Aug 19
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#FF4500;letter-spacing:2px;text-align:center;margin-bottom:6px;">PLAY-IN &middot; AUG 19</div>';
+  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">6:30 PM</div></div>';
+  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">7:30 PM</div></div>';
+  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span>TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">8:30 PM</div></div>';
   html += '</div>';
 
-  el.innerHTML=html;
+  // Semis Aug 26
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-align:center;margin-bottom:6px;">SEMIS &middot; AUG 26</div>';
+  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#1</span><span style="color:#FF4500;">BYE ✓</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">Best Winner</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">6:30 PM</div></div>';
+  html += '<div style="height:6px;"></div>';
+  html += '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:175px;"><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">TBD</span></div><div style="padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;">TBD</span></div><div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;">7:30 PM</div></div>';
+  html += '</div>';
+
+  // Championship Sep 2
+  html += '<div style="display:flex;flex-direction:column;">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-align:center;margin-bottom:6px;">CHAMPIONSHIP &middot; SEP 2</div>';
+  html += '<div style="height:50px;"></div>';
+  html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:20px 16px;text-align:center;width:175px;"><div style="font-size:32px;margin-bottom:6px;">&#127942;</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div><div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">TUE &middot; SEP 2 &middot; 7:00 PM</div></div>';
+  html += '</div>';
+
+  html += '</div></div>';
+  html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs &middot; #1 seed gets bye &middot; Play-In Aug 19 &middot; Semis Aug 26 &middot; Championship Sep 2</div>';
+  html += '</div>';
+
+    el.innerHTML=html;
 }
 
 // ── STANDINGS ──
