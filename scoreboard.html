@@ -390,6 +390,8 @@ var currentHornAudio = null;
 var hornStopTimeout = null;
 function unlockHornAudio(){
   var el=new Audio(HORN_SRC);
+  el.muted=true;
+  el.volume=0;
   var p=el.play();
   if(p && p.then){ p.then(function(){ el.pause(); }).catch(function(){}); }
 }
