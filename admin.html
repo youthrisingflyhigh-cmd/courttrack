@@ -524,6 +524,7 @@ th, td { padding: 10px 8px !important; }
       <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">
         <button onclick="shotClockSet(30)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">30s</button>
         <button onclick="shotClockSet(24)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">24s</button>
+        <button onclick="shotClockSet(20)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">20s</button>
         <button onclick="shotClockSet(14)" style="padding:6px 12px;border-radius:6px;background:var(--dark3);border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;min-height:36px;">14s</button>
       </div>
       <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">
@@ -806,6 +807,7 @@ var timerRunning = false;
 // ── SHOT CLOCK ──
 var shotClockInterval = null;
 var shotClockSeconds = 30;
+var shotClockDefault = 30; // last preset picked (30/24/20/14) — Reset returns to this
 var shotClockRunning = false;
 
 function shotClockFmt(s){ return s < 10 ? '0'+s : String(s); }
@@ -861,12 +863,13 @@ function shotClockStop(){
 
 function shotClockReset(){
   shotClockStop();
-  shotClockSeconds = 30;
+  shotClockSeconds = shotClockDefault;
   shotClockUpdate();
   shotClockStart();
 }
 
 function shotClockSet(secs){
+  shotClockDefault = secs;
   shotClockStop();
   shotClockSeconds = secs;
   shotClockUpdate();
@@ -898,14 +901,14 @@ var currentHornAudio = null;
 var hornStopTimeout = null;
 // Call this from a real tap/click (Start buttons, the horn button itself)
 // so mobile browsers allow audio to play later without another gesture.
-// Some browsers don't count a fully-muted play as a "real" enough
-// interaction to unlock later automatic playback, so instead of muting we
-// use a near-silent volume and pause it as fast as possible.
+// Near-silent (not fully muted, not paused instantly) so the browser
+// genuinely registers real playback happened — some browsers won't treat
+// a muted or instantly-cancelled play as a real enough interaction to
+// unlock later automatic playback, which silently breaks the horn.
 function unlockHornAudio(){
   var el=new Audio(HORN_SRC);
   el.volume=0.01;
   var p=el.play();
-  try{ el.pause(); }catch(e){}
   if(p && p.then){ p.then(function(){ try{ el.pause(); }catch(e){} }).catch(function(){}); }
 }
 
