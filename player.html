@@ -76,7 +76,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .score-num{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;}
 .score-vs{display:flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-size:28px;color:#333;font-weight:900;}
 .highlights{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem;}
-@media(max-width:700px){.highlights{grid-template-columns:repeat(2,1fr)!important;}.lb-two{grid-template-columns:1fr!important;}.home-split{grid-template-columns:1fr!important;}.potw-stats{flex-wrap:wrap;gap:12px!important;}}
+@media(max-width:700px){.highlights{grid-template-columns:repeat(2,1fr)!important;}.lb-two{grid-template-columns:1fr!important;}.home-split{grid-template-columns:1fr!important;}.potw-stats{flex-wrap:wrap;gap:12px!important;}#home-league-leaders{grid-template-columns:repeat(3,1fr)!important;}}
 .stat-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;}
 .sc-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
 .sc-val{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--white);line-height:1;}
@@ -338,6 +338,15 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     </div>
   </div>
 
+  <!-- LEAGUE LEADERS -->
+  <div class="top-scorers-card" style="margin-bottom:1.5rem;">
+    <div class="tsc-header">
+      <span>🏆 League Leaders</span>
+      <a onclick="showTab('playerstats')">See all →</a>
+    </div>
+    <div id="home-league-leaders" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#2a2a2a;"><div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;">Loading…</div></div>
+  </div>
+
   <!-- RECENT + UPCOMING -->
   <div class="home-split">
     <div class="split-card">
@@ -394,7 +403,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <p style="font-size:13px;color:var(--muted);margin-bottom:1.2rem;">Season averages — click a category to sort.</p>
   <input class="search-bar" id="p-search" placeholder="🔍 Search by name or team..." oninput="renderPlayerStats()"/>
   <div class="stat-tabs" id="stat-tabs">
-    <button class="stat-tab active" onclick="setStatTab('pts')">Points</button>
+    <button class="stat-tab active" onclick="setStatTab('eff')">⭐ Overall</button>
+    <button class="stat-tab" onclick="setStatTab('pts')">Points</button>
     <button class="stat-tab" onclick="setStatTab('reb')">Rebounds</button>
     <button class="stat-tab" onclick="setStatTab('ast')">Assists</button>
     <button class="stat-tab" onclick="setStatTab('stl')">Steals</button>
@@ -403,9 +413,11 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   </div>
   <div class="stats-card">
     <table><thead><tr>
+      <th style="text-align:left;">Rk</th>
       <th style="text-align:left;">#</th>
       <th style="text-align:left;">Player</th>
       <th style="text-align:left;">Team</th>
+      <th id="th-eff" style="cursor:pointer;color:var(--orange);" onclick="setStatTab('eff')" title="Efficiency: PTS + REB + AST + STL + BLK − TO">EFF</th>
       <th id="th-pts" style="cursor:pointer;" onclick="setStatTab('pts')">PTS</th>
       <th id="th-reb" onclick="setStatTab('reb')" style="cursor:pointer;">REB</th>
       <th id="th-ast" onclick="setStatTab('ast')" style="cursor:pointer;">AST</th>
@@ -475,7 +487,7 @@ try {
 } catch(e){ db=firebase.database(); }
 
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
-var currentTab='home', _ready=false, currentStatTab='pts', currentStreamPlatform='youtube';
+var currentTab='home', _ready=false, currentStatTab='eff', currentStreamPlatform='youtube';
 var appSeasonName='';
 db.ref('ct/settings').once('value').then(function(s){
   var v=s.val();
@@ -611,6 +623,7 @@ function showToast(msg){
 // ── HOME PAGE ──
 function renderHome(){
   renderPOTW();
+  renderHomeLeagueLeaders();
   renderHomeRecentScores();
   renderHomeUpcoming();
   renderHomeTopScorers();
@@ -771,6 +784,33 @@ function renderHomeUpcoming(){
       +'<div class="ur-time" style="color:var(--orange);">'+(g.time||g.date||'TBD')+'</div>'
       +'<div class="ur-teams"><span style="color:'+(g.homeColor||'var(--white)')+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(g.awayColor||'#888')+';font-weight:700;">'+g.away+'</span></div>'
       +'<div class="ur-day">'+(g.date||'')+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function renderHomeLeagueLeaders(){
+  var el=document.getElementById('home-league-leaders');
+  if(!el)return;
+  var allP=getAllPlayers().filter(function(r){return (r.s.gp||0)>0;});
+  if(!allP.length){
+    el.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;font-style:italic;background:var(--dark2);">No stats yet — check back once games are underway.</div>';
+    return;
+  }
+  var cats=[
+    {key:'pts',label:'PTS',icon:'🔥'},
+    {key:'reb',label:'REB',icon:'🧱'},
+    {key:'ast',label:'AST',icon:'🎯'},
+    {key:'stl',label:'STL',icon:'🖐️'},
+    {key:'blk',label:'BLK',icon:'🚫'}
+  ];
+  el.innerHTML=cats.map(function(c){
+    var leader=allP.slice().sort(function(a,b){return (b.s[c.key]||0)-(a.s[c.key]||0);})[0];
+    var val=leader.s[c.key]||0;
+    return '<div style="background:var(--dark2);padding:14px 8px;text-align:center;cursor:pointer;" onclick="showTab(\'playerstats\')">'
+      +'<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">'+c.icon+' '+c.label+'</div>'
+      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:900;color:var(--orange);line-height:1;">'+val+'</div>'
+      +'<div style="font-size:12px;color:#fff;font-weight:700;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+leader.p.name.split(' ').pop()+'</div>'
+      +'<div style="font-size:10px;color:'+leader.teamColor+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+leader.teamName+'</div>'
     +'</div>';
   }).join('');
 }
@@ -1181,11 +1221,11 @@ function renderTeams(){
 function setStatTab(key){
   currentStatTab=key;
   document.querySelectorAll('.stat-tab').forEach(function(b){b.classList.remove('active');});
-  var map={pts:0,reb:1,ast:2,stl:3,blk:4,to:5};
+  var map={eff:0,pts:1,reb:2,ast:3,stl:4,blk:5,to:6};
   var tabs=document.querySelectorAll('.stat-tab');
   if(tabs[map[key]]) tabs[map[key]].classList.add('active');
   // Highlight active column header
-  ['pts','reb','ast','stl','blk','to'].forEach(function(k){
+  ['eff','pts','reb','ast','stl','blk','to'].forEach(function(k){
     var th=document.getElementById('th-'+k);
     if(th) th.style.color=k===key?'var(--orange)':'';
   });
@@ -1196,16 +1236,27 @@ function renderPlayerStats(){
   var q=(document.getElementById('p-search').value||'').toLowerCase();
   var rows=getAllPlayers();
   if(q) rows=rows.filter(function(r){return r.p.name.toLowerCase().indexOf(q)>=0||r.teamName.toLowerCase().indexOf(q)>=0;});
+  // Efficiency: a simple, standard composite — PTS + REB + AST + STL + BLK − TO
+  rows.forEach(function(r){
+    r.eff = (r.s.pts||0)+(r.s.reb||0)+(r.s.ast||0)+(r.s.stl||0)+(r.s.blk||0)-(r.s.to||0);
+  });
   var key=currentStatTab;
-  rows.sort(function(a,b){return (b.s[key]||0)-(a.s[key]||0);});
+  rows.sort(function(a,b){
+    var av = key==='eff' ? a.eff : (a.s[key]||0);
+    var bv = key==='eff' ? b.eff : (b.s[key]||0);
+    return bv-av;
+  });
+  var medals=['🥇','🥈','🥉'];
   document.getElementById('p-body').innerHTML=rows.length?rows.map(function(r,i){
-    var highlight=key==='pts'?' class="pts-cell"':'';
+    var rankDisplay = i<3 ? medals[i] : (i+1);
     return '<tr>'
+      +'<td style="text-align:left;font-weight:800;font-family:\'Barlow Condensed\',sans-serif;font-size:'+(i<3?'18':'14')+'px;">'+rankDisplay+'</td>'
       +'<td><span style="color:'+r.teamColor+';font-weight:700;">#'+r.p.num+'</span></td>'
       +'<td>'+r.p.name+'</td>'
       +'<td style="text-align:left;"><span style="display:inline-flex;align-items:center;gap:6px;">'
       +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.teamColor+';display:inline-block;"></span>'+r.teamName+'</span></td>'
-      +'<td'+(key==='pts'?' class="pts-cell"':'')+' style="'+(key==='pts'?'':'')+(key==='pts'?'color:var(--orange);font-weight:700;':'')+'font-family:\'Barlow Condensed\',sans-serif;font-size:'+(key==='pts'?'16':'14')+'px;">'+(r.s.pts||0)+'</td>'
+      +'<td'+(key==='eff'?' style="color:var(--orange);font-weight:700;"':'')+' style="font-family:\'Barlow Condensed\',sans-serif;font-size:'+(key==='eff'?'16':'14')+'px;'+(key==='eff'?'color:var(--orange);font-weight:700;':'')+'">'+r.eff+'</td>'
+      +'<td'+(key==='pts'?' style="color:var(--orange);font-weight:700;"':'')+'>'+(r.s.pts||0)+'</td>'
       +'<td'+(key==='reb'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.reb||0)+'</td>'
       +'<td'+(key==='ast'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.ast||0)+'</td>'
       +'<td'+(key==='stl'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.stl||0)+'</td>'
@@ -1213,7 +1264,7 @@ function renderPlayerStats(){
       +'<td'+(key==='to'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.to||0)+'</td>'
       +'<td>'+(r.s.gp||0)+'</td>'
     +'</tr>';
-  }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
+  }).join(''):'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
 }
 
 // ── LOCATIONS ──
