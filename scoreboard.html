@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Lets this run without Safari's UI when added to an iPhone/iPad home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Southbay Hoops — Live Scoreboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -130,7 +134,7 @@ body{
 
 .clock{
   font-family:'Bebas Neue',sans-serif;
-  font-size:clamp(200px, 34vh, 460px);
+  font-size:clamp(220px, 40vh, 520px);
   color:#ffffff;
   letter-spacing:4px;
   line-height:1;
@@ -232,12 +236,18 @@ body{
 
 <!-- Tap to enable sound — browsers block audio until a real tap/click,
      and this screen usually just sits on a TV with nobody clicking it.
-     One tap anywhere unlocks it for the rest of the session. -->
+     One tap anywhere unlocks it for the rest of the session — and also
+     requests fullscreen (hides the browser's address bar) where supported. -->
 <div id="sound-unlock" onclick="enableSound()" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-family:'Barlow Condensed',sans-serif;">
   <div style="font-size:56px;margin-bottom:16px;">🔊</div>
-  <div style="font-size:28px;font-weight:900;letter-spacing:1px;">TAP TO ENABLE HORN</div>
-  <div style="font-size:14px;color:#888;margin-top:8px;letter-spacing:1px;">Needed once so this screen can play the buzzer</div>
+  <div style="font-size:28px;font-weight:900;letter-spacing:1px;">TAP TO START</div>
+  <div style="font-size:14px;color:#888;margin-top:8px;letter-spacing:1px;">Enables the buzzer and goes fullscreen</div>
 </div>
+
+<!-- Small always-available fullscreen toggle, in case the browser doesn't
+     support requesting it automatically, or someone exits it later.
+     Fades out after a few seconds so it doesn't clutter the broadcast. -->
+<button id="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle fullscreen" style="position:fixed;top:10px;right:10px;z-index:9998;background:rgba(0,0,0,0.5);border:1px solid #333;color:#aaa;border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;transition:opacity 0.4s;">⛶</button>
 
 <!-- Top bar -->
 <div class="top-bar">
@@ -328,9 +338,49 @@ var soundEnabled=false;
 function enableSound(){
   soundEnabled=true;
   unlockHornAudio();
+  requestFullscreenSafe();
   var ov=document.getElementById('sound-unlock');
   if(ov) ov.style.display='none';
 }
+
+// ── FULLSCREEN ──
+// iOS Safari doesn't support the Fullscreen API on arbitrary pages at all —
+// for that, "Add to Home Screen" (the meta tags in <head> handle that) is
+// the only route. Everywhere else (Android, Chrome/Edge/Firefox on a TV or
+// laptop), this actually hides the browser chrome including the URL bar.
+function requestFullscreenSafe(){
+  var el=document.documentElement;
+  var req=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;
+  if(req){ try{ req.call(el); }catch(e){} }
+}
+function exitFullscreenSafe(){
+  var exit=document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen;
+  if(exit){ try{ exit.call(document); }catch(e){} }
+}
+function isFullscreen(){
+  return !!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement);
+}
+function toggleFullscreen(){
+  if(isFullscreen()) exitFullscreenSafe();
+  else requestFullscreenSafe();
+}
+// Fade the little fullscreen button out after a few seconds of no
+// interaction so it doesn't clutter the broadcast; any tap/move brings it
+// back briefly.
+(function(){
+  var btn=document.getElementById('fullscreen-btn');
+  if(!btn)return;
+  var hideTimer=null;
+  function show(){
+    btn.style.opacity='1';
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(function(){ btn.style.opacity='0'; }, 4000);
+  }
+  ['mousemove','touchstart','click'].forEach(function(evt){
+    document.addEventListener(evt, show);
+  });
+  show();
+})();
 
 // ── HORN / BUZZER ──
 // Uses the real buzzer clip (embedded below as base64, ~2 sec long) and
