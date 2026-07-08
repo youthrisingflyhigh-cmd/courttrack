@@ -1430,6 +1430,44 @@ fbListen('ct/game', function(v){
   }
 });
 
+// Keep the game clock and shot clock in sync across devices. If THIS
+// device isn't the one actively counting down (i.e. you didn't press
+// Start here), just mirror whatever the active device is broadcasting —
+// that way switching from one scorekeeping device to another always
+// picks up the real current time instead of some stale local default.
+fbListen('ct/game/clock', function(v){
+  if(!v || timerRunning) return;
+  timerSeconds = v.seconds;
+  var el = document.getElementById('game-timer-display');
+  if(el) el.textContent = timerFmt(timerSeconds);
+});
+fbListen('ct/game/shotClock', function(v){
+  if(!v || shotClockRunning) return;
+  shotClockSeconds = v.seconds != null ? v.seconds : 30;
+  shotClockOff = !!v.off;
+  // Update the display directly — NOT via shotClockUpdate()/updateShotClockOffUI(),
+  // since those write back to Firebase and would loop with this listener.
+  var el = document.getElementById('shot-clock-display');
+  if(el){
+    if(shotClockOff){
+      el.textContent = '—';
+      el.style.opacity = '0.35';
+      el.style.animation = '';
+    } else {
+      el.style.opacity = '1';
+      el.textContent = shotClockSeconds;
+      el.style.color = shotClockSeconds<=5?'#ef4444':shotClockSeconds<=10?'#eab308':'#FF4500';
+      el.style.animation = shotClockSeconds<=5?'scBlink 0.4s infinite':'';
+    }
+  }
+  var btn = document.getElementById('shot-clock-off-btn');
+  if(btn){
+    btn.textContent = shotClockOff ? 'Shot Clock: OFF' : 'Shot Clock: ON';
+    btn.style.background = shotClockOff ? '#7c2d2d' : 'var(--dark3)';
+    btn.style.color = shotClockOff ? '#fca5a5' : 'var(--muted)';
+  }
+});
+
 function onAllLoaded(){
   var overlay=document.getElementById('loading-overlay');
   if(overlay) overlay.style.display='none';
