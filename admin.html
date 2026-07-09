@@ -744,6 +744,41 @@ th, td { padding: 10px 8px !important; }
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit a Saved Game's Box Score</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">The real fix for a scoring mix-up — moves a stat between two players <em>within that specific saved game</em>, not just the season total. Automatically re-rebuilds season totals afterward, so everything (this game's box score, the player pages, Overall rankings) stays consistent in one step.</p>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">WHICH GAME</div>
+        <select id="game-edit-select" onchange="onGameEditSelected()" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">FROM (currently has the stat)</div>
+          <select id="game-edit-from-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <div style="min-width:110px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">STAT</div>
+          <select id="game-edit-stat-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;">
+            <option value="pts">Points</option>
+            <option value="reb">Rebounds</option>
+            <option value="ast">Assists</option>
+            <option value="stl">Steals</option>
+            <option value="blk">Blocks</option>
+            <option value="to">Turnovers</option>
+          </select>
+        </div>
+        <div style="min-width:90px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">AMOUNT</div>
+          <input type="number" id="game-edit-amount-input" min="1" value="2" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;text-align:center;">
+        </div>
+        <div style="flex:1;min-width:180px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">TO (should have the stat)</div>
+          <select id="game-edit-to-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="transferGameBoxScoreStat()">↔ Fix This Game</button>
+      </div>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Merge Player Stats</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">When someone's jersey number changes, their old stats get stuck under the old number as a "Former Player" instead of following them. Use this to fold those old stats into their current entry — sums everything together (points, rebounds, game log, etc.) and removes the old duplicate.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
@@ -2327,6 +2362,34 @@ function populateMergeDropdowns(){
   var transferTo=document.getElementById('transfer-to-select');
   if(transferFrom) transferFrom.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
   if(transferTo) transferTo.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
+
+  var gameSel=document.getElementById('game-edit-select');
+  if(gameSel){
+    var hist=toArr(gameHistory);
+    gameSel.innerHTML = hist.length
+      ? hist.map(function(g,i){ return '<option value="'+i+'">'+(g.date||'')+' — '+g.home+' '+g.homeScore+'-'+g.awayScore+' '+g.away+'</option>'; }).join('')
+      : '<option value="">No saved games found</option>';
+    onGameEditSelected();
+  }
+}
+
+// Fills the FROM/TO selects with just the players who were actually in
+// the selected game (both rosters, as saved at the time it was played).
+function onGameEditSelected(){
+  var gameSel=document.getElementById('game-edit-select');
+  var fromSel=document.getElementById('game-edit-from-select');
+  var toSel=document.getElementById('game-edit-to-select');
+  if(!gameSel||!fromSel||!toSel) return;
+  var hist=toArr(gameHistory);
+  var idx=parseInt(gameSel.value);
+  var g=hist[idx];
+  if(!g){ fromSel.innerHTML='<option value="">—</option>'; toSel.innerHTML='<option value="">—</option>'; return; }
+  var opts=[];
+  (g.homePlayers||[]).forEach(function(p){ opts.push('<option value="home|'+p.num+'">'+g.home+' — '+p.name+' #'+p.num+'</option>'); });
+  (g.awayPlayers||[]).forEach(function(p){ opts.push('<option value="away|'+p.num+'">'+g.away+' — '+p.name+' #'+p.num+'</option>'); });
+  var html = opts.length ? opts.join('') : '<option value="">No players found in this game</option>';
+  fromSel.innerHTML=html;
+  toSel.innerHTML=html;
 }
 
 function mergePlayerStats(){
@@ -2404,6 +2467,55 @@ function transferPlayerStat(){
   }
   fbSet('ct/playerStats', playerStats);
   alert('✅ Moved '+amount+' '+statLabel+'. '+fromName+' now has '+fromStats[statKey]+', '+toName+' now has '+toStats[statKey]+'.');
+  populateMergeDropdowns();
+}
+
+// The real fix for a scoring mix-up: edits the actual saved game's box
+// score (not just the season-total accumulator), then re-rebuilds season
+// totals from history so everything — this game, the player pages, the
+// Overall rankings — stays consistent afterward.
+function transferGameBoxScoreStat(){
+  var gameSel=document.getElementById('game-edit-select');
+  var fromVal=document.getElementById('game-edit-from-select').value;
+  var toVal=document.getElementById('game-edit-to-select').value;
+  var statKey=document.getElementById('game-edit-stat-select').value;
+  var amount=parseInt(document.getElementById('game-edit-amount-input').value);
+  var idx=parseInt(gameSel.value);
+  var hist=toArr(gameHistory);
+  var g=hist[idx];
+  if(!g){ alert('Pick a game first.'); return; }
+  if(!fromVal||!toVal){ alert('Pick both a "from" and "to" player.'); return; }
+  if(fromVal===toVal){ alert('Those are the same player.'); return; }
+  if(isNaN(amount)||amount<=0){ alert('Enter a valid amount to transfer.'); return; }
+
+  var fromParts=fromVal.split('|'), fromSide=fromParts[0], fromNum=fromParts[1];
+  var toParts=toVal.split('|'), toSide=toParts[0], toNum=toParts[1];
+  var fromStatsObj = fromSide==='home' ? g.hStats : g.aStats;
+  var toStatsObj = toSide==='home' ? g.hStats : g.aStats;
+  if(!fromStatsObj || !fromStatsObj[fromNum]){ alert('Could not find that player\'s line in this game\'s box score.'); return; }
+  var fromPlayers = fromSide==='home' ? g.homePlayers : g.awayPlayers;
+  var toPlayers = toSide==='home' ? g.homePlayers : g.awayPlayers;
+  var fromPlayer=(fromPlayers||[]).find(function(p){return String(p.num)===String(fromNum);});
+  var toPlayer=(toPlayers||[]).find(function(p){return String(p.num)===String(toNum);});
+  var fromName=fromPlayer?fromPlayer.name:('#'+fromNum);
+  var toName=toPlayer?toPlayer.name:('#'+toNum);
+  var statLabel={pts:'points',reb:'rebounds',ast:'assists',stl:'steals',blk:'blocks',to:'turnovers'}[statKey]||statKey;
+  var have=fromStatsObj[fromNum][statKey]||0;
+
+  if(!confirm('In '+g.home+' vs '+g.away+' ('+(g.date||'')+'), move '+amount+' '+statLabel+' from '+fromName+' to '+toName+'?\n\n'+fromName+' currently has '+have+' '+statLabel+' in this game — this will leave them with '+Math.max(0,have-amount)+'.\n\nThis fixes the actual game record, then re-rebuilds season totals from history automatically.')) return;
+
+  fromStatsObj[fromNum][statKey]=Math.max(0,have-amount);
+  if(!toStatsObj[toNum]) toStatsObj[toNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0};
+  toStatsObj[toNum][statKey]=(toStatsObj[toNum][statKey]||0)+amount;
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  gameHistory=hist;
+  fbSet('ct/history', gameHistory);
+  alert('✅ Fixed this game\'s box score. Now re-rebuilding season totals from history to match — hit OK on the next prompt to finish.');
+  rebuildPlayerStatsFromHistory();
   populateMergeDropdowns();
 }
 
