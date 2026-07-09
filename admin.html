@@ -566,7 +566,10 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="home-lbl">Home</div>
         <div class="team-pts" id="home-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="font-size:12px;color:#888;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span>
+          <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        </div>
       </div>
       <div style="text-align:center;">
         <div class="score-sep">—</div>
@@ -579,9 +582,13 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
         <div class="team-pts" id="away-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="font-size:12px;color:#888;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span>
+          <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        </div>
       </div>
     </div>
+
 
     <!-- Finish button -->
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:1.2rem;">
@@ -1351,6 +1358,22 @@ function save(){
   fbSet('ct/schedule',schedule);
   if(game) fbSet('ct/game',game);
 }
+// Every point/foul/sub tap was calling save() above, which re-uploads the
+// ENTIRE app state every time — full team rosters, the whole season's
+// standings, every past game's box score and play log, every player's
+// season stats — not just the live game. That payload only grows as the
+// season goes on, and re-sending all of it on every single tap is what
+// was causing the lag between Admin and scoreboard.html. Live-tracking
+// actions should only need to write the current game.
+function saveGame(){
+  if(!game) return;
+  fbSet('ct/game',game);
+  // Also sync just the score to its own tiny path — same trick already
+  // used for the clocks — so scoreboard.html can show it instantly
+  // without waiting on the full (and steadily growing, play-log-included)
+  // game object to transfer.
+  if(db) db.ref('ct/game/liveScore').set({home: game.homeScore||0, away: game.awayScore||0});
+}
 function clearGame(){ fbRemove('ct/game'); }
 
 // Wipe an in-progress game completely — no schedule/standings/history
@@ -1706,7 +1729,7 @@ function confirmStartGame(){
   game={hi:hi,ai:ai,homeScore:0,awayScore:0,hStats:mk(teams[hi].players),aStats:mk(teams[ai].players),
     hStatus:mkStatus(teams[hi].players,homeSelSnap),aStatus:mkStatus(teams[ai].players,awaySelSnap),
     hLineup:homeSelSnap,aLineup:awaySelSnap,
-    q:1,playLog:[],
+    q:1,playLog:[],hTeamFoulAdj:0,aTeamFoulAdj:0,
     date:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})};
   // Log the starting lineups into the play-by-play (informational only — not undoable)
   teams[hi].players.forEach(function(p){
@@ -2042,15 +2065,19 @@ function setTrackTeam(side){
   renderDualChips(); renderDualStatBtns();
 }
 
-function setQ(q){game.q=q;save();document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});}
+function setQ(q){game.q=q;saveGame();document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});}
 
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
-  // Update team fouls on scoreboard
+  // Update team fouls on scoreboard — sum of every player's fouls, plus any
+  // manual team-foul adjustments (bench/coach technicals not tied to a
+  // specific player).
   var homeFouls=0, awayFouls=0;
   if(game.hStats) Object.values(game.hStats).forEach(function(ps){ if(ps&&typeof ps==='object') homeFouls+=(ps.foul||0); });
   if(game.aStats) Object.values(game.aStats).forEach(function(ps){ if(ps&&typeof ps==='object') awayFouls+=(ps.foul||0); });
+  homeFouls += game.hTeamFoulAdj||0;
+  awayFouls += game.aTeamFoulAdj||0;
   var hFoulEl=document.getElementById('home-team-fouls');
   var aFoulEl=document.getElementById('away-team-fouls');
   if(hFoulEl) hFoulEl.textContent=homeFouls;
@@ -2149,7 +2176,7 @@ function toggleSub(side,num){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:key,key:'sub',pts:0,neg:next==='OUT',prevStatus:cur});
   addSubLogRow(entry);
-  save(); renderDualChips();
+  saveGame(); renderDualChips();
 }
 
 function addSubLogRow(entry){
@@ -2200,7 +2227,34 @@ function adjustPointsSide(side,delta){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:stKey,key:'manual',pts:pts,neg:pts<0});
   addSubLogRow(entry);
-  save(); renderDualChips(); renderDualStatBtns();
+  saveGame(); renderDualChips(); renderDualStatBtns();
+}
+
+// Adjusts a TEAM's foul count directly, without attributing it to any one
+// player — for things like bench or coach technicals. Logged and
+// undoable just like everything else.
+function adjustTeamFouls(side,delta){
+  if(!game)return;
+  var isH=side==='home';
+  var adjKey=isH?'hTeamFoulAdj':'aTeamFoulAdj';
+  var cur=game[adjKey]||0;
+  var next=Math.max(0,cur+delta);
+  var actualDelta=next-cur; // in case the clamp at 0 changed what actually happened
+  game[adjKey]=next;
+  var ti=isH?game.hi:game.ai;
+  if(!game.playLog) game.playLog=[];
+  var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  var entry={
+    id:entryId, side:side, num:'-',
+    playerName:'Team', teamName:teams[ti].name, teamColor:teams[ti].color,
+    key:'teamfoul', label:(actualDelta>=0?'Team Foul +':'Team Foul ')+actualDelta, pts:0, neg:actualDelta<0,
+    score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds), timestamp:Date.now(),
+    teamFoulDelta:actualDelta
+  };
+  game.playLog.push(entry);
+  logStack.push({id:entryId,side:side,num:'-',key:'teamfoul',pts:0,neg:actualDelta<0,teamFoulDelta:actualDelta});
+  addSubLogRow(entry);
+  saveGame(); renderDualChips();
 }
 
 function renderDualStatBtns(){
@@ -2270,22 +2324,12 @@ function doStatSide(side,key,pts,neg){
     timestamp:Date.now()
   });
   logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:neg});
-  addLogSide(side,selNum,key,pts,neg,entryId); save(); renderDualChips(); renderDualStatBtns(); renderBox();
+  addLogSide(side,selNum,key,pts,neg,entryId); saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
 
   // ── FOUL TRACKING ──
   if(key==='foul'){
-    // Update team foul counter on scoreboard
-    var homeFouls=0, awayFouls=0;
-    var hStatsVals = typeof game.hStats === 'object' ? Object.values(game.hStats) : [];
-    var aStatsVals = typeof game.aStats === 'object' ? Object.values(game.aStats) : [];
-    hStatsVals.forEach(function(ps){ if(ps && typeof ps === 'object') homeFouls+=(ps.foul||0); });
-    aStatsVals.forEach(function(ps){ if(ps && typeof ps === 'object') awayFouls+=(ps.foul||0); });
-    var hEl=document.getElementById('home-team-fouls');
-    var aEl=document.getElementById('away-team-fouls');
-    if(hEl) hEl.textContent=homeFouls;
-    if(aEl) aEl.textContent=awayFouls;
-
-    // Foul-out warning at 5 fouls
+    // Foul-out warning at 5 fouls (team foul totals are already kept
+    // current by renderDualChips(), called just above)
     var playerFouls=st[selNum].foul||0;
     var ti=isH?game.hi:game.ai;
     var p=teams[ti].players.find(function(x){return x.num==selNum;});
@@ -2311,7 +2355,7 @@ function undoLast(){
   }
   var lb=document.getElementById('log-body');
   if(lb.lastChild&&lb.children.length>0) lb.removeChild(lb.lastChild);
-  save(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
 }
 
 function addLogSide(side,num,key,pts,neg,entryId){
@@ -2349,19 +2393,21 @@ function openLogEntryEditor(entryId){
   var ti=entry.side==='home'?game.hi:game.ai;
   var p=teams[ti].players.find(function(x){return x.num===entry.num||x.num==entry.num;});
 
-  // Sub / manual point entries get a simplified delete-only editor —
-  // reassigning a substitution or a manual point tweak to another player
-  // doesn't have a sensible meaning the way reassigning a stat does.
-  if(entry.key==='sub'||entry.key==='manual'){
+  // Sub / manual point / team foul entries get a simplified delete-only
+  // editor — reassigning these to another player doesn't have a sensible
+  // meaning the way reassigning a stat does.
+  if(entry.key==='sub'||entry.key==='manual'||entry.key==='teamfoul'){
     var subCycle={IN:'SUB',SUB:'OUT',OUT:'IN'};
     var subLabels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
-    var descLabel=entry.key==='sub'?(subLabels[subCycle[entry.prevStatus]]||'Sub'):((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts');
+    var descLabel=entry.key==='sub'?(subLabels[subCycle[entry.prevStatus]]||'Sub')
+      :entry.key==='teamfoul'?((entry.teamFoulDelta>=0?'Team Foul +':'Team Foul ')+entry.teamFoulDelta)
+      :((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts');
     var overlay2=document.createElement('div');
     overlay2.id='log-edit-overlay';
     overlay2.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;';
     overlay2.innerHTML='<div style="background:#141414;border:1px solid #333;border-radius:12px;padding:20px;max-width:380px;width:100%;">'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;">Edit Log Entry</div>'
-      +'<div style="font-size:13px;color:#888;margin-bottom:16px;">Currently: <strong style="color:#fff;">'+(p?p.name:'Player')+'</strong> — '+descLabel+'</div>'
+      +'<div style="font-size:13px;color:#888;margin-bottom:16px;">Currently: <strong style="color:#fff;">'+(entry.key==='teamfoul'?teams[ti].name:(p?p.name:'Player'))+'</strong> — '+descLabel+'</div>'
       +'<button class="btn" style="width:100%;background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="confirmDeleteLogEntry(\''+entryId+'\')">🗑 Delete this entry</button>'
       +'<button class="btn" style="width:100%;margin-top:8px;background:transparent;border:1px solid #333;" onclick="closeLogEntryEditor()">Cancel</button>'
       +'</div>';
@@ -2407,6 +2453,11 @@ function reverseLogEntryEffect(entry){
     if(status) status[entry.num]=entry.prevStatus||(status[entry.num]==='IN'?'OUT':'IN');
     return;
   }
+  if(entry.key==='teamfoul'){
+    var adjKey=entry.side==='home'?'hTeamFoulAdj':'aTeamFoulAdj';
+    game[adjKey]=Math.max(0,(game[adjKey]||0)-(entry.teamFoulDelta||0));
+    return;
+  }
   var st=entry.side==='home'?game.hStats:game.aStats;
   var row=st[entry.num]||st[String(entry.num)];
   if(!row)return;
@@ -2438,13 +2489,15 @@ function rebuildLogBody(){
   }
   lb.innerHTML='';
   logStack.forEach(function(entry){
-    if(entry.key==='sub'||entry.key==='manual'){
+    if(entry.key==='sub'||entry.key==='manual'||entry.key==='teamfoul'){
       var ti=entry.side==='home'?game.hi:game.ai;
       var p=teams[ti].players.find(function(x){return x.num===entry.num||x.num==entry.num;});
       addSubLogRow({
         id:entry.id, teamColor:teams[ti].color, teamName:teams[ti].name,
-        playerName:p?p.name:'',
-        label:entry.key==='sub'?(function(){var c={IN:'SUB',SUB:'OUT',OUT:'IN'};var l={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};return l[c[entry.prevStatus]]||'Sub';})():((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
+        playerName:entry.key==='teamfoul'?'Team':(p?p.name:''),
+        label:entry.key==='sub'?(function(){var c={IN:'SUB',SUB:'OUT',OUT:'IN'};var l={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};return l[c[entry.prevStatus]]||'Sub';})()
+          :entry.key==='teamfoul'?((entry.teamFoulDelta>=0?'Team Foul +':'Team Foul ')+entry.teamFoulDelta)
+          :((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
         pts:entry.pts, neg:entry.neg, clock:timerFmt(timerSeconds)
       });
     } else {
@@ -2463,7 +2516,7 @@ function confirmDeleteLogEntry(entryId){
     if(pIdx!==-1) game.playLog.splice(pIdx,1);
   }
   rebuildLogBody();
-  save(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
   closeLogEntryEditor();
 }
 
@@ -2497,7 +2550,7 @@ function confirmReassignLogEntry(entryId){
   }
 
   rebuildLogBody();
-  save(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
   closeLogEntryEditor();
 }
 
