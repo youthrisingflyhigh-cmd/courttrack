@@ -735,6 +735,22 @@ th, td { padding: 10px 8px !important; }
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Player Stats from Game History</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Every finished game keeps its own complete box score in Game History, independent of the season-long player totals. If those totals ever get out of sync (a device saving before it finished loading, a roster change, etc.), use this to recompute them from scratch by re-adding up every saved game — rather than trying to patch numbers by hand.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildPlayerStatsFromHistory()">🔧 Rebuild Player Stats from Game History</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Merge Player Stats</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">When someone's jersey number changes, their old stats get stuck under the old number as a "Former Player" instead of following them. Use this to fold those old stats into their current entry — sums everything together (points, rebounds, game log, etc.) and removes the old duplicate.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+        <div style="flex:1;min-width:220px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">MERGE STATS FROM (old/former entry)</div>
+          <select id="merge-from-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <div style="flex:1;min-width:220px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">INTO (current roster player)</div>
+          <select id="merge-into-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="mergePlayerStats()">🔀 Merge</button>
+      </div>
     </div>
   </div>
   <div class="card" style="margin-bottom:1.5rem;">
@@ -2173,6 +2189,80 @@ function rebuildPlayerStatsFromHistory(){
   if(typeof renderPlayerStats==='function') renderPlayerStats();
 }
 
+// ── MERGE: fold an old/former jersey-number entry into a current player ──
+// Stats are stored per team + jersey number, so a number change leaves the
+// old stats stranded under a "Former Player" entry instead of following
+// the person. This finds those stranded entries and lets you fold them
+// into whoever they actually belong to now.
+function getFormerEntriesAdmin(){
+  var rows=[];
+  teams.forEach(function(t){
+    var ps=playerStats[t.name]||{};
+    var currentNums={};
+    t.players.forEach(function(p){ currentNums[p.num]=true; });
+    Object.keys(ps).forEach(function(numKey){
+      if(currentNums[numKey]) return; // still on the roster, not "former"
+      var s=ps[numKey]||{};
+      var hasStats=(s.gp||0)>0 || (s.pts||0)>0 || (s.reb||0)>0 || (s.ast||0)>0;
+      if(!hasStats) return;
+      rows.push({team:t.name, num:numKey, s:s});
+    });
+  });
+  return rows;
+}
+
+function populateMergeDropdowns(){
+  var fromSel=document.getElementById('merge-from-select');
+  var intoSel=document.getElementById('merge-into-select');
+  if(!fromSel||!intoSel) return;
+  var formers=getFormerEntriesAdmin();
+  fromSel.innerHTML = formers.length
+    ? formers.map(function(f){ return '<option value="'+f.team+'|'+f.num+'">'+f.team+' — #'+f.num+' ('+(f.s.pts||0)+' pts, '+(f.s.gp||0)+' gp)</option>'; }).join('')
+    : '<option value="">No former entries found</option>';
+  var currentOpts=[];
+  teams.forEach(function(t){
+    t.players.forEach(function(p){
+      currentOpts.push('<option value="'+t.name+'|'+p.num+'">'+t.name+' — '+p.name+' #'+p.num+'</option>');
+    });
+  });
+  intoSel.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
+}
+
+function mergePlayerStats(){
+  var fromSel=document.getElementById('merge-from-select');
+  var intoSel=document.getElementById('merge-into-select');
+  var fromVal=fromSel?fromSel.value:'';
+  var intoVal=intoSel?intoSel.value:'';
+  if(!fromVal||!intoVal){ alert('Pick both a "from" and "into" entry.'); return; }
+  var fromParts=fromVal.split('|'), fromTeam=fromParts[0], fromNum=fromParts[1];
+  var intoParts=intoVal.split('|'), intoTeam=intoParts[0], intoNum=intoParts[1];
+  if(fromTeam===intoTeam && fromNum===intoNum){ alert('Those are the same entry.'); return; }
+  var fromStats=(playerStats[fromTeam]||{})[fromNum];
+  if(!fromStats){ alert('Could not find that "from" entry — try refreshing the page.'); return; }
+  var intoTeamObj=teams.find(function(t){return t.name===intoTeam;});
+  var intoPlayer=intoTeamObj?intoTeamObj.players.find(function(p){return String(p.num)===String(intoNum);}):null;
+  var intoName=intoPlayer?intoPlayer.name:('#'+intoNum);
+  if(!confirm('Merge '+fromTeam+' #'+fromNum+' ('+(fromStats.pts||0)+' pts, '+(fromStats.gp||0)+' gp) into '+intoTeam+' — '+intoName+' #'+intoNum+'?\n\nThis adds the old stats into the current entry and removes the old duplicate. It can\'t be automatically undone.')) return;
+
+  if(!playerStats[intoTeam]) playerStats[intoTeam]={};
+  if(!playerStats[intoTeam][intoNum]) playerStats[intoTeam][intoNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
+  var into=playerStats[intoTeam][intoNum];
+  ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'].forEach(function(k){ into[k]=(into[k]||0)+(fromStats[k]||0); });
+  if(fromStats.games && fromStats.games.length){
+    if(!into.games) into.games=[];
+    into.games=into.games.concat(fromStats.games);
+  }
+  delete playerStats[fromTeam][fromNum];
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet('ct/playerStats', playerStats);
+  alert('✅ Merged. '+intoName+' now has '+into.pts+' total points, '+into.gp+' games played.');
+  populateMergeDropdowns();
+}
+
 // ── TRACKING (dual-side: home and away independent) ──
 // selPlayerHome / selPlayerAway track selected player per side
 var selPlayerHome=null, selPlayerAway=null;
@@ -3222,6 +3312,7 @@ function showPage(p){
   if(p==='teams')     renderTeamsTab();
   if(p==='settings')  renderSettings();
   if(p==='registrations') renderRegistrations();
+  if(p==='settings' && typeof populateMergeDropdowns==='function') populateMergeDropdowns();
 }
 
 // ── SETTINGS ──
