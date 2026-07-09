@@ -738,6 +738,12 @@ th, td { padding: 10px 8px !important; }
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Backfill Missing Game Weeks</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">If a saved game shows up as "Week TBD" on the player Game Film page, it means its schedule entry never got marked final — usually because the game was started with home/away swapped from how the schedule listed it. This finds any saved game missing a week, matches it to the schedule (checking both team orders), and fixes both.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="backfillGameWeeks()">🗓 Backfill Missing Game Weeks</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Merge Player Stats</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">When someone's jersey number changes, their old stats get stuck under the old number as a "Former Player" instead of following them. Use this to fold those old stats into their current entry — sums everything together (points, rebounds, game log, etc.) and removes the old duplicate.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
@@ -750,6 +756,37 @@ th, td { padding: 10px 8px !important; }
           <select id="merge-into-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
         </div>
         <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="mergePlayerStats()">🔀 Merge</button>
+      </div>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Transfer Stats</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Fixes a scoring mix-up — e.g. a basket that was logged under the wrong player. Moves a specific amount of one stat from one current player's season totals to another's. This only adjusts season totals, not the original saved game's box score, so re-running "Rebuild from Game History" later would undo this — use Rebuild first if you need both.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">FROM (currently has the stat)</div>
+          <select id="transfer-from-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <div style="min-width:110px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">STAT</div>
+          <select id="transfer-stat-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;">
+            <option value="pts">Points</option>
+            <option value="reb">Rebounds</option>
+            <option value="ast">Assists</option>
+            <option value="stl">Steals</option>
+            <option value="blk">Blocks</option>
+            <option value="to">Turnovers</option>
+          </select>
+        </div>
+        <div style="min-width:90px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">AMOUNT</div>
+          <input type="number" id="transfer-amount-input" min="1" value="2" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;text-align:center;">
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">TO (should have the stat)</div>
+          <select id="transfer-to-select" style="width:100%;padding:10px;border-radius:8px;background:var(--dark3);border:1px solid #333;color:#fff;font-size:13px;"></select>
+        </div>
+        <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="transferPlayerStat()">↔ Transfer</button>
       </div>
     </div>
   </div>
@@ -2052,11 +2089,19 @@ function finishGame(){
     standings[an].pf=(standings[an].pf||0)+as_; standings[an].pa=(standings[an].pa||0)+hs;
     if(hs>as_){standings[hn].w++;standings[an].l++;}
     else if(as_>hs){standings[an].w++;standings[hn].l++;}
-    // Mark schedule game final
+    // Mark schedule game final — check both home/away orderings, since the
+    // live game may have been started with sides swapped from however the
+    // auto-generated schedule listed them.
     var matchedWeek=null;
     for(var s=0;s<schedule.length;s++){
-      if(schedule[s].home===hn&&schedule[s].away===an&&schedule[s].status==='upcoming'){
+      if(schedule[s].status!=='upcoming') continue;
+      if(schedule[s].home===hn&&schedule[s].away===an){
         schedule[s].status='final'; schedule[s].homeScore=hs; schedule[s].awayScore=as_;
+        matchedWeek=schedule[s].round||null;
+        break;
+      }
+      if(schedule[s].home===an&&schedule[s].away===hn){
+        schedule[s].status='final'; schedule[s].homeScore=as_; schedule[s].awayScore=hs;
         matchedWeek=schedule[s].round||null;
         break;
       }
@@ -2134,6 +2179,56 @@ function finishGame(){
     console.error('finishGame() failed before save could start:', err);
     alert('⚠️ Could not finish this game — hit an unexpected error before saving:\n\n'+err.message+'\n\nYour game data is untouched. Please screenshot this message and send it over.');
   }
+}
+
+// ── RECOVERY: fix saved games missing a week/schedule match ──
+// A saved game only shows "Week N" on the player Game Film page if its
+// schedule entry got marked final at save time — which requires an exact
+// home/away match. If a game was started with sides swapped from however
+// the schedule listed that matchup, it silently fell through as "Week TBD"
+// and its schedule entry stayed stuck on "upcoming". This finds any such
+// game, matches it against the schedule in either team order, and fixes
+// both the game's week and the schedule entry's status in one pass.
+function backfillGameWeeks(){
+  var hist = toArr(gameHistory);
+  if(!hist.length){
+    alert('No games found in Game History.');
+    return;
+  }
+  var fixed=0, skippedNoMatch=0;
+  hist.forEach(function(g){
+    if(!g || !g.home || !g.away) return;
+    if(g.week || g.week===0) return; // already has a week, nothing to do
+    var match=null;
+    for(var s=0;s<schedule.length;s++){
+      var sc=schedule[s];
+      if((sc.home===g.home&&sc.away===g.away)||(sc.home===g.away&&sc.away===g.home)){
+        match=sc; break;
+      }
+    }
+    if(!match){ skippedNoMatch++; return; }
+    g.week=match.round||null;
+    if(match.status==='upcoming'){
+      match.status='final';
+      if(match.home===g.home){ match.homeScore=g.homeScore; match.awayScore=g.awayScore; }
+      else { match.homeScore=g.awayScore; match.awayScore=g.homeScore; }
+    }
+    fixed++;
+  });
+  if(!fixed){
+    alert(skippedNoMatch>0
+      ? 'Found '+skippedNoMatch+' game(s) missing a week, but none matched anything in the current schedule — they may be from before the schedule was generated, or against a bye/removed team.'
+      : 'Nothing to backfill — every saved game already has a week assigned.');
+    return;
+  }
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  gameHistory=hist;
+  fbSet('ct/history', gameHistory);
+  fbSet('ct/schedule', schedule);
+  alert('✅ Fixed the week and schedule status for '+fixed+' game(s).'+(skippedNoMatch?(' '+skippedNoMatch+' other game(s) had no schedule match and were left as-is.'):''));
 }
 
 // ── RECOVERY: rebuild playerStats from scratch using Game History ──
@@ -2214,18 +2309,24 @@ function getFormerEntriesAdmin(){
 function populateMergeDropdowns(){
   var fromSel=document.getElementById('merge-from-select');
   var intoSel=document.getElementById('merge-into-select');
-  if(!fromSel||!intoSel) return;
-  var formers=getFormerEntriesAdmin();
-  fromSel.innerHTML = formers.length
-    ? formers.map(function(f){ return '<option value="'+f.team+'|'+f.num+'">'+f.team+' — #'+f.num+' ('+(f.s.pts||0)+' pts, '+(f.s.gp||0)+' gp)</option>'; }).join('')
-    : '<option value="">No former entries found</option>';
+  if(fromSel && intoSel){
+    var formers=getFormerEntriesAdmin();
+    fromSel.innerHTML = formers.length
+      ? formers.map(function(f){ return '<option value="'+f.team+'|'+f.num+'">'+f.team+' — #'+f.num+' ('+(f.s.pts||0)+' pts, '+(f.s.gp||0)+' gp)</option>'; }).join('')
+      : '<option value="">No former entries found</option>';
+  }
   var currentOpts=[];
   teams.forEach(function(t){
     t.players.forEach(function(p){
       currentOpts.push('<option value="'+t.name+'|'+p.num+'">'+t.name+' — '+p.name+' #'+p.num+'</option>');
     });
   });
-  intoSel.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
+  if(intoSel) intoSel.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
+
+  var transferFrom=document.getElementById('transfer-from-select');
+  var transferTo=document.getElementById('transfer-to-select');
+  if(transferFrom) transferFrom.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
+  if(transferTo) transferTo.innerHTML = currentOpts.length ? currentOpts.join('') : '<option value="">No players found</option>';
 }
 
 function mergePlayerStats(){
@@ -2260,6 +2361,49 @@ function mergePlayerStats(){
   }
   fbSet('ct/playerStats', playerStats);
   alert('✅ Merged. '+intoName+' now has '+into.pts+' total points, '+into.gp+' games played.');
+  populateMergeDropdowns();
+}
+
+// Fixes a scoring mix-up (points/rebounds/etc. logged under the wrong
+// player) by moving a specific amount of one stat from one current
+// player's season totals to another's. Doesn't touch gp or the original
+// game record — just the running total.
+function transferPlayerStat(){
+  var fromVal=document.getElementById('transfer-from-select').value;
+  var toVal=document.getElementById('transfer-to-select').value;
+  var statKey=document.getElementById('transfer-stat-select').value;
+  var amount=parseInt(document.getElementById('transfer-amount-input').value);
+  if(!fromVal||!toVal){ alert('Pick both a "from" and "to" player.'); return; }
+  if(fromVal===toVal){ alert('Those are the same player.'); return; }
+  if(isNaN(amount)||amount<=0){ alert('Enter a valid amount to transfer.'); return; }
+
+  var fromParts=fromVal.split('|'), fromTeam=fromParts[0], fromNum=fromParts[1];
+  var toParts=toVal.split('|'), toTeam=toParts[0], toNum=toParts[1];
+  var fromStats=(playerStats[fromTeam]||{})[fromNum];
+  if(!fromStats){ alert('Could not find that "from" player\'s stats — try refreshing the page.'); return; }
+  var fromTeamObj=teams.find(function(t){return t.name===fromTeam;});
+  var fromPlayer=fromTeamObj?fromTeamObj.players.find(function(p){return String(p.num)===String(fromNum);}):null;
+  var toTeamObj=teams.find(function(t){return t.name===toTeam;});
+  var toPlayer=toTeamObj?toTeamObj.players.find(function(p){return String(p.num)===String(toNum);}):null;
+  var fromName=fromPlayer?fromPlayer.name:('#'+fromNum);
+  var toName=toPlayer?toPlayer.name:('#'+toNum);
+  var statLabel={pts:'points',reb:'rebounds',ast:'assists',stl:'steals',blk:'blocks',to:'turnovers'}[statKey]||statKey;
+  var have=fromStats[statKey]||0;
+
+  if(!confirm('Move '+amount+' '+statLabel+' from '+fromName+' to '+toName+'?\n\n'+fromName+' currently has '+have+' '+statLabel+' — this will leave them with '+Math.max(0,have-amount)+'.\n\nThis only adjusts season totals, not the original saved game.')) return;
+
+  fromStats[statKey]=Math.max(0,have-amount);
+  if(!playerStats[toTeam]) playerStats[toTeam]={};
+  if(!playerStats[toTeam][toNum]) playerStats[toTeam][toNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
+  var toStats=playerStats[toTeam][toNum];
+  toStats[statKey]=(toStats[statKey]||0)+amount;
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet('ct/playerStats', playerStats);
+  alert('✅ Moved '+amount+' '+statLabel+'. '+fromName+' now has '+fromStats[statKey]+', '+toName+' now has '+toStats[statKey]+'.');
   populateMergeDropdowns();
 }
 
