@@ -461,6 +461,28 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     </tr></thead>
     <tbody id="p-body"></tbody></table>
   </div>
+
+  <!-- FORMER PLAYERS — stats that survive a roster change instead of just
+       disappearing. Only shows up if there actually are any. -->
+  <div id="former-players-section" style="display:none;">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:1.5rem 0 0.75rem;">Former Players</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:0.75rem;">No longer on a current roster (removed, or their number was reused), but their contribution is still counted in team totals.</div>
+    <div class="stats-card">
+      <table><thead><tr>
+        <th style="text-align:left;">#</th>
+        <th style="text-align:left;">Player</th>
+        <th style="text-align:left;">Team</th>
+        <th>PTS</th>
+        <th>REB</th>
+        <th>AST</th>
+        <th>STL</th>
+        <th>BLK</th>
+        <th>TO</th>
+        <th>GP</th>
+      </tr></thead>
+      <tbody id="former-p-body"></tbody></table>
+    </div>
+  </div>
 </div>
 
 <!-- LOCATIONS -->
@@ -669,6 +691,46 @@ function getAllPlayers(){
     var ps=playerStats[t.name]||{};
     t.players.forEach(function(p){
       rows.push({p:p,teamName:t.name,teamColor:t.color||'#FF5C00',s:ps[p.num]||{}});
+    });
+  });
+  return rows;
+}
+
+// Stats are stored per team + jersey number. If someone is removed from a
+// roster, or a number gets reused by a different person, their old stats
+// have nobody current to attach to and silently drop out of getAllPlayers().
+// This finds those orphaned entries and tries to recover the player's name
+// from old game history (which snapshots the roster at the time each game
+// was played), so their contribution stays visible instead of just
+// vanishing from the total.
+function getFormerPlayers(){
+  var rows=[];
+  teams.forEach(function(t){
+    var ps=playerStats[t.name]||{};
+    var currentNums={};
+    t.players.forEach(function(p){ currentNums[p.num]=true; });
+    Object.keys(ps).forEach(function(numKey){
+      if(currentNums[numKey]) return; // still on the roster, not "former"
+      var s=ps[numKey]||{};
+      var hasStats=(s.gp||0)>0 || (s.pts||0)>0 || (s.reb||0)>0 || (s.ast||0)>0;
+      if(!hasStats) return;
+      // Try to recover their name from the most recent game history entry
+      // that involved this team and this jersey number.
+      var name=null;
+      var hist=[];
+      try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
+      for(var i=hist.length-1; i>=0; i--){
+        var g=hist[i];
+        if(!g) continue;
+        var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
+        if(!roster) continue;
+        var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
+        if(match){ name=match.name; break; }
+      }
+      rows.push({
+        p:{num:numKey, name:name||('Former Player #'+numKey)},
+        teamName:t.name, teamColor:t.color||'#FF5C00', s:s
+      });
     });
   });
   return rows;
@@ -1298,6 +1360,32 @@ function renderPlayerStats(){
       +'<td>'+(r.s.gp||0)+'</td>'
     +'</tr>';
   }).join(''):'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
+
+  // Former players — only shown if there are any
+  var formerRows=getFormerPlayers();
+  if(q) formerRows=formerRows.filter(function(r){return r.p.name.toLowerCase().indexOf(q)>=0||r.teamName.toLowerCase().indexOf(q)>=0;});
+  var section=document.getElementById('former-players-section');
+  if(formerRows.length){
+    section.style.display='block';
+    formerRows.sort(function(a,b){ return (b.s.pts||0)-(a.s.pts||0); });
+    document.getElementById('former-p-body').innerHTML=formerRows.map(function(r){
+      return '<tr>'
+        +'<td style="text-align:left;"><span style="color:'+r.teamColor+';font-weight:700;">#'+r.p.num+'</span></td>'
+        +'<td style="text-align:left;">'+r.p.name+'</td>'
+        +'<td style="text-align:left;"><span style="display:inline-flex;align-items:center;gap:6px;">'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.teamColor+';display:inline-block;"></span>'+r.teamName+'</span></td>'
+        +'<td>'+(r.s.pts||0)+'</td>'
+        +'<td>'+(r.s.reb||0)+'</td>'
+        +'<td>'+(r.s.ast||0)+'</td>'
+        +'<td>'+(r.s.stl||0)+'</td>'
+        +'<td>'+(r.s.blk||0)+'</td>'
+        +'<td>'+(r.s.to||0)+'</td>'
+        +'<td>'+(r.s.gp||0)+'</td>'
+      +'</tr>';
+    }).join('');
+  } else {
+    section.style.display='none';
+  }
 }
 
 // ── LOCATIONS ──

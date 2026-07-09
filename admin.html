@@ -477,6 +477,30 @@ th, td { padding: 10px 8px !important; }
 
 <!-- LIVE TRACKING -->
 <div class="page" id="page-track">
+  <!-- ── STICKY MINI SCOREBAR ── always visible while scrolling down to
+       the player stat buttons, so you're never stuck scrolling back up
+       just to check the score/clock. Mirrors the full displays below. -->
+  <div id="sticky-scorebar" style="display:none;position:sticky;top:0;z-index:90;background:rgba(13,13,13,0.97);backdrop-filter:blur(6px);border-bottom:1px solid #2a2a2a;margin:0 -2rem 12px;padding:8px 2rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:5vw;flex-wrap:nowrap;max-width:900px;margin:0 auto;">
+      <div style="text-align:center;min-width:64px;">
+        <div id="mini-home-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">HOME</div>
+        <div id="mini-home-pts" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:#FF4500;line-height:1;">0</div>
+      </div>
+      <div style="text-align:center;min-width:70px;">
+        <div id="mini-clock" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#fff;line-height:1;">20:00</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">GAME</div>
+      </div>
+      <div style="text-align:center;min-width:44px;">
+        <div id="mini-shotclock" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#FF4500;line-height:1;">30</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">SHOT</div>
+      </div>
+      <div style="text-align:center;min-width:64px;">
+        <div id="mini-away-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">AWAY</div>
+        <div id="mini-away-pts" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:#fff;line-height:1;">0</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── CLOCKS (always visible in track tab) ── -->
   <div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap;" id="clocks-panel">
 
@@ -705,6 +729,14 @@ th, td { padding: 10px 8px !important; }
     <h2 style="font-size:32px;font-weight:900;color:var(--white);">Settings <span style="font-size:14px;font-weight:400;color:var(--muted);margin-left:8px;">Player view config</span></h2>
     <p style="font-size:13px;color:var(--muted);margin-top:4px;">Manage locations, Player of the Week, and live stream — all visible to players immediately.</p>
   </div>
+  <div class="card" style="margin-bottom:1.5rem;border-color:#7c2d2d;">
+    <div class="card-header"><h3>🛟 Data Tools</h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Player Stats from Game History</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Every finished game keeps its own complete box score in Game History, independent of the season-long player totals. If those totals ever get out of sync (a device saving before it finished loading, a roster change, etc.), use this to recompute them from scratch by re-adding up every saved game — rather than trying to patch numbers by hand.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildPlayerStatsFromHistory()">🔧 Rebuild Player Stats from Game History</button>
+    </div>
+  </div>
   <div class="card" style="margin-bottom:1.5rem;">
     <div class="card-header"><h3>📍 Locations</h3></div>
     <div class="card-body">
@@ -823,26 +855,32 @@ function shotClockFmt(s){ return s < 10 ? '0'+s : String(s); }
 
 function shotClockUpdate(){
   var el = document.getElementById('shot-clock-display');
+  var miniEl = document.getElementById('mini-shotclock');
   if(!el) return;
   if(shotClockOff){
     el.textContent = '—';
     el.style.opacity = '0.35';
     el.style.animation = '';
+    if(miniEl){ miniEl.textContent = '—'; miniEl.style.opacity = '0.35'; }
     if(db) db.ref('ct/game/shotClock').set({seconds: shotClockSeconds, running: shotClockRunning, off: true});
     return;
   }
   el.style.opacity = '1';
   el.textContent = shotClockSeconds;
+  if(miniEl){ miniEl.style.opacity = '1'; miniEl.textContent = shotClockSeconds; }
   // Warning colors
   if(shotClockSeconds <= 5){
     el.style.color = '#ef4444';
     el.style.animation = 'scBlink 0.4s infinite';
+    if(miniEl) miniEl.style.color = '#ef4444';
   } else if(shotClockSeconds <= 10){
     el.style.color = '#eab308';
     el.style.animation = '';
+    if(miniEl) miniEl.style.color = '#eab308';
   } else {
     el.style.color = '#FF4500';
     el.style.animation = '';
+    if(miniEl) miniEl.style.color = '#FF4500';
   }
   // Sync to Firebase
   if(db) db.ref('ct/game/shotClock').set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
@@ -1030,6 +1068,8 @@ function timerFmt(s){
 function timerUpdate(){
   var el = document.getElementById('game-timer-display');
   if(el) el.textContent = timerFmt(timerSeconds);
+  var miniEl = document.getElementById('mini-clock');
+  if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
   // Sync to Firebase regardless of game state
   if(db) db.ref('ct/game/clock').set({seconds: timerSeconds, running: timerRunning});
 }
@@ -1351,6 +1391,11 @@ function fbOnce(path,cb){ if(db) db.ref(path).once('value').then(function(s){cb(
 function fbListen(path,cb){ if(db) db.ref(path).on('value',function(s){cb(s.val());}); }
 
 function save(){
+  if(!_dataFullyLoaded){
+    console.error('Refused full save() — initial season data (standings/history/playerStats/schedule) never finished loading, so writing now risks overwriting real data with an incomplete snapshot.');
+    alert('⚠️ This device never fully confirmed it loaded the current season data (likely a slow/dropped connection). To protect existing stats and standings, that action was NOT saved.\n\nPlease refresh once you have a solid connection and try again.');
+    return;
+  }
   fbSet('ct/teams',teams);
   fbSet('ct/standings',standings);
   fbSet('ct/history',gameHistory);
@@ -1406,8 +1451,8 @@ function discardGame(){
 }
 
 // ── Boot: load all data then init ──
-var _loaded=0, _booted=false;
-function _check(){ if(++_loaded>=6 && !_booted) { _booted=true; onAllLoaded(); } }
+var _loaded=0, _booted=false, _dataFullyLoaded=false;
+function _check(){ if(++_loaded>=6){ _dataFullyLoaded=true; if(!_booted){ _booted=true; onAllLoaded(); } } }
 setTimeout(function(){ if(!_booted){ _booted=true; onAllLoaded(); } },5000);
 
 function toArr(v){
@@ -1441,6 +1486,7 @@ fbListen('ct/game', function(v){
     var hasGame=!!game;
     document.getElementById('no-game-track').style.display=hasGame?'none':'block';
     document.getElementById('track-content').style.display=hasGame?'block':'none';
+    document.getElementById('sticky-scorebar').style.display=hasGame?'block':'none';
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi]?teams[game.hi].name:'Home';
       document.getElementById('away-lbl').textContent=teams[game.ai]?teams[game.ai].name:'Away';
@@ -1448,6 +1494,12 @@ fbListen('ct/game', function(v){
       document.getElementById('away-pts').style.color=teams[game.ai]?teams[game.ai].color:'#888';
       document.getElementById('home-pts').textContent=game.homeScore||0;
       document.getElementById('away-pts').textContent=game.awayScore||0;
+      document.getElementById('mini-home-lbl').textContent=teams[game.hi]?teams[game.hi].name.toUpperCase():'HOME';
+      document.getElementById('mini-away-lbl').textContent=teams[game.ai]?teams[game.ai].name.toUpperCase():'AWAY';
+      document.getElementById('mini-home-pts').textContent=game.homeScore||0;
+      document.getElementById('mini-away-pts').textContent=game.awayScore||0;
+      document.getElementById('mini-home-pts').style.color=teams[game.hi]?teams[game.hi].color:'#FF4500';
+      document.getElementById('mini-away-pts').style.color=teams[game.ai]?teams[game.ai].color:'#888';
       renderDualChips(); renderDualStatBtns(); renderBox();
     }
   }
@@ -1463,6 +1515,8 @@ fbListen('ct/game/clock', function(v){
   timerSeconds = v.seconds;
   var el = document.getElementById('game-timer-display');
   if(el) el.textContent = timerFmt(timerSeconds);
+  var miniEl = document.getElementById('mini-clock');
+  if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
 });
 fbListen('ct/game/shotClock', function(v){
   if(!v || shotClockRunning) return;
@@ -1471,16 +1525,22 @@ fbListen('ct/game/shotClock', function(v){
   // Update the display directly — NOT via shotClockUpdate()/updateShotClockOffUI(),
   // since those write back to Firebase and would loop with this listener.
   var el = document.getElementById('shot-clock-display');
+  var miniEl = document.getElementById('mini-shotclock');
   if(el){
     if(shotClockOff){
       el.textContent = '—';
       el.style.opacity = '0.35';
       el.style.animation = '';
+      if(miniEl){ miniEl.textContent='—'; miniEl.style.opacity='0.35'; }
     } else {
       el.style.opacity = '1';
       el.textContent = shotClockSeconds;
       el.style.color = shotClockSeconds<=5?'#ef4444':shotClockSeconds<=10?'#eab308':'#FF4500';
       el.style.animation = shotClockSeconds<=5?'scBlink 0.4s infinite':'';
+      if(miniEl){
+        miniEl.style.opacity='1'; miniEl.textContent=shotClockSeconds;
+        miniEl.style.color = shotClockSeconds<=5?'#ef4444':shotClockSeconds<=10?'#eab308':'#FF4500';
+      }
     }
   }
   var btn = document.getElementById('shot-clock-off-btn');
@@ -1959,6 +2019,10 @@ window.retryPendingFinish = function(){
 function finishGame(){
   if(!game)return;
   if(_finishingGame)return;
+  if(!_dataFullyLoaded){
+    alert('⚠️ Hold on — this device never fully confirmed it loaded the current season stats/standings (likely a slow or dropped connection on load).\n\nFinishing the game now risks overwriting everyone\'s real stats with incomplete data. Please refresh the page once you have a solid connection, then finish the game again.');
+    return;
+  }
   if(!confirm('Finish this game and save results?'))return;
   _finishingGame=true;
   try{
@@ -2056,9 +2120,63 @@ function finishGame(){
   }
 }
 
+// ── RECOVERY: rebuild playerStats from scratch using Game History ──
+// Each finished game keeps its own complete box score in gameHistory,
+// independent of the running playerStats totals. If those totals ever get
+// corrupted or out of sync (e.g. a device saving before its own initial
+// load finished), this recomputes them cleanly from every saved game
+// instead of trying to patch numbers by hand.
+function rebuildPlayerStatsFromHistory(){
+  var hist = toArr(gameHistory);
+  if(!hist.length){
+    alert('No games found in Game History to rebuild from.');
+    return;
+  }
+  if(!confirm('This will recompute every player\'s season totals from scratch using the '+hist.length+' game(s) saved in Game History, and replace the current Player Stats with the result.\n\nUse this if totals ever look wrong or incomplete. Continue?')) return;
+
+  var rebuilt={};
+  function accumRebuild(teamName,players,statsObj,gameMeta){
+    if(!teamName || !players) return;
+    if(!rebuilt[teamName]) rebuilt[teamName]={};
+    players.forEach(function(p){
+      var gs=(statsObj&&statsObj[p.num])||{};
+      if(!rebuilt[teamName][p.num]) rebuilt[teamName][p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
+      var ps=rebuilt[teamName][p.num];
+      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){ ps[k]=(ps[k]||0)+(gs[k]||0); });
+      ps.gp++;
+      ps.games.push({
+        gameId:gameMeta.id,date:gameMeta.date,opp:gameMeta.opp,
+        pts:gs.pts||0,reb:gs.reb||0,ast:gs.ast||0,stl:gs.stl||0,blk:gs.blk||0,to:gs.to||0,
+        fgm:gs.fgm||0,'3pm':gs['3pm']||0,ftm:gs.ftm||0,
+        result:gameMeta.result
+      });
+    });
+  }
+
+  // Process oldest → newest so each player's game log reads chronologically
+  // (gameHistory itself is stored newest-first, via unshift in finishGame()).
+  var chronological=hist.slice().reverse();
+  chronological.forEach(function(g){
+    if(!g || !g.home || !g.away) return;
+    var hWin = (g.homeScore||0) > (g.awayScore||0);
+    accumRebuild(g.home, g.homePlayers, g.hStats, {id:g.id, date:g.date, opp:g.away, result:hWin?'W':'L'});
+    accumRebuild(g.away, g.awayPlayers, g.aStats, {id:g.id, date:g.date, opp:g.home, result:hWin?'L':'W'});
+  });
+
+  playerStats = rebuilt;
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet('ct/playerStats', playerStats);
+  alert('✅ Player Stats rebuilt from '+hist.length+' saved game(s) and re-synced.');
+  if(typeof renderPlayerStats==='function') renderPlayerStats();
+}
+
 // ── TRACKING (dual-side: home and away independent) ──
 // selPlayerHome / selPlayerAway track selected player per side
 var selPlayerHome=null, selPlayerAway=null;
+
 
 function setTrackTeam(side){
   // Legacy shim — keep for showPage init call; just renders both sides
@@ -2082,6 +2200,14 @@ function renderDualChips(){
   var aFoulEl=document.getElementById('away-team-fouls');
   if(hFoulEl) hFoulEl.textContent=homeFouls;
   if(aFoulEl) aFoulEl.textContent=awayFouls;
+  // Keep the sticky mini scorebar in sync too — renderDualChips() runs
+  // after nearly every action, so this is the most reliable single spot.
+  var miniHP=document.getElementById('mini-home-pts'), miniAP=document.getElementById('mini-away-pts');
+  var miniHL=document.getElementById('mini-home-lbl'), miniAL=document.getElementById('mini-away-lbl');
+  if(miniHP){ miniHP.textContent=game.homeScore||0; miniHP.style.color=ht.color||'#FF4500'; }
+  if(miniAP){ miniAP.textContent=game.awayScore||0; miniAP.style.color=at.color||'#888'; }
+  if(miniHL) miniHL.textContent=ht.name.toUpperCase();
+  if(miniAL) miniAL.textContent=at.name.toUpperCase();
   // Labels & dots
   document.getElementById('home-side-lbl').textContent=ht.name.toUpperCase();
   document.getElementById('away-side-lbl').textContent=at.name.toUpperCase();
@@ -2097,8 +2223,8 @@ function renderDualChips(){
     var sel=selNum===p.num||selNum===String(p.num);
     var pStats=stats[p.num]||stats[String(p.num)]||{pts:0,foul:0};
     var fouls=pStats.foul||0;
-    var foulColor=fouls>=5?'#ef4444':fouls===4?'#eab308':fouls>=2?'#FF4500':'#555';
-    var fouledOut=fouls>=5;
+    var foulColor=fouls>=6?'#ef4444':fouls===5?'#eab308':fouls>=2?'#FF4500':'#555';
+    var fouledOut=fouls>=6;
     var status=(statusMap&&statusMap[p.num]!==undefined)?statusMap[p.num]:(statusMap&&statusMap[String(p.num)]!==undefined?statusMap[String(p.num)]:'SUB');
     var statusStyle={
       IN:{border:'var(--green)',color:'var(--green)',bg:'rgba(34,197,94,0.12)'},
@@ -2328,16 +2454,16 @@ function doStatSide(side,key,pts,neg){
 
   // ── FOUL TRACKING ──
   if(key==='foul'){
-    // Foul-out warning at 5 fouls (team foul totals are already kept
+    // Foul-out warning at 6 fouls (team foul totals are already kept
     // current by renderDualChips(), called just above)
     var playerFouls=st[selNum].foul||0;
     var ti=isH?game.hi:game.ai;
     var p=teams[ti].players.find(function(x){return x.num==selNum;});
     var pName=p?p.name:'Player';
-    if(playerFouls>=5){
+    if(playerFouls>=6){
       alert('🚨 FOUL OUT: '+pName+' has '+playerFouls+' fouls — they must leave the game!');
-    } else if(playerFouls===4){
-      alert('⚠️ FOUL TROUBLE: '+pName+' has 4 fouls — one more and they foul out!');
+    } else if(playerFouls===5){
+      alert('⚠️ FOUL TROUBLE: '+pName+' has 5 fouls — one more and they foul out!');
     }
   }
 }
@@ -3072,6 +3198,7 @@ function showPage(p){
     var hasGame=!!game;
     document.getElementById('no-game-track').style.display=hasGame?'none':'block';
     document.getElementById('track-content').style.display=hasGame?'block':'none';
+    document.getElementById('sticky-scorebar').style.display=hasGame?'block':'none';
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi].name;
       document.getElementById('away-lbl').textContent=teams[game.ai].name;
@@ -3079,6 +3206,12 @@ function showPage(p){
       document.getElementById('away-pts').style.color=teams[game.ai].color;
       document.getElementById('home-pts').textContent=game.homeScore;
       document.getElementById('away-pts').textContent=game.awayScore;
+      document.getElementById('mini-home-lbl').textContent=teams[game.hi].name.toUpperCase();
+      document.getElementById('mini-away-lbl').textContent=teams[game.ai].name.toUpperCase();
+      document.getElementById('mini-home-pts').textContent=game.homeScore;
+      document.getElementById('mini-away-pts').textContent=game.awayScore;
+      document.getElementById('mini-home-pts').style.color=teams[game.hi].color;
+      document.getElementById('mini-away-pts').style.color=teams[game.ai].color;
       selPlayerHome=null; selPlayerAway=null;
       renderDualChips(); renderDualStatBtns(); renderBox();
     }
