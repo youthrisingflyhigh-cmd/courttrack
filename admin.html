@@ -488,11 +488,13 @@ th, td { padding: 10px 8px !important; }
       </div>
       <div style="text-align:center;min-width:70px;">
         <div id="mini-clock" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#fff;line-height:1;">20:00</div>
-        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">GAME</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">GAME</div>
+        <button id="mini-clock-btn" onclick="toggleMiniTimer()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
       </div>
       <div style="text-align:center;min-width:44px;">
         <div id="mini-shotclock" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#FF4500;line-height:1;">30</div>
-        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">SHOT</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">SHOT</div>
+        <button id="mini-shotclock-btn" onclick="toggleMiniShotClock()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
       </div>
       <div style="text-align:center;min-width:64px;">
         <div id="mini-away-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">AWAY</div>
@@ -502,7 +504,10 @@ th, td { padding: 10px 8px !important; }
   </div>
 
   <!-- ── CLOCKS (always visible in track tab) ── -->
-  <div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap;" id="clocks-panel">
+  <div style="display:flex;justify-content:center;margin:8px 0 4px;">
+    <button id="clocks-toggle-btn" onclick="toggleClocksPanel()" style="background:transparent;border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;padding:6px 16px;border-radius:99px;cursor:pointer;">▲ Hide Clock Controls</button>
+  </div>
+  <div style="display:flex;gap:12px;margin:4px 0 12px;flex-wrap:wrap;" id="clocks-panel">
 
     <!-- GAME CLOCK -->
     <div style="flex:2;min-width:220px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;">
@@ -981,6 +986,8 @@ function shotClockStart(){
   unlockHornAudio();
   var btn = document.getElementById('shot-clock-start-btn');
   if(btn){ btn.style.background = '#22c55e'; btn.textContent = '▶'; }
+  var miniBtn=document.getElementById('mini-shotclock-btn');
+  if(miniBtn){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
   shotClockInterval = setInterval(function(){
     if(shotClockSeconds > 0){
       shotClockSeconds--;
@@ -1002,7 +1009,13 @@ function shotClockStop(){
   shotClockInterval = null;
   var btn = document.getElementById('shot-clock-start-btn');
   if(btn){ btn.style.background = '#FF4500'; btn.textContent = '▶'; }
+  var miniBtn=document.getElementById('mini-shotclock-btn');
+  if(miniBtn){ miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   shotClockUpdate();
+}
+
+function toggleMiniShotClock(){
+  if(shotClockRunning) shotClockStop(); else shotClockStart();
 }
 
 function shotClockReset(){
@@ -1025,6 +1038,37 @@ function shotClockSet(secs){
 // Turns the shot clock off entirely — for when it's not being tracked for
 // a stretch of play. Stops any countdown, grays out the display, and syncs
 // that state to scoreboard.html too.
+// Collapses the detailed clock controls (nudge buttons, custom set,
+// horn buttons) to save vertical space on smaller screens — the sticky
+// mini scorebar up top still shows the live score/clock either way, so
+// nothing important disappears, just the buttons you only need
+// occasionally. Remembers your preference across reloads.
+function toggleClocksPanel(){
+  var panel=document.getElementById('clocks-panel');
+  var btn=document.getElementById('clocks-toggle-btn');
+  if(!panel||!btn) return;
+  var collapsed = panel.style.display==='none';
+  if(collapsed){
+    panel.style.display='flex';
+    btn.textContent='▲ Hide Clock Controls';
+    localStorage.setItem('ct_clocks_collapsed','0');
+  } else {
+    panel.style.display='none';
+    btn.textContent='▼ Show Clock Controls';
+    localStorage.setItem('ct_clocks_collapsed','1');
+  }
+}
+// Restore the last collapse preference once the track page's elements exist.
+function restoreClocksPanelState(){
+  var panel=document.getElementById('clocks-panel');
+  var btn=document.getElementById('clocks-toggle-btn');
+  if(!panel||!btn) return;
+  if(localStorage.getItem('ct_clocks_collapsed')==='1'){
+    panel.style.display='none';
+    btn.textContent='▼ Show Clock Controls';
+  }
+}
+
 function toggleShotClockOff(){
   shotClockOff = !shotClockOff;
   if(shotClockOff) shotClockStop();
@@ -1168,6 +1212,8 @@ function timerStart(){
   unlockHornAudio(); // unlock audio now, on a real tap, so the horn can fire later without another gesture
   document.getElementById('timer-start-btn').style.background = '#22c55e';
   document.getElementById('timer-start-btn').textContent = '▶ Running';
+  var miniBtn=document.getElementById('mini-clock-btn');
+  if(miniBtn){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
   timerInterval = setInterval(function(){
     if(timerSeconds > 0){
       timerSeconds--;
@@ -1187,7 +1233,13 @@ function timerStop(){
   timerInterval = null;
   var btn = document.getElementById('timer-start-btn');
   if(btn){ btn.style.background = '#FF4500'; btn.textContent = '▶ Start'; }
+  var miniBtn=document.getElementById('mini-clock-btn');
+  if(miniBtn){ miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   timerUpdate();
+}
+
+function toggleMiniTimer(){
+  if(timerRunning) timerStop(); else timerStart();
 }
 
 function timerReset(){
@@ -1605,6 +1657,11 @@ fbListen('ct/game/clock', function(v){
   if(el) el.textContent = timerFmt(timerSeconds);
   var miniEl = document.getElementById('mini-clock');
   if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
+  var miniBtn=document.getElementById('mini-clock-btn');
+  if(miniBtn){
+    if(v.running){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
+    else { miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
+  }
 });
 fbListen('ct/game/shotClock', function(v){
   if(!v || shotClockRunning) return;
@@ -1636,6 +1693,11 @@ fbListen('ct/game/shotClock', function(v){
     btn.textContent = shotClockOff ? 'Shot Clock: OFF' : 'Shot Clock: ON';
     btn.style.background = shotClockOff ? '#7c2d2d' : 'var(--dark3)';
     btn.style.color = shotClockOff ? '#fca5a5' : 'var(--muted)';
+  }
+  var miniBtn=document.getElementById('mini-shotclock-btn');
+  if(miniBtn){
+    if(v.running){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
+    else { miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   }
 });
 
@@ -1801,18 +1863,18 @@ function startGame(){
 }
 
 // ── STARTING LINEUP SELECTOR ──
-var lineupHi=null, lineupAi=null, lineupHomeSel=[], lineupAwaySel=[];
+var lineupHi=null, lineupAi=null, lineupHomeSel=[], lineupAwaySel=[], lineupHomeOut=[], lineupAwayOut=[];
 
 function lineupNeeded(ti){ return Math.min(5, teams[ti].players.length); }
 
 function openLineupModal(hi,ai){
-  lineupHi=hi; lineupAi=ai; lineupHomeSel=[]; lineupAwaySel=[];
+  lineupHi=hi; lineupAi=ai; lineupHomeSel=[]; lineupAwaySel=[]; lineupHomeOut=[]; lineupAwayOut=[];
   var overlay=document.createElement('div');
   overlay.id='lineup-modal-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
   overlay.innerHTML='<div style="background:#141414;border:1px solid #333;border-radius:12px;padding:22px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;">'
     +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;">🏀 Starting Lineups</div>'
-    +'<div style="font-size:13px;color:#888;margin-bottom:18px;">Pick '+lineupNeeded(hi)+' starters for <strong style="color:#fff;">'+teams[hi].name+'</strong> and '+lineupNeeded(ai)+' for <strong style="color:#fff;">'+teams[ai].name+'</strong> before tip-off.</div>'
+    +'<div style="font-size:13px;color:#888;margin-bottom:18px;">Pick '+lineupNeeded(hi)+' starters for <strong style="color:#fff;">'+teams[hi].name+'</strong> and '+lineupNeeded(ai)+' for <strong style="color:#fff;">'+teams[ai].name+'</strong> before tip-off. Mark anyone OUT/injured so they\'re excluded from the start.</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'
     +'<div><div style="font-size:12px;font-weight:700;color:'+teams[hi].color+';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'+teams[hi].name+' <span id="lineup-home-count" style="color:#888;font-weight:600;">(0/'+lineupNeeded(hi)+')</span></div>'
     +'<div id="lineup-home-list" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;"></div></div>'
@@ -1832,12 +1894,15 @@ function renderLineupList(side,ti){
   var listEl=document.getElementById('lineup-'+side+'-list');
   if(!listEl)return;
   var sel=side==='home'?lineupHomeSel:lineupAwaySel;
+  var outs=side==='home'?lineupHomeOut:lineupAwayOut;
   listEl.innerHTML=teams[ti].players.map(function(p){
     var checked=sel.indexOf(p.num)!==-1;
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:'+(checked?'rgba(255,92,0,0.1)':'#1e1e1e')+';border:1px solid '+(checked?'var(--orange)':'#2a2a2a')+';border-radius:7px;cursor:pointer;">'
-      +'<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleLineupPlayer(\''+side+'\','+p.num+')" style="width:16px;height:16px;flex-shrink:0;">'
+    var isOut=outs.indexOf(p.num)!==-1;
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:'+(isOut?'rgba(239,68,68,0.08)':checked?'rgba(255,92,0,0.1)':'#1e1e1e')+';border:1px solid '+(isOut?'#7c2d2d':checked?'var(--orange)':'#2a2a2a')+';border-radius:7px;cursor:pointer;'+(isOut?'opacity:0.6;':'')+'">'
+      +'<input type="checkbox" '+(checked?'checked':'')+(isOut?' disabled':'')+' onchange="toggleLineupPlayer(\''+side+'\','+p.num+')" style="width:16px;height:16px;flex-shrink:0;">'
       +'<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:14px;min-width:24px;">#'+p.num+'</span>'
-      +'<span style="font-size:13px;font-weight:600;color:#fff;">'+p.name+'</span>'
+      +'<span style="font-size:13px;font-weight:600;color:#fff;flex:1;">'+p.name+(isOut?' <span style="color:#f87171;font-weight:700;font-size:11px;">OUT</span>':'')+'</span>'
+      +'<button type="button" onclick="event.preventDefault();toggleLineupOut(\''+side+'\','+p.num+')" '+(checked?'disabled style="opacity:0.3;"':'')+' style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;border:1px solid '+(isOut?'#ef4444':'#555')+';color:'+(isOut?'#f87171':'#999')+';background:transparent;cursor:pointer;flex-shrink:0;">'+(isOut?'✓ OUT':'Mark OUT')+'</button>'
       +'</label>';
   }).join('');
 }
@@ -1861,10 +1926,25 @@ function toggleLineupPlayer(side,num){
   if(btn) btn.disabled=!ok;
 }
 
+// Marks a bench player as OUT/injured right from the start, so they're
+// excluded from stat-taking from tip-off instead of needing to cycle
+// their status after the game begins. A player who's a starter can't be
+// marked out (check them out of the lineup first).
+function toggleLineupOut(side,num){
+  var ti=side==='home'?lineupHi:lineupAi;
+  var sel=side==='home'?lineupHomeSel:lineupAwaySel;
+  if(sel.indexOf(num)!==-1) return; // starters can't be marked out
+  var outs=side==='home'?lineupHomeOut:lineupAwayOut;
+  var idx=outs.indexOf(num);
+  if(idx!==-1) outs.splice(idx,1);
+  else outs.push(num);
+  renderLineupList(side,ti);
+}
+
 function closeLineupModal(){
   var overlay=document.getElementById('lineup-modal-overlay');
   if(overlay) overlay.remove();
-  lineupHi=null; lineupAi=null; lineupHomeSel=[]; lineupAwaySel=[];
+  lineupHi=null; lineupAi=null; lineupHomeSel=[]; lineupAwaySel=[]; lineupHomeOut=[]; lineupAwayOut=[];
 }
 
 function confirmStartGame(){
@@ -1872,10 +1952,11 @@ function confirmStartGame(){
   if(hi==null||ai==null)return;
   if(lineupHomeSel.length!==lineupNeeded(hi)||lineupAwaySel.length!==lineupNeeded(ai))return;
   function mk(pl){var s={};pl.forEach(function(p){s[p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0};});return s;}
-  function mkStatus(pl,starters){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':'SUB';});return s;}
+  function mkStatus(pl,starters,outs){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':(outs.indexOf(p.num)!==-1?'OUT':'SUB');});return s;}
   var homeSelSnap=lineupHomeSel.slice(), awaySelSnap=lineupAwaySel.slice();
+  var homeOutSnap=lineupHomeOut.slice(), awayOutSnap=lineupAwayOut.slice();
   game={hi:hi,ai:ai,homeScore:0,awayScore:0,hStats:mk(teams[hi].players),aStats:mk(teams[ai].players),
-    hStatus:mkStatus(teams[hi].players,homeSelSnap),aStatus:mkStatus(teams[ai].players,awaySelSnap),
+    hStatus:mkStatus(teams[hi].players,homeSelSnap,homeOutSnap),aStatus:mkStatus(teams[ai].players,awaySelSnap,awayOutSnap),
     hLineup:homeSelSnap,aLineup:awaySelSnap,
     q:1,playLog:[],hTeamFoulAdj:0,aTeamFoulAdj:0,
     date:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})};
@@ -2406,8 +2487,37 @@ function mergePlayerStats(){
   var intoTeamObj=teams.find(function(t){return t.name===intoTeam;});
   var intoPlayer=intoTeamObj?intoTeamObj.players.find(function(p){return String(p.num)===String(intoNum);}):null;
   var intoName=intoPlayer?intoPlayer.name:('#'+intoNum);
-  if(!confirm('Merge '+fromTeam+' #'+fromNum+' ('+(fromStats.pts||0)+' pts, '+(fromStats.gp||0)+' gp) into '+intoTeam+' — '+intoName+' #'+intoNum+'?\n\nThis adds the old stats into the current entry and removes the old duplicate. It can\'t be automatically undone.')) return;
+  if(!confirm('Merge '+fromTeam+' #'+fromNum+' ('+(fromStats.pts||0)+' pts, '+(fromStats.gp||0)+' gp) into '+intoTeam+' — '+intoName+' #'+intoNum+'?\n\nThis patches every past game that used the old number so the fix is permanent, then re-rebuilds season totals to match. It can\'t be automatically undone.')) return;
 
+  // Patch every past game record for this team where the old number
+  // appears, renaming it to the current player's number/name — this is
+  // what makes the merge survive a future Rebuild, instead of just
+  // patching the season-total accumulator that Rebuild would overwrite.
+  var hist=toArr(gameHistory);
+  var gamesPatched=0, gamesSkipped=0;
+  hist.forEach(function(g){
+    if(!g) return;
+    var sides=[];
+    if(g.home===fromTeam) sides.push({statsKey:'hStats',playersKey:'homePlayers'});
+    if(g.away===fromTeam) sides.push({statsKey:'aStats',playersKey:'awayPlayers'});
+    sides.forEach(function(side){
+      var statsObj=g[side.statsKey];
+      var playersArr=g[side.playersKey];
+      if(!statsObj || !statsObj[fromNum]) return; // this game doesn't involve the old number
+      if(statsObj[intoNum]){ gamesSkipped++; return; } // both numbers appear in this game — don't collide, skip
+      statsObj[intoNum]=statsObj[fromNum];
+      delete statsObj[fromNum];
+      if(playersArr){
+        var pEntry=playersArr.find(function(p){return String(p.num)===String(fromNum);});
+        if(pEntry){ pEntry.num=intoNum; pEntry.name=intoName; }
+      }
+      gamesPatched++;
+    });
+  });
+  gameHistory=hist;
+
+  // Also merge the season-total accumulator directly, so it's correct
+  // immediately even before the rebuild below runs.
   if(!playerStats[intoTeam]) playerStats[intoTeam]={};
   if(!playerStats[intoTeam][intoNum]) playerStats[intoTeam][intoNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
   var into=playerStats[intoTeam][intoNum];
@@ -2422,8 +2532,10 @@ function mergePlayerStats(){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
+  fbSet('ct/history', gameHistory);
   fbSet('ct/playerStats', playerStats);
-  alert('✅ Merged. '+intoName+' now has '+into.pts+' total points, '+into.gp+' games played.');
+  alert('✅ Patched '+gamesPatched+' past game(s)'+(gamesSkipped?(', skipped '+gamesSkipped+' due to a number collision in that game — review manually'):'')+'. Re-rebuilding season totals now — hit OK on the next prompt to finish.');
+  rebuildPlayerStatsFromHistory();
   populateMergeDropdowns();
 }
 
@@ -3545,6 +3657,7 @@ function showPage(p){
     document.getElementById('no-game-track').style.display=hasGame?'none':'block';
     document.getElementById('track-content').style.display=hasGame?'block':'none';
     document.getElementById('sticky-scorebar').style.display=hasGame?'block':'none';
+    restoreClocksPanelState();
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi].name;
       document.getElementById('away-lbl').textContent=teams[game.ai].name;
