@@ -1233,6 +1233,9 @@ function timerStart(){
     }
   }, 1000);
   timerUpdate();
+  // Starting the game clock (play resumes) starts the shot clock back up
+  // too, as long as it's actually in use — matches the auto-stop pairing.
+  if(!shotClockOff && !shotClockRunning) shotClockStart();
 }
 
 function timerStop(){
