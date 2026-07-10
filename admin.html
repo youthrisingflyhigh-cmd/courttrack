@@ -2712,7 +2712,7 @@ function renderDualChips(){
     var color=teamObj.color;
     var pendingNum=isHome?pendingSubHome:pendingSubAway;
     var isPending=pendingNum!==null&&(pendingNum===p.num||pendingNum===String(p.num));
-    return '<div class="player-chip" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
+    return '<div class="player-chip" data-side="'+side+'" data-num="'+p.num+'" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
       +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
       +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+(isPending?' <span style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick swap</span>':'')+'</div>'
       +'<div class="ppts">'+pStats.pts+' pts</div>'
@@ -2844,6 +2844,18 @@ function performSwap(side,numA,numB){
     addSubLogRow(entry);
   });
   saveGame(); renderDualChips();
+  // The chip list re-sorts by status right away (IN players float up), so
+  // the two players that just swapped can land in new spots — flash them
+  // so it's obvious the swap actually happened even though the list moved.
+  [keyA,keyB].forEach(function(n){
+    var el=document.querySelector('.player-chip[data-side="'+side+'"][data-num="'+n+'"]');
+    if(el){
+      el.style.transition='background 0.15s';
+      var origBg=el.style.background;
+      el.style.background='rgba(96,165,250,0.35)';
+      setTimeout(function(){ el.style.background=origBg; },700);
+    }
+  });
 }
 
 function addSubLogRow(entry){
