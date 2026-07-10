@@ -495,7 +495,10 @@ th, td { padding: 10px 8px !important; }
       <div style="text-align:center;min-width:44px;">
         <div id="mini-shotclock" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#FF4500;line-height:1;">30</div>
         <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">SHOT</div>
-        <button id="mini-shotclock-btn" onclick="toggleMiniShotClock()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
+        <div style="display:flex;gap:4px;justify-content:center;">
+          <button id="mini-shotclock-btn" onclick="toggleMiniShotClock()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
+          <button onclick="shotClockReset()" title="Reset shot clock" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;border:1px solid #555;color:#ccc;background:var(--dark3);cursor:pointer;">↺</button>
+        </div>
       </div>
       <div style="text-align:center;min-width:64px;">
         <div id="mini-away-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">AWAY</div>
@@ -1241,6 +1244,9 @@ function timerStop(){
   var miniBtn=document.getElementById('mini-clock-btn');
   if(miniBtn){ miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   timerUpdate();
+  // Stopping the game clock (timeout, dead ball, whistle) stops the shot
+  // clock too, same as a real game — one tap handles both instead of two.
+  if(shotClockRunning) shotClockStop();
 }
 
 function toggleMiniTimer(){
@@ -2639,6 +2645,9 @@ function transferGameBoxScoreStat(){
 // ── TRACKING (dual-side: home and away independent) ──
 // selPlayerHome / selPlayerAway track selected player per side
 var selPlayerHome=null, selPlayerAway=null;
+// For the sub-swap flow: tap one player's status pill, then tap another's
+// to swap them (whoever's coming out ⇄ whoever's coming in) in one action.
+var pendingSubHome=null, pendingSubAway=null;
 
 
 function setTrackTeam(side){
@@ -2698,12 +2707,15 @@ function renderDualChips(){
       OUT:{border:'#ef4444',color:'#f87171',bg:'rgba(239,68,68,0.12)'}
     }[status]||{border:'#555',color:'#999',bg:'rgba(255,255,255,0.04)'};
     var color=teamObj.color;
-    return '<div class="player-chip" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+'">'
+    var pendingNum=isHome?pendingSubHome:pendingSubAway;
+    var isPending=pendingNum!==null&&(pendingNum===p.num||pendingNum===String(p.num));
+    return '<div class="player-chip" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
       +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
-      +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+'</div>'
+      +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+(isPending?' <span style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick swap</span>':'')+'</div>'
       +'<div class="ppts">'+pStats.pts+' pts</div>'
       +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F</div></div>'
       +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
+      +'<button type="button" onclick="event.stopPropagation();triggerSwap(\''+side+'\','+p.num+')" title="Swap this player with another — tap here, then tap who they\'re subbing with" style="margin-left:4px;font-size:11px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid '+(isPending?'#60a5fa':'#444')+';color:'+(isPending?'#60a5fa':'#888')+';background:'+(isPending?'rgba(96,165,250,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;">⇄</button>'
       +'</div>';
   }
 
@@ -2768,6 +2780,66 @@ function toggleSub(side,num){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:key,key:'sub',pts:0,neg:next==='OUT',prevStatus:cur});
   addSubLogRow(entry);
+  saveGame(); renderDualChips();
+}
+
+// ── SUB SWAP (two-tap) ──
+// Tap a player's ⇄ button to select them, then tap another player's ⇄ to
+// swap the two of them — whoever's coming out and whoever's coming in
+// trade statuses in one action, instead of cycling each one separately.
+// Tapping the same player again cancels the pending selection.
+function triggerSwap(side,num){
+  var pending = side==='home' ? pendingSubHome : pendingSubAway;
+  if(pending===null){
+    if(side==='home') pendingSubHome=num; else pendingSubAway=num;
+    renderDualChips();
+    return;
+  }
+  if(String(pending)===String(num)){
+    if(side==='home') pendingSubHome=null; else pendingSubAway=null;
+    renderDualChips();
+    return;
+  }
+  performSwap(side,pending,num);
+  if(side==='home') pendingSubHome=null; else pendingSubAway=null;
+}
+
+function performSwap(side,numA,numB){
+  if(!game) return;
+  var isHome=side==='home';
+  if(isHome && !game.hStatus) game.hStatus={};
+  if(!isHome && !game.aStatus) game.aStatus={};
+  var statusMap=isHome?game.hStatus:game.aStatus;
+  var keyA=statusMap[numA]!==undefined?numA:String(numA);
+  var keyB=statusMap[numB]!==undefined?numB:String(numB);
+  var statusA=statusMap[keyA]!==undefined?statusMap[keyA]:'SUB';
+  var statusB=statusMap[keyB]!==undefined?statusMap[keyB]:'SUB';
+  if(statusA===statusB){
+    alert('Both players are already '+statusA+' — nothing to swap.');
+    renderDualChips();
+    return;
+  }
+  statusMap[keyA]=statusB;
+  statusMap[keyB]=statusA;
+
+  var ti=isHome?game.hi:game.ai;
+  var pA=teams[ti].players.find(function(x){return x.num==numA;});
+  var pB=teams[ti].players.find(function(x){return x.num==numB;});
+  var labels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
+  if(!game.playLog) game.playLog=[];
+  [{num:keyA,p:pA,prev:statusA,next:statusB},{num:keyB,p:pB,prev:statusB,next:statusA}].forEach(function(x){
+    var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    var entry={
+      id:entryId, side:side, num:x.num,
+      playerName:x.p?x.p.name:'', teamName:teams[ti].name, teamColor:teams[ti].color,
+      key:'sub', label:labels[x.next]||x.next, pts:0, neg:x.next==='OUT',
+      score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds),
+      timestamp:Date.now(), prevStatus:x.prev
+    };
+    game.playLog.push(entry);
+    logStack.push({id:entryId,side:side,num:x.num,key:'sub',pts:0,neg:x.next==='OUT',prevStatus:x.prev});
+    addSubLogRow(entry);
+  });
   saveGame(); renderDualChips();
 }
 
