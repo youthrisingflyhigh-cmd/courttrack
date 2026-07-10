@@ -480,11 +480,12 @@ th, td { padding: 10px 8px !important; }
   <!-- ── STICKY MINI SCOREBAR ── always visible while scrolling down to
        the player stat buttons, so you're never stuck scrolling back up
        just to check the score/clock. Mirrors the full displays below. -->
-  <div id="sticky-scorebar" style="display:none;position:sticky;top:0;z-index:90;background:rgba(13,13,13,0.97);backdrop-filter:blur(6px);border-bottom:1px solid #2a2a2a;margin:0 -2rem 12px;padding:8px 2rem;">
+  <div id="sticky-scorebar" style="display:none;position:sticky;top:56px;z-index:90;background:rgba(13,13,13,0.97);backdrop-filter:blur(6px);border-bottom:1px solid #2a2a2a;margin:0 -2rem 12px;padding:8px 2rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:5vw;flex-wrap:nowrap;max-width:900px;margin:0 auto;">
       <div style="text-align:center;min-width:64px;">
         <div id="mini-home-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">HOME</div>
         <div id="mini-home-pts" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:#FF4500;line-height:1;">0</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px;">F: <span id="mini-home-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
       </div>
       <div style="text-align:center;min-width:70px;">
         <div id="mini-clock" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#fff;line-height:1;">20:00</div>
@@ -499,6 +500,7 @@ th, td { padding: 10px 8px !important; }
       <div style="text-align:center;min-width:64px;">
         <div id="mini-away-lbl" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">AWAY</div>
         <div id="mini-away-pts" style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:#fff;line-height:1;">0</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px;">F: <span id="mini-away-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
       </div>
     </div>
   </div>
@@ -595,9 +597,10 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="home-lbl">Home</div>
         <div class="team-pts" id="home-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span>
-          <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
-          <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
+          <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
       </div>
       <div style="text-align:center;">
@@ -611,19 +614,15 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
         <div class="team-pts" id="away-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span>
-          <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
-          <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:20px;height:20px;border-radius:5px;background:var(--dark3);border:1px solid #444;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
+          <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
       </div>
     </div>
 
 
-    <!-- Finish button -->
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:1.2rem;">
-      <button class="btn-ghost" style="border:1px solid #7c2d2d;color:#fca5a5;" onclick="discardGame()" title="Wipe this in-progress game without saving it to schedule/standings/history — use for testing.">🗑 Discard Game</button>
-      <button class="finish-btn" onclick="finishGame()">✓ Finish & Save Game</button>
-    </div>
     <!-- Side-by-side Home / Away tracking -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.5rem;" id="dual-track-grid">
       <!-- HOME SIDE -->
@@ -664,6 +663,12 @@ th, td { padding: 10px 8px !important; }
           </div>
         </div>
       </div>
+    </div>
+    <!-- Finish button — sits right after the stat buttons, above the game
+         log, so you don't have to scroll back up to end the game. -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:1.5rem;">
+      <button class="btn-ghost" style="border:1px solid #7c2d2d;color:#fca5a5;" onclick="discardGame()" title="Wipe this in-progress game without saving it to schedule/standings/history — use for testing.">🗑 Discard Game</button>
+      <button class="finish-btn" onclick="finishGame()">✓ Finish & Save Game</button>
     </div>
     <!-- Game log -->
     <div class="log-panel" style="margin-bottom:1.5rem;">
@@ -2666,6 +2671,9 @@ function renderDualChips(){
   if(miniAP){ miniAP.textContent=game.awayScore||0; miniAP.style.color=at.color||'#888'; }
   if(miniHL) miniHL.textContent=ht.name.toUpperCase();
   if(miniAL) miniAL.textContent=at.name.toUpperCase();
+  var miniHF=document.getElementById('mini-home-fouls'), miniAF=document.getElementById('mini-away-fouls');
+  if(miniHF) miniHF.textContent=homeFouls;
+  if(miniAF) miniAF.textContent=awayFouls;
   // Labels & dots
   document.getElementById('home-side-lbl').textContent=ht.name.toUpperCase();
   document.getElementById('away-side-lbl').textContent=at.name.toUpperCase();
