@@ -353,7 +353,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
       <button class="division-pill active" data-division="35+" onclick="selectDivision('35+',this)">35+ Division</button>
       <button class="division-pill" data-division="open" onclick="selectDivision('open',this)">Open Division</button>
-      <button class="division-pill" data-division="under" onclick="selectDivision('under',this)">6'2 &amp; Under</button>
+      <button class="division-pill" data-division="under" onclick="selectDivision('under',this)">6'1 &amp; Under</button>
     </div>
   </div>
 
@@ -647,7 +647,7 @@ function buildTicker(){
 
 // ── DIVISION SWITCHER ──
 // Only the 35+ Division has live teams/schedule/stats right now. Open and
-// 6'2 & Under are shown as upcoming — tapping them lets people know
+// 6'1 & Under are shown as upcoming — tapping them lets people know
 // they're on the way without breaking into an empty page.
 function selectDivision(div,btn){
   document.querySelectorAll('.division-pill').forEach(function(p){p.classList.remove('active');});
@@ -658,7 +658,7 @@ function selectDivision(div,btn){
   }
   // Not live yet — flash it active briefly, show a toast, then snap back.
   btn.classList.add('active');
-  var label=div==='open'?'Open Division':"6'2 & Under Division";
+  var label=div==='open'?'Open Division':"6'1 & Under Division";
   document.getElementById('home-division-title').textContent=label;
   showToast(label+' is launching soon — check back for teams & schedule!');
   setTimeout(function(){
@@ -849,23 +849,56 @@ function renderGameMVPCarousel(card){
   try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
   hist = hist.filter(Boolean).slice(0,5); // gameHistory is stored newest-first
 
-  var gameCardsHtml=hist.map(function(g){
-    var mvp=computeGameMVP(g);
-    if(!mvp) return '';
-    var ini=mvp.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var oppName = mvp.teamName===g.home ? g.away : g.home;
-    return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;">'
-      +'<div class="potw-avatar" style="background:'+mvp.teamColor+';margin:0 auto 10px;">'+ini+'</div>'
-      +'<div class="potw-name" style="font-size:16px;">'+mvp.p.name+'</div>'
-      +'<div class="potw-team" style="margin-bottom:8px;">'+mvp.teamName+' · #'+mvp.p.num+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">vs '+oppName+' · '+(g.date||'')+'</div>'
-      +'<div style="display:flex;justify-content:center;gap:14px;">'
-        +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div>'
-        +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+  // Hardcoded Week 2 MVPs
+  var week2MVPs=[
+    {name:'DAVIN', team:'OHANA', num:'5', color:'#9d4a7d', pts:21, reb:4, ast:1, stl:1, blk:0, to:0, eff:31},
+    {name:'ALDRIN', team:'SB HOOPS', num:'24', color:'#3366cc', pts:16, reb:3, ast:0, stl:1, blk:0, to:0, eff:19},
+    {name:'LESTER', team:'UNITED', num:'?', color:'#c41e3a', pts:16, reb:10, ast:0, stl:1, blk:0, to:0, eff:26}
+  ];
 
+  // Group games by week
+  var weekGroups={};
+  hist.forEach(function(g){
+    var wk = (g.week||g.week===0) ? g.week : (g.round||'?');
+    if(!weekGroups[wk]) weekGroups[wk]={games:[], mvps:[]};
+    weekGroups[wk].games.push(g);
+  });
+
+  // Add Week 2 MVPs
+  if(!weekGroups[2]) weekGroups[2]={games:[], mvps:[]};
+  week2MVPs.forEach(function(mvp){
+    var eff = mvp.pts + mvp.reb + mvp.ast + mvp.stl + mvp.blk - mvp.to;
+    weekGroups[2].mvps.push({p:{name:mvp.name,num:mvp.num}, teamName:mvp.team, teamColor:mvp.color, s:{pts:mvp.pts,reb:mvp.reb,ast:mvp.ast,stl:mvp.stl,blk:mvp.blk,to:mvp.to}, eff:eff});
+  });
+
+  // Render by week
+  var html='';
+  [2,1].forEach(function(wk){ // Week 2 first, then Week 1
+    if(!weekGroups[wk]||(!weekGroups[wk].mvps.length&&!weekGroups[wk].games.length)) return;
+    
+    var mvpsHtml='';
+    if(weekGroups[wk].mvps.length){
+      mvpsHtml = weekGroups[wk].mvps.map(function(mvp){
+        var ini=mvp.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+        return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;">'
+          +'<div class="potw-avatar" style="background:'+mvp.teamColor+';margin:0 auto 10px;">'+ini+'</div>'
+          +'<div class="potw-name" style="font-size:16px;">'+mvp.p.name+'</div>'
+          +'<div class="potw-team" style="margin-bottom:8px;">'+mvp.teamName+' · #'+mvp.p.num+'</div>'
+          +'<div style="display:flex;justify-content:center;gap:14px;margin-bottom:8px;">'
+            +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div>'
+            +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div>'
+          +'</div>'
+        +'</div>';
+      }).join('');
+    }
+    
+    if(mvpsHtml){
+      html+='<div style="margin-bottom:20px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Week '+wk+'</div>'
+        +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">'+mvpsHtml+'</div></div>';
+    }
+  });
+
+  // Season leaders
   var leaderCardsHtml=computeSeasonLeaders().map(function(ld){
     var ini=ld.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
     return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--gold);border-radius:12px;padding:16px;text-align:center;">'
@@ -880,8 +913,12 @@ function renderGameMVPCarousel(card){
     +'</div>';
   }).join('');
 
-  var allCardsHtml = leaderCardsHtml + gameCardsHtml;
-  body.innerHTML = allCardsHtml || '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:4px 0;">Play some games first — MVPs will appear here automatically.</div>';
+  if(leaderCardsHtml){
+    html+='<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Season Leaders</div>'
+      +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">'+leaderCardsHtml+'</div></div>';
+  }
+
+  body.innerHTML = html || '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:4px 0;">Play some games first — MVPs will appear here by week.</div>';
 }
 
 function renderPOTWFallback(card){
