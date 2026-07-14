@@ -868,13 +868,13 @@ function displayMVPNavigator(el){
   var cardsHtml='';
   for(var i=1;i<=3;i++){
     var photoUrl='images/mvp/w'+currentWeek+'-'+i+'.PNG';
-    cardsHtml+='<img src="'+photoUrl+'" style="width:160px;height:190px;object-fit:cover;border-radius:12px;flex-shrink:0;" />';
+    cardsHtml+='<img src="'+photoUrl+'" style="width:clamp(110px,28vw,180px);height:auto;aspect-ratio:120/143;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
   }
   
-  var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:28px;color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
-  var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithGames.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:28px;color:'+(mvpNavIdx<weeksWithGames.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithGames.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithGames.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
+  var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
+  var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithGames.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithGames.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithGames.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithGames.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
   
-  display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;overflow-x:auto;">'+prevBtn+'<div style="display:flex;gap:8px;padding:0 4px;flex:1;overflow-x:auto;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:14px;color:var(--orange);font-weight:700;margin-top:12px;">Week '+currentWeek+'</div>';
+  display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">'+prevBtn+'<div style="display:flex;gap:8px;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:clamp(12px,3vw,16px);color:var(--orange);font-weight:700;margin-top:8px;">Week '+currentWeek+'</div>';
 }
 
 function renderPOTWFallback(card){
