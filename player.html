@@ -871,7 +871,8 @@ function displayMVPNavigator(el){
   var weekNum=game.round||1;
   var mvpIndexInWeek=(mvpNavIdx % 3)+1;
   var photoUrl='images/mvp/w'+weekNum+'-'+mvpIndexInWeek+'.png';
-  var avatarHtml='<img src="'+photoUrl+'" style="width:64px;height:64px;border-radius:8px;object-fit:cover;" onerror="this.parentElement.innerHTML=\'<div style=\\\"background:'+mvp.teamColor+';width:64px;height:64px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;\\\">'+initials+'</div>\'" />';
+  var fallbackHtml='<div style="background:'+mvp.teamColor+';width:64px;height:64px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;">'+initials+'</div>';
+  var avatarHtml='<div class="potw-avatar-container"><img src="'+photoUrl+'" style="width:64px;height:64px;border-radius:8px;object-fit:cover;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';" /><div style="display:none;background:'+mvp.teamColor+';width:64px;height:64px;border-radius:8px;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;">'+initials+'</div></div>';
   
   var arrows='';
   if(mvpList.length>1){
