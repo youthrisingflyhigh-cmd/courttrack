@@ -847,58 +847,62 @@ function renderGameMVPCarousel(card){
   var body=document.getElementById('mvp-carousel-body');
   var hist=[];
   try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
-  hist = hist.filter(Boolean).slice(0,5); // gameHistory is stored newest-first
+  hist = hist.filter(Boolean);
 
   // Hardcoded Week 2 MVPs
   var week2MVPs=[
-    {name:'DAVIN', team:'OHANA', num:'5', color:'#9d4a7d', pts:21, reb:4, ast:1, stl:1, blk:0, to:0, eff:31},
-    {name:'ALDRIN', team:'SB HOOPS', num:'24', color:'#3366cc', pts:16, reb:3, ast:0, stl:1, blk:0, to:0, eff:19},
-    {name:'LESTER', team:'UNITED', num:'?', color:'#c41e3a', pts:16, reb:10, ast:0, stl:1, blk:0, to:0, eff:26}
+    {name:'DAVIN', team:'OHANA', num:'5', color:'#9d4a7d', pts:21, reb:4, ast:1, stl:1, blk:0, to:0},
+    {name:'ALDRIN', team:'SB HOOPS', num:'24', color:'#3366cc', pts:16, reb:3, ast:0, stl:1, blk:0, to:0},
+    {name:'LESTER', team:'UNITED', num:'?', color:'#c41e3a', pts:16, reb:10, ast:0, stl:1, blk:0, to:0}
   ];
 
-  // Group games by week
-  var weekGroups={};
-  hist.forEach(function(g){
-    var wk = (g.week||g.week===0) ? g.week : (g.round||'?');
-    if(!weekGroups[wk]) weekGroups[wk]={games:[], mvps:[]};
-    weekGroups[wk].games.push(g);
-  });
-
-  // Add Week 2 MVPs
-  if(!weekGroups[2]) weekGroups[2]={games:[], mvps:[]};
-  week2MVPs.forEach(function(mvp){
+  // Render Week 2 MVPs
+  var week2Html='<div style="margin-bottom:24px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Week 2</div>'
+    +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">';
+  
+  week2Html+=week2MVPs.map(function(mvp){
+    var ini=mvp.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
     var eff = mvp.pts + mvp.reb + mvp.ast + mvp.stl + mvp.blk - mvp.to;
-    weekGroups[2].mvps.push({p:{name:mvp.name,num:mvp.num}, teamName:mvp.team, teamColor:mvp.color, s:{pts:mvp.pts,reb:mvp.reb,ast:mvp.ast,stl:mvp.stl,blk:mvp.blk,to:mvp.to}, eff:eff});
-  });
+    return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;">'
+      +'<div class="potw-avatar" style="background:'+mvp.color+';margin:0 auto 10px;">'+ini+'</div>'
+      +'<div class="potw-name" style="font-size:16px;">'+mvp.name+'</div>'
+      +'<div class="potw-team" style="margin-bottom:8px;">'+mvp.team+' · #'+mvp.num+'</div>'
+      +'<div style="display:flex;justify-content:center;gap:14px;margin-bottom:8px;">'
+        +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--orange);">'+(mvp.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div>'
+        +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);">'+eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  week2Html+='</div></div>';
 
-  // Render by week
-  var html='';
-  [2,1].forEach(function(wk){ // Week 2 first, then Week 1
-    if(!weekGroups[wk]||(!weekGroups[wk].mvps.length&&!weekGroups[wk].games.length)) return;
-    
-    var mvpsHtml='';
-    if(weekGroups[wk].mvps.length){
-      mvpsHtml = weekGroups[wk].mvps.map(function(mvp){
-        var ini=mvp.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-        return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;">'
-          +'<div class="potw-avatar" style="background:'+mvp.teamColor+';margin:0 auto 10px;">'+ini+'</div>'
-          +'<div class="potw-name" style="font-size:16px;">'+mvp.p.name+'</div>'
-          +'<div class="potw-team" style="margin-bottom:8px;">'+mvp.teamName+' · #'+mvp.p.num+'</div>'
-          +'<div style="display:flex;justify-content:center;gap:14px;margin-bottom:8px;">'
-            +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div>'
-            +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div>'
-          +'</div>'
-        +'</div>';
-      }).join('');
-    }
-    
-    if(mvpsHtml){
-      html+='<div style="margin-bottom:20px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Week '+wk+'</div>'
-        +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">'+mvpsHtml+'</div></div>';
-    }
-  });
+  // Render Week 1 MVPs from game history
+  var week1Html='<div style="margin-bottom:24px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Week 1</div>'
+    +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">';
+  
+  var week1Games=hist.filter(function(g){ return (g.week||g.week===0)===1 || g.round===1; });
+  if(week1Games.length){
+    week1Html+=week1Games.slice(0,5).map(function(g){
+      var mvp=computeGameMVP(g);
+      if(!mvp) return '';
+      var ini=mvp.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+      var oppName = mvp.teamName===g.home ? g.away : g.home;
+      return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;">'
+        +'<div class="potw-avatar" style="background:'+mvp.teamColor+';margin:0 auto 10px;">'+ini+'</div>'
+        +'<div class="potw-name" style="font-size:16px;">'+mvp.p.name+'</div>'
+        +'<div class="potw-team" style="margin-bottom:8px;">'+mvp.teamName+' · #'+mvp.p.num+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">vs '+oppName+'</div>'
+        +'<div style="display:flex;justify-content:center;gap:14px;">'
+          +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div>'
+          +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  } else {
+    week1Html+='<div style="color:var(--muted);font-size:13px;font-style:italic;">No games yet</div>';
+  }
+  week1Html+='</div></div>';
 
-  // Season leaders
+  // Render Season Leaders
   var leaderCardsHtml=computeSeasonLeaders().map(function(ld){
     var ini=ld.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
     return '<div style="width:190px;flex-shrink:0;background:var(--dark2);border:1px solid var(--gold);border-radius:12px;padding:16px;text-align:center;">'
@@ -913,12 +917,13 @@ function renderGameMVPCarousel(card){
     +'</div>';
   }).join('');
 
+  var leaderHtml='';
   if(leaderCardsHtml){
-    html+='<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Season Leaders</div>'
+    leaderHtml='<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Season Leaders</div>'
       +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">'+leaderCardsHtml+'</div></div>';
   }
 
-  body.innerHTML = html || '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:4px 0;">Play some games first — MVPs will appear here by week.</div>';
+  body.innerHTML = week2Html + week1Html + leaderHtml;
 }
 
 function renderPOTWFallback(card){
