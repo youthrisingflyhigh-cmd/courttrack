@@ -876,7 +876,7 @@ function displayMVPNavigator(el){
   
   var cardsHtml=weekMVPs.slice(0,3).map(function(item,idx){
     var initials=item.m.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var photoUrl='images/mvp/w'+currentWeek+'-'+(idx+1)+'.png';
+    var photoUrl='images/mvp/w'+currentWeek+'-'+(idx+1)+'.PNG';
     return '<img src="'+photoUrl+'" style="width:220px;height:260px;object-fit:cover;border-radius:12px;flex-shrink:0;" onerror="this.parentElement.style.background=\'#333\';this.textContent=\''+initials+'\';" />';
   }).join('');
   
