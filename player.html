@@ -845,42 +845,23 @@ function computeSeasonLeaders(){
 var mvpNavIdx=0;
 function displayMVPNavigator(el){
   if(!el) return;
-  el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:16px;min-height:280px;"><div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
+  el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;"></div>';
   var display=document.getElementById('mvp-nav-display');
-  var games=[];
-  try{games=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});}catch(e){}
-  games=games.filter(Boolean);
   
-  var mvpsByWeek={};
-  games.reverse();
-  games.forEach(function(g){
-    var m=computeGameMVP(g);
-    if(!m) return;
-    var week=g.round||1;
-    if(!mvpsByWeek[week]) mvpsByWeek[week]=[];
-    mvpsByWeek[week].push({m:m,g:g});
-  });
+  var availableWeeks=[1,2,3,4,5,6,7,8,9,10];
+  if(mvpNavIdx>=availableWeeks.length)mvpNavIdx=0;
+  var currentWeek=availableWeeks[mvpNavIdx];
   
-  var weeks=Object.keys(mvpsByWeek).sort(function(a,b){return parseInt(b)-parseInt(a);});
-  if(!weeks.length){display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No games yet — MVPs will appear here.</div>';return;}
-  
-  if(mvpNavIdx>=weeks.length)mvpNavIdx=0;
-  var currentWeek=weeks[mvpNavIdx];
-  var weekMVPs=mvpsByWeek[currentWeek];
-  
-  var arrows='';
-  if(weeks.length>1){
-    arrows='<button onclick="mvpNavIdx=(mvpNavIdx-1+'+weeks.length+')%'+weeks.length+';displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:28px;color:var(--orange);cursor:pointer;padding:0 8px;">‹</button>'
-      +'<button onclick="mvpNavIdx=(mvpNavIdx+1)%'+weeks.length+';displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:28px;color:var(--orange);cursor:pointer;padding:0 8px;">›</button>';
+  var cardsHtml='';
+  for(var i=1;i<=3;i++){
+    var photoUrl='images/mvp/w'+currentWeek+'-'+i+'.PNG';
+    cardsHtml+='<img src="'+photoUrl+'" style="width:220px;height:260px;object-fit:cover;border-radius:12px;flex-shrink:0;" />';
   }
   
-  var cardsHtml=weekMVPs.slice(0,3).map(function(item,idx){
-    var initials=item.m.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var photoUrl='images/mvp/w'+currentWeek+'-'+(idx+1)+'.PNG';
-    return '<img src="'+photoUrl+'" style="width:220px;height:260px;object-fit:cover;border-radius:12px;flex-shrink:0;" onerror="this.parentElement.style.background=\'#333\';this.textContent=\''+initials+'\';" />';
-  }).join('');
+  var arrows='<button onclick="mvpNavIdx=(mvpNavIdx-1+'+availableWeeks.length+')%'+availableWeeks.length+';displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:32px;color:var(--orange);cursor:pointer;">‹</button>'
+    +'<button onclick="mvpNavIdx=(mvpNavIdx+1)%'+availableWeeks.length+';displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:32px;color:var(--orange);cursor:pointer;">›</button>';
   
-  display.innerHTML=arrows+'<div style="display:flex;gap:16px;">'+cardsHtml+'</div>'+arrows+'<div style="text-align:center;font-size:16px;color:var(--orange);font-weight:700;margin-top:12px;">Week '+currentWeek+'</div>';
+  display.innerHTML=arrows+'<div style="display:flex;gap:16px;">'+cardsHtml+'</div>'+arrows+'<div style="text-align:center;font-size:18px;color:var(--orange);font-weight:700;margin-top:12px;width:100%;">Week '+currentWeek+'</div>';
 }
 
 function renderPOTWFallback(card){
