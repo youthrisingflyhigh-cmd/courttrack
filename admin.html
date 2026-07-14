@@ -341,7 +341,7 @@ th, td { padding: 10px 8px !important; }
           <select id="team-league-select" style="min-width:200px;">
             <option value="35+ Mens League">🏀 35+ Men's League</option>
             <option value="40+ Mens League">🏀 40+ Men's League</option>
-            <option value="6ft2 Under Division">🏀 6'1" & Under Division</option>
+            <option value="6ft2 Under Division">🏀 6'2" & Under Division</option>
             <option value="Open Division">🏀 Open Division</option>
           </select>
           <input type="text" id="team-name-input" placeholder="Team name" maxlength="30"/>
@@ -2206,6 +2206,19 @@ function finishGame(){
     alert('⚠️ Hold on — this device never fully confirmed it loaded the current season stats/standings (likely a slow or dropped connection on load).\n\nFinishing the game now risks overwriting everyone\'s real stats with incomplete data. Please refresh the page once you have a solid connection, then finish the game again.');
     return;
   }
+  
+  // ⚠️ VALIDATE DATE — Prevent submitting scores for future games
+  if(game.dateObj){
+    var gameDate=new Date(game.dateObj);
+    var today=new Date();
+    today.setHours(0,0,0,0);
+    gameDate.setHours(0,0,0,0);
+    if(gameDate>today){
+      alert('⚠️ Cannot submit score for a future game.\n\nGame date: '+gameDate.toLocaleDateString()+'\nToday: '+today.toLocaleDateString()+'\n\nPlease correct the game date before saving.');
+      return;
+    }
+  }
+  
   if(!confirm('Finish this game and save results?'))return;
   _finishingGame=true;
   try{
