@@ -1,0 +1,115 @@
+name: CourtTrack Code Review & Bug Monitor
+
+on:
+  schedule:
+    # Runs daily at 9 AM UTC (adjust time as needed)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm install
+        continue-on-error: true
+        
+      - name: Analyze code with Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cat > analyze.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const Anthropic = require("@anthropic-ai/sdk");
+          
+          const client = new Anthropic();
+          
+          // Read key files
+          const adminHTML = fs.readFileSync('admin.html', 'utf-8').slice(0, 8000);
+          const playerHTML = fs.readFileSync('player.html', 'utf-8').slice(0, 8000);
+          const sw = fs.readFileSync('sw.js', 'utf-8').slice(0, 5000);
+          
+          const prompt = `You are a code review bot for CourtTrack, a basketball league stats app. Analyze this code and:
+          
+          1. Identify any BUGS or security issues
+          2. Find data validation problems (dates, scores, eligibility)
+          3. Suggest UX/performance improvements
+          4. Check for Firebase best practices
+          
+          ADMIN.HTML (excerpt):
+          ${adminHTML}
+          
+          PLAYER.HTML (excerpt):
+          ${playerHTML}
+          
+          SW.JS (excerpt):
+          ${sw}
+          
+          Return a JSON object with:
+          {
+            "bugs": [{title, severity (high/medium/low), description, fix}],
+            "improvements": [{title, category, description, implementation}],
+            "security": [{issue, impact, recommendation}]
+          }
+          
+          Be concise but thorough.`;
+          
+          client.messages.create({
+            model: "claude-opus-4-6",
+            max_tokens: 1500,
+            messages: [{ role: "user", content: prompt }]
+          }).then(response => {
+            const content = response.content[0].text;
+            console.log("CLAUDE ANALYSIS:\n", content);
+            
+            // Save report
+            fs.writeFileSync('code-review-report.md', `# CourtTrack Code Review Report\n\n${new Date().toISOString()}\n\n\`\`\`json\n${content}\n\`\`\``);
+          }).catch(err => {
+            console.error("Claude API error:", err);
+            process.exit(1);
+          });
+          EOF
+          
+          node analyze.js
+          
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-review-report
+          path: code-review-report.md
+          
+      - name: Create GitHub Issue if bugs found
+        if: always()
+        run: |
+          REPORT=$(cat code-review-report.md 2>/dev/null || echo "No report generated")
+          
+          # Check if report contains "high" severity bugs
+          if echo "$REPORT" | grep -q '"severity": "high"'; then
+            curl -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/${{ github.repository }}/issues \
+              -d '{
+                "title": "🐛 High-Priority Bugs Detected by Code Review",
+                "body": "An automated code review found high-severity issues:\n\n```\n'"${REPORT}"'\n```",
+                "labels": ["bug", "automated"]
+              }'
+          fi
+          
+      - name: Comment on recent commits
+        if: always()
+        run: |
+          REPORT=$(cat code-review-report.md 2>/dev/null || echo "No issues found")
+          echo "Report generated at $(date)"
+          echo "$REPORT"
