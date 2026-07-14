@@ -861,7 +861,7 @@ function displayMVPNavigator(el){
     mvpsByWeek[week].push({m:m,g:g});
   });
   
-  var weeks=Object.keys(mvpsByWeek).sort(function(a,b){return b-a;});
+  var weeks=Object.keys(mvpsByWeek).sort(function(a,b){return parseInt(b)-parseInt(a);});
   if(!weeks.length){display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No games yet — MVPs will appear here.</div>';return;}
   
   if(mvpNavIdx>=weeks.length)mvpNavIdx=0;
@@ -880,7 +880,7 @@ function displayMVPNavigator(el){
     return '<img src="'+photoUrl+'" style="width:220px;height:260px;object-fit:cover;border-radius:12px;flex-shrink:0;" onerror="this.parentElement.style.background=\'#333\';this.textContent=\''+initials+'\';" />';
   }).join('');
   
-  display.innerHTML=arrows+'<div style="display:flex;gap:16px;">'+cardsHtml+'</div>'+arrows;
+  display.innerHTML=arrows+'<div style="display:flex;gap:16px;">'+cardsHtml+'</div>'+arrows+'<div style="text-align:center;font-size:16px;color:var(--orange);font-weight:700;margin-top:12px;">Week '+currentWeek+'</div>';
 }
 
 function renderPOTWFallback(card){
