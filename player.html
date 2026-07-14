@@ -868,6 +868,10 @@ function displayMVPNavigator(el){
   var game=curr.g;
   var opp=mvp.teamName===game.home?game.away:game.home;
   var initials=mvp.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+  var weekNum=game.round||1;
+  var mvpIndexInWeek=(mvpNavIdx % 3)+1;
+  var photoUrl='images/mvp/w'+weekNum+'-'+mvpIndexInWeek+'.png';
+  var avatarHtml='<img src="'+photoUrl+'" style="width:64px;height:64px;border-radius:8px;object-fit:cover;" onerror="this.parentElement.innerHTML=\'<div style=\\\"background:'+mvp.teamColor+';width:64px;height:64px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;\\\">'+initials+'</div>\'" />';
   
   var arrows='';
   if(mvpList.length>1){
@@ -875,7 +879,7 @@ function displayMVPNavigator(el){
       +'<button onclick="mvpNavIdx=(mvpNavIdx+1)%'+mvpList.length+';displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:28px;color:var(--orange);cursor:pointer;padding:0 8px;">›</button>';
   }
   
-  display.innerHTML=arrows+'<div style="width:220px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:20px;text-align:center;"><div class="potw-avatar" style="background:'+mvp.teamColor+';margin:0 auto 12px;width:64px;height:64px;">'+initials+'</div><div class="potw-name" style="font-size:18px;margin-bottom:4px;">'+mvp.p.name+'</div><div class="potw-team" style="margin-bottom:12px;font-size:12px;">'+mvp.teamName+' · #'+mvp.p.num+'</div><div style="font-size:11px;color:var(--muted);margin-bottom:14px;">vs '+opp+' · '+(game.date||'')+'</div><div style="display:flex;justify-content:center;gap:18px;margin-bottom:10px;"><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div></div><div style="font-size:10px;color:var(--muted);">('+Math.round((mvpNavIdx+1)/mvpList.length*100)+'% through season)</div></div>'+arrows;
+  display.innerHTML=arrows+'<div style="width:220px;flex-shrink:0;background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:20px;text-align:center;"><div class="potw-avatar" style="margin:0 auto 12px;">'+avatarHtml+'</div><div class="potw-name" style="font-size:18px;margin-bottom:4px;">'+mvp.p.name+'</div><div class="potw-team" style="margin-bottom:12px;font-size:12px;">'+mvp.teamName+' · #'+mvp.p.num+'</div><div style="font-size:11px;color:var(--muted);margin-bottom:14px;">vs '+opp+' · '+(game.date||'')+'</div><div style="display:flex;justify-content:center;gap:18px;margin-bottom:10px;"><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:var(--orange);">'+(mvp.s.pts||0)+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">PTS</div></div><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:var(--gold);">'+mvp.eff+'</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px;">EFF</div></div></div><div style="font-size:10px;color:var(--muted);">('+Math.round((mvpNavIdx+1)/mvpList.length*100)+'% through season)</div></div>'+arrows;
 }
 
 function renderPOTWFallback(card){
