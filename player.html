@@ -1417,6 +1417,11 @@ function renderTeams(){
 
 // ── PLAYER & TEAM MODALS ──
 function showPlayerModal(player){
+  // Ensure efficiency is calculated
+  if(!player.eff || typeof player.eff !== 'number'){
+    player.eff = (player.s.pts||0) + (player.s.reb||0) + (player.s.ast||0) + (player.s.stl||0) + (player.s.blk||0) - (player.s.to||0);
+  }
+  
   var html='<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;" onclick="if(event.target===this)this.remove();">'
     +'<div style="background:var(--dark2);border:2px solid var(--line);border-radius:12px;padding:30px;max-width:550px;width:100%;max-height:85vh;overflow-y:auto;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">'
@@ -1429,7 +1434,7 @@ function showPlayerModal(player){
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">TEAM</div>'
     +'<div style="font-size:20px;font-weight:700;color:'+player.teamColor+';margin-bottom:18px;">'+player.teamName+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
-    +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">EFFICIENCY</div><div style="font-size:28px;font-weight:900;color:var(--orange);">'+player.eff+'</div></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">EFFICIENCY</div><div style="font-size:28px;font-weight:900;color:var(--orange);">'+Math.round(player.eff)+'</div></div>'
     +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">GAMES</div><div style="font-size:28px;font-weight:900;color:#fff;">'+(player.s.gp||0)+'</div></div>'
     +'</div>'
     +'</div>'
@@ -1443,7 +1448,7 @@ function showPlayerModal(player){
     +'<div style="background:var(--dark3);padding:14px;border-radius:8px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Steals</div><div style="font-size:26px;font-weight:900;color:var(--gold);">'+(player.s.stl||0)+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">SPG: '+(player.s.gp>0?((player.s.stl||0)/player.s.gp).toFixed(1):"—")+'</div></div>'
     +'<div style="background:var(--dark3);padding:14px;border-radius:8px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Blocks</div><div style="font-size:26px;font-weight:900;color:var(--gold);">'+(player.s.blk||0)+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">BPG: '+(player.s.gp>0?((player.s.blk||0)/player.s.gp).toFixed(1):"—")+'</div></div>'
     +'<div style="background:var(--dark3);padding:14px;border-radius:8px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Turnovers</div><div style="font-size:26px;font-weight:900;color:#ff6b6b;">'+(player.s.to||0)+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">TOG: '+(player.s.gp>0?((player.s.to||0)/player.s.gp).toFixed(1):"—")+'</div></div>'
-    +'<div style="background:var(--dark3);padding:14px;border-radius:8px;border:2px solid var(--orange);"><div style="font-size:11px;color:var(--orange);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">⭐ Efficiency</div><div style="font-size:26px;font-weight:900;color:var(--orange);">'+player.eff+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px;">PTS+REB+AST+STL+BLK−TO</div></div>'
+    +'<div style="background:var(--dark3);padding:14px;border-radius:8px;border:2px solid var(--orange);"><div style="font-size:11px;color:var(--orange);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">⭐ Efficiency</div><div style="font-size:26px;font-weight:900;color:var(--orange);">'+Math.round(player.eff)+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px;">PTS+REB+AST+STL+BLK−TO</div></div>'
     +'</div>'
     +'</div>'
     +'</div>'
