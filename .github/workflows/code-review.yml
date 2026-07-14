@@ -27,6 +27,9 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          # Install Anthropic SDK
+          npm install @anthropic-ai/sdk
+          
           cat > analyze.js << 'EOF'
           const fs = require('fs');
           const path = require('path');
