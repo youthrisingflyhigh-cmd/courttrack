@@ -442,18 +442,6 @@ db.ref('ct/game/hornSignal').on('value', function(s){
   else { playHorn(); }
 });
 
-// Fast score sync — reads from its own tiny path instead of waiting on
-// the full game object (which includes the whole play-by-play log and
-// grows all game long) to transfer. Same trick as the clocks/horn.
-db.ref('ct/game/liveScore').on('value', function(s){
-  var v=s.val();
-  if(!v) return;
-  var hEl=document.getElementById('sb-home-score');
-  var aEl=document.getElementById('sb-away-score');
-  if(hEl) hEl.textContent = v.home||0;
-  if(aEl) aEl.textContent = v.away||0;
-});
-
 function fmtClock(seconds){
   var m = Math.floor(seconds/60);
   var s = seconds % 60;
@@ -477,7 +465,7 @@ db.ref('ct/teams').on('value', function(s){
 // Watch game
 db.ref('ct/game').on('value', function(s){
   var game = s.val();
-  if(!game || !game.active && game.homeScore == null){
+  if(!game || (game.homeScore == null && game.awayScore == null)){
     document.getElementById('no-game').style.display = 'flex';
     document.getElementById('game-display').style.display = 'none';
     document.getElementById('live-indicator').style.display = 'none';
@@ -554,6 +542,14 @@ db.ref('ct/game').on('value', function(s){
   document.getElementById('bottom-ticker').textContent =
     (ht.name||'Home') + ' ' + (game.homeScore||0) + '  —  ' + (game.awayScore||0) + '  ' + (at.name||'Away') +
     '  ·  ' + (game.date||'') + '  ·  San Jose High School';
+});
+
+// Fast score listener — updates instantly without waiting for full game sync
+db.ref('ct/game/liveScore').on('value', function(s){
+  var score = s.val();
+  if(!score) return;
+  document.getElementById('sb-home-score').textContent = score.home || 0;
+  document.getElementById('sb-away-score').textContent = score.away || 0;
 });
 
 // Settings
