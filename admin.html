@@ -1564,7 +1564,7 @@ function save(){
 // season goes on, and re-sending all of it on every single tap is what
 // was causing the lag between Admin and scoreboard.html. Live-tracking
 // actions should only need to write the current game.
-function saveGame(){
+function saveLiveGame(){
   if(!game) return;
   fbSet('ct/game',game);
   // Also sync just the score to its own tiny path — same trick already
@@ -2671,7 +2671,7 @@ function setTrackTeam(side){
   renderDualChips(); renderDualStatBtns();
 }
 
-function setQ(q){game.q=q;saveGame();document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});}
+function setQ(q){game.q=q;saveLiveGame();document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});}
 
 function renderDualChips(){
   if(!game)return;
@@ -2796,7 +2796,7 @@ function toggleSub(side,num){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:key,key:'sub',pts:0,neg:next==='OUT',prevStatus:cur});
   addSubLogRow(entry);
-  saveGame(); renderDualChips();
+  saveLiveGame(); renderDualChips();
 }
 
 // ── SUB SWAP (two-tap) ──
@@ -2856,7 +2856,7 @@ function performSwap(side,numA,numB){
     logStack.push({id:entryId,side:side,num:x.num,key:'sub',pts:0,neg:x.next==='OUT',prevStatus:x.prev});
     addSubLogRow(entry);
   });
-  saveGame(); renderDualChips();
+  saveLiveGame(); renderDualChips();
   // The chip list re-sorts by status right away (IN players float up), so
   // the two players that just swapped can land in new spots — flash them
   // so it's obvious the swap actually happened even though the list moved.
@@ -2919,7 +2919,7 @@ function adjustPointsSide(side,delta){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:stKey,key:'manual',pts:pts,neg:pts<0});
   addSubLogRow(entry);
-  saveGame(); renderDualChips(); renderDualStatBtns();
+  saveLiveGame(); renderDualChips(); renderDualStatBtns();
 }
 
 // Adjusts a TEAM's foul count directly, without attributing it to any one
@@ -2946,7 +2946,7 @@ function adjustTeamFouls(side,delta){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:'-',key:'teamfoul',pts:0,neg:actualDelta<0,teamFoulDelta:actualDelta});
   addSubLogRow(entry);
-  saveGame(); renderDualChips();
+  saveLiveGame(); renderDualChips();
 }
 
 function renderDualStatBtns(){
@@ -3016,7 +3016,7 @@ function doStatSide(side,key,pts,neg){
     timestamp:Date.now()
   });
   logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:neg});
-  addLogSide(side,selNum,key,pts,neg,entryId); saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
+  addLogSide(side,selNum,key,pts,neg,entryId); saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
 
   // ── FOUL TRACKING ──
   if(key==='foul'){
@@ -3047,7 +3047,7 @@ function undoLast(){
   }
   var lb=document.getElementById('log-body');
   if(lb.lastChild&&lb.children.length>0) lb.removeChild(lb.lastChild);
-  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
 }
 
 function addLogSide(side,num,key,pts,neg,entryId){
@@ -3208,7 +3208,7 @@ function confirmDeleteLogEntry(entryId){
     if(pIdx!==-1) game.playLog.splice(pIdx,1);
   }
   rebuildLogBody();
-  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
   closeLogEntryEditor();
 }
 
@@ -3242,7 +3242,7 @@ function confirmReassignLogEntry(entryId){
   }
 
   rebuildLogBody();
-  saveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
+  saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
   closeLogEntryEditor();
 }
 
