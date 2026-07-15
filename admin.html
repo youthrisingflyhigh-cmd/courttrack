@@ -1526,6 +1526,7 @@ var STATS=[
   {key:'stl', label:'Steal',      pts:0},
   {key:'blk', label:'Block',      pts:0},
   {key:'foul',label:'Foul',       pts:0, neg:true},
+  {key:'foul',label:'-1 Foul',    pts:0, neg:true, decr:true},
   {key:'to',  label:'Turnover',   pts:0, neg:true},
 ];
 
@@ -2955,7 +2956,7 @@ function renderDualStatBtns(){
   var hSel=selPlayerHome;
   document.getElementById('stat-btns-home').innerHTML=STATS.map(function(s){
     var cnt=hSel!=null?(game.hStats[hSel]?game.hStats[hSel][s.key]||0:0):0;
-    return '<div class="stat-btn'+(s.pos?' pts-btn':'')+'" onclick="doStatSide(\'home\',\''+s.key+'\','+s.pts+','+(s.neg?'true':'false')+')">'
+    return '<div class="stat-btn'+(s.pos?' pts-btn':'')+'" onclick="doStatSide(\'home\',\''+s.key+'\','+s.pts+','+(s.neg?'true':'false')+','+(s.decr?'true':'false')+')">'
       +'<span class="sb-plus">+</span>'
       +'<div class="sb-label">'+s.label+'</div>'
       +'<div class="sb-count">'+cnt+'</div>'
@@ -2966,7 +2967,7 @@ function renderDualStatBtns(){
   var aSel=selPlayerAway;
   document.getElementById('stat-btns-away').innerHTML=STATS.map(function(s){
     var cnt=aSel!=null?(game.aStats[aSel]?game.aStats[aSel][s.key]||0:0):0;
-    return '<div class="stat-btn'+(s.pos?' pts-btn':'')+'" onclick="doStatSide(\'away\',\''+s.key+'\','+s.pts+','+(s.neg?'true':'false')+')">'
+    return '<div class="stat-btn'+(s.pos?' pts-btn':'')+'" onclick="doStatSide(\'away\',\''+s.key+'\','+s.pts+','+(s.neg?'true':'false')+','+(s.decr?'true':'false')+')">'
       +'<span class="sb-plus">+</span>'
       +'<div class="sb-label">'+s.label+'</div>'
       +'<div class="sb-count">'+cnt+'</div>'
@@ -2979,7 +2980,7 @@ function renderDualStatBtns(){
 function renderChips(){ renderDualChips(); }
 function renderStatBtns(){ renderDualStatBtns(); }
 
-function doStatSide(side,key,pts,neg){
+function doStatSide(side,key,pts,neg,decr){
   var isH=side==='home';
   var selNum=isH?selPlayerHome:selPlayerAway;
   if(selNum===null||selNum===undefined)return;
@@ -2988,10 +2989,16 @@ function doStatSide(side,key,pts,neg){
   var stKey=st[selNum]!==undefined?selNum:String(selNum);
   if(st[stKey]===undefined){
     // Initialize stats for this player if missing
-    st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0};
+    st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0};
   }
   selNum=stKey;
-  if(key!=='miss') st[selNum][key]=(st[selNum][key]||0)+1;
+  if(key!=='miss'){
+    if(decr && st[selNum][key]>0){
+      st[selNum][key]-=1;
+    } else if(!decr) {
+      st[selNum][key]=(st[selNum][key]||0)+1;
+    }
+  }
   if(pts){
     st[selNum].pts+=pts;
     if(isH){game.homeScore+=pts;document.getElementById('home-pts').textContent=game.homeScore;}
@@ -3002,6 +3009,7 @@ function doStatSide(side,key,pts,neg){
   var p=teams[ti].players.find(function(x){return x.num===selNum;});
   var labelObj=STATS.find(function(s){return s.key===key;});
   var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  var isNegative=neg||(decr && key==='foul');
   game.playLog.push({
     id:entryId,
     side:side,num:selNum,
@@ -3009,13 +3017,13 @@ function doStatSide(side,key,pts,neg){
     teamName:teams[ti].name,
     teamColor:teams[ti].color,
     key:key,label:labelObj?labelObj.label:key,
-    pts:pts,neg:neg||false,
+    pts:pts,neg:isNegative,
     score:game.homeScore+'-'+game.awayScore,
     half:game.q,
     clock:timerFmt(timerSeconds),
     timestamp:Date.now()
   });
-  logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:neg});
+  logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:isNegative});
   addLogSide(side,selNum,key,pts,neg,entryId); saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
 
   // ── FOUL TRACKING ──
