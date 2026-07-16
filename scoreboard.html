@@ -489,8 +489,8 @@ db.ref('ct/game').on('value', function(s){
   document.getElementById('sb-away-name').textContent = (at.name || 'AWAY').toUpperCase();
   document.getElementById('sb-home-score').textContent = game.homeScore || 0;
   document.getElementById('sb-away-score').textContent = game.awayScore || 0;
-  document.getElementById('sb-home-score').style.color = ht.color || '#FF4500';
-  document.getElementById('sb-away-score').style.color = at.color || '#ffffff';
+  document.getElementById('sb-home-score').style.color = '#ffffff';
+  document.getElementById('sb-away-score').style.color = '#ffffff';
   document.getElementById('home-bar').style.background = ht.color || '#FF4500';
   document.getElementById('away-bar').style.background = at.color || '#888';
   document.getElementById('sb-half').textContent = 'H' + (game.q || 1);
@@ -499,6 +499,8 @@ db.ref('ct/game').on('value', function(s){
   var hFouls = 0, aFouls = 0;
   if(game.hStats) Object.values(game.hStats).forEach(function(p){ hFouls += (p.foul||0); });
   if(game.aStats) Object.values(game.aStats).forEach(function(p){ aFouls += (p.foul||0); });
+  hFouls += game.hTeamFoulAdj||0;
+  aFouls += game.aTeamFoulAdj||0;
   document.getElementById('sb-home-fouls').textContent = hFouls;
   document.getElementById('sb-away-fouls').textContent = aFouls;
 
