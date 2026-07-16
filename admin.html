@@ -2672,7 +2672,16 @@ function setTrackTeam(side){
   renderDualChips(); renderDualStatBtns();
 }
 
-function setQ(q){game.q=q;saveLiveGame();document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});}
+function setQ(q){
+  game.q=q;
+  // Reset team fouls at start of 2nd half (Q3) but keep player individual fouls
+  if(q===3){
+    game.hTeamFoulAdj=0;
+    game.aTeamFoulAdj=0;
+  }
+  saveLiveGame();
+  document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
+}
 
 function renderDualChips(){
   if(!game)return;
