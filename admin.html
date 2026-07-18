@@ -605,13 +605,14 @@ th, td { padding: 10px 8px !important; }
           <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
           <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
+        <div style="font-size:12px;color:#888;margin-top:8px;">TIMEOUTS (2 per half): <span id="home-timeouts-display" style="color:#4FC3F7;font-weight:700;cursor:pointer;" onclick="toggleTimeout('home')" title="Click to use a timeout (2 allowed per half)">● ●</span></div>
       </div>
       <div style="text-align:center;">
         <div class="score-sep">—</div>
         <div class="game-status">● LIVE</div>
         <div class="quarter-btns">
           <button class="q-btn active" onclick="setQ(1)">H1</button>
-          <button class="q-btn" onclick="setQ(2)">H2</button>
+          <button class="q-btn" onclick="resetFoulsAndGoToH2()" style="background:var(--dark3);border-color:var(--orange);color:var(--orange);font-size:10px;width:auto;padding:0 8px;height:28px;border-radius:4px;" title="Reset team fouls + switch to H2 (player fouls carry over)">Reset Fouls → H2</button>
         </div>
       </div>
       <div class="team-block">
@@ -622,6 +623,7 @@ th, td { padding: 10px 8px !important; }
           <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
           <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
+        <div style="font-size:12px;color:#888;margin-top:8px;">TIMEOUTS (2 per half): <span id="away-timeouts-display" style="color:#4FC3F7;font-weight:700;cursor:pointer;" onclick="toggleTimeout('away')" title="Click to use a timeout (2 allowed per half)">● ●</span></div>
       </div>
     </div>
 
@@ -2683,6 +2685,39 @@ function setQ(q){
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
 }
 
+function resetFoulsAndGoToH2(){
+  if(!game)return;
+  // Reset both team foul adjustments
+  game.hTeamFoulAdj=0;
+  game.aTeamFoulAdj=0;
+  // Reset timeouts for H2
+  game.hTimeoutsUsed=0;
+  game.aTimeoutsUsed=0;
+  // Set to Q3 (H2 / 2nd half)
+  game.q=3;
+  saveLiveGame();
+  document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===3);});
+  renderTimeouts();
+  alert('✓ Team fouls & timeouts reset. Switched to H2 (player fouls carry over)');
+}
+
+function toggleTimeout(team){
+  if(!game)return;
+  var key=team==='home'?'hTimeoutsUsed':'aTimeoutsUsed';
+  game[key]=(game[key]||0)===0?1:0;
+  saveLiveGame();
+  renderTimeouts();
+}
+
+function renderTimeouts(){
+  if(!game)return;
+  var hUsed=game.hTimeoutsUsed||0, aUsed=game.aTimeoutsUsed||0;
+  document.getElementById('home-timeouts-display').innerHTML=
+    (hUsed===0?'●':'✕')+' '+(hUsed===0?'●':'✕');
+  document.getElementById('away-timeouts-display').innerHTML=
+    (aUsed===0?'●':'✕')+' '+(aUsed===0?'●':'✕');
+}
+
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
@@ -2956,7 +2991,7 @@ function adjustTeamFouls(side,delta){
   game.playLog.push(entry);
   logStack.push({id:entryId,side:side,num:'-',key:'teamfoul',pts:0,neg:actualDelta<0,teamFoulDelta:actualDelta});
   addSubLogRow(entry);
-  saveLiveGame(); renderDualChips();
+  saveLiveGame(); renderDualChips(); renderTimeouts();
 }
 
 function renderDualStatBtns(){
