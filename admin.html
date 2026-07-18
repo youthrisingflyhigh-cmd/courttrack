@@ -2682,19 +2682,17 @@ function setQ(q){
 }
 
 function resetTeamFouls(){
-  if(!game) return;
-  try{
-    // Only reset team foul adjustments (bench technicals, coach technicals, etc)
-    // DO NOT touch player individual fouls - they keep their counts
-    game.hTeamFoulAdj=0;
-    game.aTeamFoulAdj=0;
-    saveLiveGame();
-    setTimeout(function(){
-      renderDualChips();
-    }, 100);
-  }catch(e){
-    console.error('Reset error:', e);
+  if(!game){
+    console.log('No game');
+    return;
   }
+  console.log('Before reset - Home Adj:', game.hTeamFoulAdj, 'Away Adj:', game.aTeamFoulAdj);
+  game.hTeamFoulAdj=0;
+  game.aTeamFoulAdj=0;
+  console.log('After reset - Home Adj:', game.hTeamFoulAdj, 'Away Adj:', game.aTeamFoulAdj);
+  saveLiveGame();
+  renderDualChips();
+  console.log('Reset complete');
 }
 
 function toggleTimeout(team){
