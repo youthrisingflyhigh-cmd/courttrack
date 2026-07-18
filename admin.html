@@ -2682,17 +2682,10 @@ function setQ(q){
 }
 
 function resetTeamFouls(){
-  if(!game){
-    console.log('No game');
-    return;
-  }
-  console.log('Before reset - Home Adj:', game.hTeamFoulAdj, 'Away Adj:', game.aTeamFoulAdj);
   game.hTeamFoulAdj=0;
   game.aTeamFoulAdj=0;
-  console.log('After reset - Home Adj:', game.hTeamFoulAdj, 'Away Adj:', game.aTeamFoulAdj);
   saveLiveGame();
   renderDualChips();
-  console.log('Reset complete');
 }
 
 function toggleTimeout(team){
