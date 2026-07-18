@@ -273,7 +273,10 @@ body{
       <div class="team-name" id="sb-home-name">HOME</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="team-score" id="sb-home-score" style="color:#FF4500;">0</div>
-        <div class="bonus-light-dot" id="sb-home-bonus-dot" style="display:none;width:16px;height:16px;border-radius:50%;background:#f59e0b;box-shadow:0 0 12px #f59e0b;"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div class="bonus-light-dot" id="sb-home-bonus-dot-1" style="display:none;width:22px;height:22px;border-radius:50%;background:#f59e0b;box-shadow:0 0 16px #f59e0b;"></div>
+          <div class="bonus-light-dot" id="sb-home-bonus-dot-2" style="display:none;width:22px;height:22px;border-radius:50%;background:#f59e0b;box-shadow:0 0 16px #f59e0b;"></div>
+        </div>
       </div>
       <div class="team-fouls">FOULS: <span id="sb-home-fouls">0</span></div>
     </div>
@@ -293,7 +296,10 @@ body{
       <div class="team-name" id="sb-away-name">AWAY</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="team-score" id="sb-away-score" style="color:#ffffff;">0</div>
-        <div class="bonus-light-dot" id="sb-away-bonus-dot" style="display:none;width:16px;height:16px;border-radius:50%;background:#f59e0b;box-shadow:0 0 12px #f59e0b;"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div class="bonus-light-dot" id="sb-away-bonus-dot-1" style="display:none;width:22px;height:22px;border-radius:50%;background:#f59e0b;box-shadow:0 0 16px #f59e0b;"></div>
+          <div class="bonus-light-dot" id="sb-away-bonus-dot-2" style="display:none;width:22px;height:22px;border-radius:50%;background:#f59e0b;box-shadow:0 0 16px #f59e0b;"></div>
+        </div>
       </div>
       <div class="team-fouls">FOULS: <span id="sb-away-fouls">0</span></div>
     </div>
@@ -506,10 +512,17 @@ db.ref('ct/game').on('value', function(s){
   document.getElementById('sb-away-fouls').textContent = aFouls;
 
   // Bonus indicator lights next to score — opposite team gets bonus when other team has 7+ fouls
+  // 7-9 fouls = 1 light, 10+ fouls = 2 lights (double bonus)
   var BONUS_THRESHOLD = 7;
-  // Show circular bonus light on opposite team when other team has fouls
-  document.getElementById('sb-home-bonus-dot').style.display = aFouls >= BONUS_THRESHOLD ? 'block' : 'none';
-  document.getElementById('sb-away-bonus-dot').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
+  var DOUBLE_BONUS_THRESHOLD = 10;
+  
+  // Home team bonus lights (show when away team has fouls)
+  document.getElementById('sb-home-bonus-dot-1').style.display = aFouls >= BONUS_THRESHOLD ? 'block' : 'none';
+  document.getElementById('sb-home-bonus-dot-2').style.display = aFouls >= DOUBLE_BONUS_THRESHOLD ? 'block' : 'none';
+  
+  // Away team bonus lights (show when home team has fouls)
+  document.getElementById('sb-away-bonus-dot-1').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
+  document.getElementById('sb-away-bonus-dot-2').style.display = hFouls >= DOUBLE_BONUS_THRESHOLD ? 'block' : 'none';
 
   // Clock
   if(game.clock){
