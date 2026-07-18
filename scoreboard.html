@@ -498,10 +498,8 @@ db.ref('ct/game').on('value', function(s){
   // Team fouls
   var hFouls = 0, aFouls = 0;
   var hFouls = 0, aFouls = 0;
-  if(game.hStats) Object.values(game.hStats).forEach(function(p){ hFouls += (p.foul||0); });
-  if(game.aStats) Object.values(game.aStats).forEach(function(p){ aFouls += (p.foul||0); });
-  hFouls += game.hTeamFoulAdj||0;
-  aFouls += game.aTeamFoulAdj||0;
+  var hFouls = game.hHalfTeamFouls || 0;
+  var aFouls = game.aHalfTeamFouls || 0;
   document.getElementById('sb-home-fouls').textContent = hFouls;
   document.getElementById('sb-away-fouls').textContent = aFouls;
 
