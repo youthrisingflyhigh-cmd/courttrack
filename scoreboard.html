@@ -269,12 +269,13 @@ body{
   <div class="scoreboard">
     <!-- Home team -->
     <div class="team-side">
-      <div class="bonus-above-name" id="sb-home-bonus-above" style="display:none;color:#f59e0b;font-weight:900;font-size:clamp(20px,3.5vw,32px);letter-spacing:2px;margin-bottom:-2px;text-shadow:0 2px 4px rgba(0,0,0,0.5);">BONUS</div>
       <div class="team-color-bar" id="home-bar"></div>
       <div class="team-name" id="sb-home-name">HOME</div>
-      <div class="team-score" id="sb-home-score" style="color:#FF4500;">0</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="team-score" id="sb-home-score" style="color:#FF4500;">0</div>
+        <div class="bonus-light-dot" id="sb-home-bonus-dot" style="display:none;width:16px;height:16px;border-radius:50%;background:#f59e0b;box-shadow:0 0 12px #f59e0b;"></div>
+      </div>
       <div class="team-fouls">FOULS: <span id="sb-home-fouls">0</span></div>
-      <div class="bonus-light" id="sb-home-bonus">BONUS</div>
     </div>
 
     <!-- Center -->
@@ -288,12 +289,13 @@ body{
 
     <!-- Away team -->
     <div class="team-side">
-      <div class="bonus-above-name" id="sb-away-bonus-above" style="display:none;color:#f59e0b;font-weight:900;font-size:clamp(20px,3.5vw,32px);letter-spacing:2px;margin-bottom:-2px;text-shadow:0 2px 4px rgba(0,0,0,0.5);">BONUS</div>
       <div class="team-color-bar" id="away-bar"></div>
       <div class="team-name" id="sb-away-name">AWAY</div>
-      <div class="team-score" id="sb-away-score" style="color:#ffffff;">0</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="team-score" id="sb-away-score" style="color:#ffffff;">0</div>
+        <div class="bonus-light-dot" id="sb-away-bonus-dot" style="display:none;width:16px;height:16px;border-radius:50%;background:#f59e0b;box-shadow:0 0 12px #f59e0b;"></div>
+      </div>
       <div class="team-fouls">FOULS: <span id="sb-away-fouls">0</span></div>
-      <div class="bonus-light" id="sb-away-bonus">BONUS</div>
     </div>
   </div>
 </div>
@@ -503,13 +505,11 @@ db.ref('ct/game').on('value', function(s){
   document.getElementById('sb-home-fouls').textContent = hFouls;
   document.getElementById('sb-away-fouls').textContent = aFouls;
 
-  // Bonus lights and BONUS text — opposite team gets bonus when other team has 7+ fouls
+  // Bonus indicator lights next to score — opposite team gets bonus when other team has 7+ fouls
   var BONUS_THRESHOLD = 7;
-  document.getElementById('sb-home-bonus').classList.toggle('active', hFouls >= BONUS_THRESHOLD);
-  document.getElementById('sb-away-bonus').classList.toggle('active', aFouls >= BONUS_THRESHOLD);
-  // Show BONUS above OPPOSITE team's name (away team is in bonus if home team has fouls)
-  document.getElementById('sb-home-bonus-above').style.display = aFouls >= BONUS_THRESHOLD ? 'block' : 'none';
-  document.getElementById('sb-away-bonus-above').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
+  // Show circular bonus light on opposite team when other team has fouls
+  document.getElementById('sb-home-bonus-dot').style.display = aFouls >= BONUS_THRESHOLD ? 'block' : 'none';
+  document.getElementById('sb-away-bonus-dot').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
 
   // Clock
   if(game.clock){
