@@ -2687,7 +2687,19 @@ function setQ(q){
 
 function resetFoulsAndGoToH2(){
   if(!game)return;
-  // Reset both team foul adjustments
+  // Reset team foul count (clear player fouls for THIS game's half counter)
+  // Individual player career records stay intact
+  if(game.hStats){
+    Object.values(game.hStats).forEach(function(ps){
+      if(ps && typeof ps==='object') ps.foul=0;
+    });
+  }
+  if(game.aStats){
+    Object.values(game.aStats).forEach(function(ps){
+      if(ps && typeof ps==='object') ps.foul=0;
+    });
+  }
+  // Reset manual team foul adjustments
   game.hTeamFoulAdj=0;
   game.aTeamFoulAdj=0;
   // Reset timeouts for H2
@@ -2698,13 +2710,15 @@ function resetFoulsAndGoToH2(){
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===3);});
   renderTimeouts();
-  alert('✓ Team fouls & timeouts reset. Switched to H2 (player fouls carry over)');
+  alert('✓ Team fouls & timeouts reset to 0. Switched to H2');
 }
 
 function toggleTimeout(team){
   if(!game)return;
   var key=team==='home'?'hTimeoutsUsed':'aTimeoutsUsed';
-  game[key]=(game[key]||0)===0?1:0;
+  var cur=game[key]||0;
+  // Cycle: 0 → 1 → 2 → 0
+  game[key]=cur>=2?0:cur+1;
   saveLiveGame();
   renderTimeouts();
 }
@@ -2712,10 +2726,19 @@ function toggleTimeout(team){
 function renderTimeouts(){
   if(!game)return;
   var hUsed=game.hTimeoutsUsed||0, aUsed=game.aTimeoutsUsed||0;
-  document.getElementById('home-timeouts-display').innerHTML=
-    (hUsed===0?'●':'✕')+' '+(hUsed===0?'●':'✕');
-  document.getElementById('away-timeouts-display').innerHTML=
-    (aUsed===0?'●':'✕')+' '+(aUsed===0?'●':'✕');
+  // Show: ● ● (0 used), ✕ ● (1 used), ✕ ✕ (2 used)
+  var hDisplay='';
+  for(var i=1;i<=2;i++){
+    hDisplay+=(i<=hUsed?'✕':'●');
+    if(i<2) hDisplay+=' ';
+  }
+  var aDisplay='';
+  for(var i=1;i<=2;i++){
+    aDisplay+=(i<=aUsed?'✕':'●');
+    if(i<2) aDisplay+=' ';
+  }
+  document.getElementById('home-timeouts-display').innerHTML=hDisplay;
+  document.getElementById('away-timeouts-display').innerHTML=aDisplay;
 }
 
 function renderDualChips(){
