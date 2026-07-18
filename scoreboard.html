@@ -336,23 +336,31 @@ var teams = [];
 // ── SOUND UNLOCK ──
 var soundEnabled=false;
 function enableSound(){
-  soundEnabled=true;
-  unlockHornAudio();
-  requestFullscreenSafe();
-  var ov=document.getElementById('sound-unlock');
-  if(ov) ov.style.display='none';
+  try {
+    soundEnabled=true;
+    if(typeof unlockHornAudio === 'function') unlockHornAudio();
+    requestFullscreenSafe();
+    var ov=document.getElementById('sound-unlock');
+    if(ov) ov.style.display='none';
+  } catch(e) {
+    console.error('enableSound error:', e);
+  }
 }
 
-// Setup TAP TO START click handler
-document.addEventListener('DOMContentLoaded', function(){
+// Setup TAP TO START click handler — handles both click and touch
+function setupSoundUnlock(){
   var soundUnlock = document.getElementById('sound-unlock');
   if(soundUnlock){
-    soundUnlock.addEventListener('click', function(e){
-      e.stopPropagation();
-      enableSound();
-    });
+    soundUnlock.addEventListener('click', enableSound, false);
+    soundUnlock.addEventListener('touchend', enableSound, false);
   }
-});
+}
+// Run immediately if DOM is ready, or wait for it
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', setupSoundUnlock);
+} else {
+  setupSoundUnlock();
+}
 
 // ── FULLSCREEN ──
 // iOS Safari doesn't support the Fullscreen API on arbitrary pages at all —
@@ -568,6 +576,9 @@ db.ref('ct/settings').once('value').then(function(s){
   var v = s.val();
   if(v && v.leagueName) document.getElementById('league-label').textContent = v.leagueName;
 });
+
+// Initialize TAP TO START button handler
+setupSoundUnlock();
 </script>
 </body>
 </html>
