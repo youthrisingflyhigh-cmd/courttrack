@@ -600,7 +600,7 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="home-lbl">Home</div>
         <div class="team-pts" id="home-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="font-size:12px;color:#888;margin-top:4px;">BONUS FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
           <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
           <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
@@ -618,7 +618,7 @@ th, td { padding: 10px 8px !important; }
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
         <div class="team-pts" id="away-pts">0</div>
-        <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
+        <div style="font-size:12px;color:#888;margin-top:4px;">BONUS FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
           <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
           <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
@@ -2676,8 +2676,14 @@ function setTrackTeam(side){
 
 function setQ(q){
   game.q=q;
+  // Reset bonus fouls at start of new half
+  if(q===2){
+    game.hBonusFouls=0;
+    game.aBonus Fouls=0;
+  }
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
+  renderDualChips();
 }
 
 
@@ -2712,14 +2718,10 @@ function renderTimeouts(){
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
-  // Update team fouls on scoreboard — sum of every player's fouls, plus any
-  // manual team-foul adjustments (bench/coach technicals not tied to a
-  // specific player).
-  var homeFouls=0, awayFouls=0;
-  if(game.hStats) Object.values(game.hStats).forEach(function(ps){ if(ps&&typeof ps==='object') homeFouls+=(ps.foul||0); });
-  if(game.aStats) Object.values(game.aStats).forEach(function(ps){ if(ps&&typeof ps==='object') awayFouls+=(ps.foul||0); });
-  homeFouls += game.hTeamFoulAdj||0;
-  awayFouls += game.aTeamFoulAdj||0;
+  // Bonus fouls counter — independent from player individual fouls
+  // Resets each half, tracks team bonus/penalty fouls
+  var homeFouls=game.hBonusFouls||0;
+  var awayFouls=game.aBonus Fouls||0;
   var hFoulEl=document.getElementById('home-team-fouls');
   var aFoulEl=document.getElementById('away-team-fouls');
   if(hFoulEl) hFoulEl.textContent=homeFouls;
@@ -2964,18 +2966,18 @@ function adjustPointsSide(side,delta){
 function adjustTeamFouls(side,delta){
   if(!game)return;
   var isH=side==='home';
-  var adjKey=isH?'hTeamFoulAdj':'aTeamFoulAdj';
-  var cur=game[adjKey]||0;
+  var bonusKey=isH?'hBonusFouls':'aBonus Fouls';
+  var cur=game[bonusKey]||0;
   var next=Math.max(0,cur+delta);
-  var actualDelta=next-cur; // in case the clamp at 0 changed what actually happened
-  game[adjKey]=next;
+  var actualDelta=next-cur;
+  game[bonusKey]=next;
   var ti=isH?game.hi:game.ai;
   if(!game.playLog) game.playLog=[];
   var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
   var entry={
     id:entryId, side:side, num:'-',
     playerName:'Team', teamName:teams[ti].name, teamColor:teams[ti].color,
-    key:'teamfoul', label:(actualDelta>=0?'Team Foul +':'Team Foul ')+actualDelta, pts:0, neg:actualDelta<0,
+    key:'teamfoul', label:(actualDelta>=0?'Bonus Foul +':'Bonus Foul ')+actualDelta, pts:0, neg:actualDelta<0,
     score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds), timestamp:Date.now(),
     teamFoulDelta:actualDelta
   };

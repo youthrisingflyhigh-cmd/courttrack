@@ -497,15 +497,13 @@ db.ref('ct/game').on('value', function(s){
 
   // Team fouls
   var hFouls = 0, aFouls = 0;
-  if(game.hStats) Object.values(game.hStats).forEach(function(p){ hFouls += (p.foul||0); });
-  if(game.aStats) Object.values(game.aStats).forEach(function(p){ aFouls += (p.foul||0); });
-  hFouls += game.hTeamFoulAdj||0;
-  aFouls += game.aTeamFoulAdj||0;
+  var hFouls = game.hBonusFouls || 0;
+  var aFouls = game.aBonus Fouls || 0;
   document.getElementById('sb-home-fouls').textContent = hFouls;
   document.getElementById('sb-away-fouls').textContent = aFouls;
 
-  // Bonus lights — trigger at 7 team fouls
-  var BONUS_THRESHOLD = 7;
+  // Bonus lights — trigger at 5 bonus fouls (change BONUS_THRESHOLD as needed)
+  var BONUS_THRESHOLD = 5;
   document.getElementById('sb-home-bonus').classList.toggle('active', hFouls >= BONUS_THRESHOLD);
   document.getElementById('sb-away-bonus').classList.toggle('active', aFouls >= BONUS_THRESHOLD);
 
