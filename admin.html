@@ -613,7 +613,6 @@ th, td { padding: 10px 8px !important; }
         <div class="quarter-btns">
           <button class="q-btn active" onclick="setQ(1)">H1</button>
           <button class="q-btn" onclick="setQ(2)">H2</button>
-          <button onclick="resetTeamFouls()" style="background:var(--dark3);border:1px solid #555;color:var(--orange);font-size:10px;width:auto;padding:0 8px;height:28px;border-radius:4px;cursor:pointer;" title="Reset team fouls to 0">Reset Team Fouls</button>
         </div>
       </div>
       <div class="team-block">
@@ -2681,12 +2680,6 @@ function setQ(q){
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
 }
 
-function resetTeamFouls(){
-  game.hTeamFoulAdj=0;
-  game.aTeamFoulAdj=0;
-  saveLiveGame();
-  renderDualChips();
-}
 
 function toggleTimeout(team){
   if(!game)return;
