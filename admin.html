@@ -2684,28 +2684,13 @@ function setQ(q){
 function resetTeamFouls(){
   if(!game) return;
   try{
-    // Reset ALL player fouls in this game to 0
-    if(game.hStats){
-      Object.keys(game.hStats).forEach(function(key){
-        if(game.hStats[key] && typeof game.hStats[key]==='object'){
-          game.hStats[key].foul=0;
-        }
-      });
-    }
-    if(game.aStats){
-      Object.keys(game.aStats).forEach(function(key){
-        if(game.aStats[key] && typeof game.aStats[key]==='object'){
-          game.aStats[key].foul=0;
-        }
-      });
-    }
-    // Reset team foul adjustments
+    // Only reset team foul adjustments (bench technicals, coach technicals, etc)
+    // DO NOT touch player individual fouls - they keep their counts
     game.hTeamFoulAdj=0;
     game.aTeamFoulAdj=0;
     saveLiveGame();
     setTimeout(function(){
       renderDualChips();
-      renderDualStatBtns();
     }, 100);
   }catch(e){
     console.error('Reset error:', e);
