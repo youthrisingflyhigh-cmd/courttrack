@@ -2682,10 +2682,7 @@ function setQ(q){
 }
 
 function resetTeamFouls(){
-  if(!game){
-    alert('No game in progress');
-    return;
-  }
+  if(!game) return;
   try{
     // Reset ALL player fouls in this game to 0
     if(game.hStats){
@@ -2702,15 +2699,16 @@ function resetTeamFouls(){
         }
       });
     }
-    // Also reset team foul adjustments
+    // Reset team foul adjustments
     game.hTeamFoulAdj=0;
     game.aTeamFoulAdj=0;
     saveLiveGame();
-    renderDualChips();
-    alert('✓ Team fouls reset to 0');
+    setTimeout(function(){
+      renderDualChips();
+      renderDualStatBtns();
+    }, 100);
   }catch(e){
-    alert('Error: '+e.message);
-    console.error(e);
+    console.error('Reset error:', e);
   }
 }
 
