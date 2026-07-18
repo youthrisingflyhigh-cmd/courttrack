@@ -2682,13 +2682,20 @@ function setQ(q){
 }
 
 function resetTeamFouls(){
-  if(!game)return;
-  // Only reset team foul adjustments (bench technicals, etc)
-  // Player individual fouls stay the same
-  game.hTeamFoulAdj=0;
-  game.aTeamFoulAdj=0;
-  saveLiveGame();
-  renderDualChips();
+  if(!game){
+    alert('No game in progress');
+    return;
+  }
+  try{
+    game.hTeamFoulAdj=0;
+    game.aTeamFoulAdj=0;
+    saveLiveGame();
+    renderDualChips();
+    alert('✓ Team fouls reset');
+  }catch(e){
+    alert('Error: '+e.message);
+    console.error(e);
+  }
 }
 
 function toggleTimeout(team){
