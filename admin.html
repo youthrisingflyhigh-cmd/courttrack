@@ -2687,11 +2687,27 @@ function resetTeamFouls(){
     return;
   }
   try{
+    // Reset ALL player fouls in this game to 0
+    if(game.hStats){
+      Object.keys(game.hStats).forEach(function(key){
+        if(game.hStats[key] && typeof game.hStats[key]==='object'){
+          game.hStats[key].foul=0;
+        }
+      });
+    }
+    if(game.aStats){
+      Object.keys(game.aStats).forEach(function(key){
+        if(game.aStats[key] && typeof game.aStats[key]==='object'){
+          game.aStats[key].foul=0;
+        }
+      });
+    }
+    // Also reset team foul adjustments
     game.hTeamFoulAdj=0;
     game.aTeamFoulAdj=0;
     saveLiveGame();
     renderDualChips();
-    alert('✓ Team fouls reset');
+    alert('✓ Team fouls reset to 0');
   }catch(e){
     alert('Error: '+e.message);
     console.error(e);
