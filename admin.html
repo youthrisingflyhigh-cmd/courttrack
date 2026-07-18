@@ -2687,19 +2687,8 @@ function setQ(q){
 
 function resetFoulsAndGoToH2(){
   if(!game)return;
-  // Reset team foul count (clear player fouls for THIS game's half counter)
-  // Individual player career records stay intact
-  if(game.hStats){
-    Object.values(game.hStats).forEach(function(ps){
-      if(ps && typeof ps==='object') ps.foul=0;
-    });
-  }
-  if(game.aStats){
-    Object.values(game.aStats).forEach(function(ps){
-      if(ps && typeof ps==='object') ps.foul=0;
-    });
-  }
-  // Reset manual team foul adjustments
+  // KEEP player individual fouls (they carry over)
+  // ONLY reset the team foul adjustment (bench technicals, etc)
   game.hTeamFoulAdj=0;
   game.aTeamFoulAdj=0;
   // Reset timeouts for H2
@@ -2710,7 +2699,7 @@ function resetFoulsAndGoToH2(){
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===3);});
   renderTimeouts();
-  alert('✓ Team fouls & timeouts reset to 0. Switched to H2');
+  alert('✓ Team foul adjustments reset. Switched to H2 (player fouls carry over)');
 }
 
 function toggleTimeout(team){
