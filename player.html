@@ -988,18 +988,44 @@ function renderHomeLeagueLeaders(){
 
 function renderHomeTopScorers(){
   var el=document.getElementById('home-top-scorers');
-  var allP=getAllPlayers();
-  allP.sort(function(a,b){return (b.s.pts||0)-(a.s.pts||0);});
-  var top=allP.filter(function(r){return (r.s.gp||0)>0;}).slice(0,5);
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean);
+  
+  // Get stats from recent games only (last 5)
+  var recent=hist.slice(-5);
+  if(!recent.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">No stats yet.</div>';return;}
+  
+  // Aggregate stats from recent games per player
+  var playerStats={};
+  recent.forEach(function(game){
+    if(game.playerStats){
+      Object.keys(game.playerStats).forEach(function(teamName){
+        var teamStats=game.playerStats[teamName];
+        Object.keys(teamStats).forEach(function(playerNum){
+          var ps=teamStats[playerNum];
+          if(ps&&typeof ps==='object'){
+            var pKey=ps.name||playerNum;
+            if(!playerStats[pKey]){
+              playerStats[pKey]={name:ps.name||pKey,pts:0,gp:0,teamName:teamName,teamColor:game[teamName+'Color']||'#888'};
+            }
+            playerStats[pKey].pts+=(ps.pts||0);
+            playerStats[pKey].gp+=1;
+          }
+        });
+      });
+    }
+  });
+  
+  var top=Object.values(playerStats).filter(function(r){return r.gp>0;}).sort(function(a,b){return b.pts-a.pts;}).slice(0,5);
   if(!top.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">No stats yet.</div>';return;}
   el.innerHTML=top.map(function(r,i){
-    var gp=r.s.gp||1;
-    var ppg=((r.s.pts||0)/gp).toFixed(1);
+    var ppg=(r.pts/r.gp).toFixed(1);
     var rkClass=i===0?'r1':i===1?'r2':i===2?'r3':'';
     return '<div class="tsc-row">'
       +'<div class="tsc-rank '+rkClass+'">'+(i+1)+'</div>'
-      +'<div class="tsc-jersey" style="background:'+r.teamColor+';color:#fff;">#'+r.p.num+'</div>'
-      +'<div class="tsc-info"><div class="tsc-name">'+r.p.name+'</div><div class="tsc-team">'+r.teamName+'</div></div>'
+      +'<div class="tsc-jersey" style="background:'+r.teamColor+';color:#fff;">⭐</div>'
+      +'<div class="tsc-info"><div class="tsc-name">'+r.name+'</div><div class="tsc-team">'+r.teamName+'</div></div>'
       +'<div><div class="tsc-val">'+ppg+'</div><div class="tsc-lbl">PPG</div></div>'
     +'</div>';
   }).join('');
@@ -1321,7 +1347,7 @@ function renderStandings(){
       return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:s.pf||0,pa:s.pa||0,diff:diff,
         pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
         ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
-    }).sort(function(a,b){return b.w-a.w||b.diff-a.diff;});
+    }).sort(function(a,b){return b.w-a.w||a.l-b.l||b.pf-a.pf;});
   } catch(e){ entries=[]; }
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
