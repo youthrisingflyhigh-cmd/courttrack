@@ -632,10 +632,32 @@ function buildTicker(){
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     items.push('<span>FINAL</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner);
   });
-  // Top scorer
-  var allP=getAllPlayers();
-  allP.sort(function(a,b){return (b.s.pts||0)-(a.s.pts||0);});
-  if(allP[0]&&(allP[0].s.pts||0)>0) items.push('<span>🏅 TOP SCORER</span>'+allP[0].p.name+' ('+allP[0].teamName+') — '+(allP[0].s.pts||0)+' PTS');
+  // Top scorer (from recent games only)
+  var recentGames=[];
+  try{if(Array.isArray(gameHistory))recentGames=gameHistory;else if(gameHistory&&typeof gameHistory==='object')recentGames=Object.values(gameHistory);}catch(e){}
+  recentGames=recentGames.filter(Boolean).slice(-5);
+  
+  var recentPlayerStats={};
+  recentGames.forEach(function(game){
+    if(game.playerStats){
+      Object.keys(game.playerStats).forEach(function(teamName){
+        var teamStats=game.playerStats[teamName];
+        Object.keys(teamStats).forEach(function(playerNum){
+          var ps=teamStats[playerNum];
+          if(ps&&typeof ps==='object'){
+            var pKey=ps.name||playerNum;
+            if(!recentPlayerStats[pKey]){
+              recentPlayerStats[pKey]={name:ps.name||pKey,pts:0,teamName:teamName};
+            }
+            recentPlayerStats[pKey].pts+=(ps.pts||0);
+          }
+        });
+      });
+    }
+  });
+  
+  var topRecentScorer=Object.values(recentPlayerStats).sort(function(a,b){return b.pts-a.pts;})[0];
+  if(topRecentScorer&&topRecentScorer.pts>0) items.push('<span>🏅 TOP SCORER</span>'+topRecentScorer.name+' ('+topRecentScorer.teamName+') — '+topRecentScorer.pts+' PTS (recent games)');
 
   if(!items.length) return;
   var bar=document.getElementById('ticker-bar');
