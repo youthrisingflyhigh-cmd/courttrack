@@ -477,6 +477,22 @@ th, td { padding: 10px 8px !important; }
 
 <!-- LIVE TRACKING -->
 <div class="page" id="page-track">
+  <!-- ── RECENT GAMES ── -->
+  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+    <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">RECENT GAMES</div>
+    <div id="recent-games-carousel" style="display:flex;gap:10px;overflow-x:auto;padding:4px 0;scroll-behavior:smooth;">
+      <div style="color:var(--muted);padding:10px;min-width:180px;text-align:center;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── TOP STATS (RECENT) ── -->
+  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+    <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">TOP SCORERS (RECENT GAMES)</div>
+    <div id="recent-top-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;">
+      <div style="color:var(--muted);padding:10px;text-align:center;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+
   <!-- ── STICKY MINI SCOREBAR ── always visible while scrolling down to
        the player stat buttons, so you're never stuck scrolling back up
        just to check the score/clock. Mirrors the full displays below. -->
@@ -614,6 +630,7 @@ th, td { padding: 10px 8px !important; }
           <button class="q-btn active" onclick="setQ(1)">H1</button>
           <button class="q-btn" onclick="setQ(2)">H2</button>
         </div>
+        <button onclick="openStatsCorrectionModal()" style="margin-top:12px;padding:8px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:140px;white-space:nowrap;">✎ CORRECT STATS</button>
       </div>
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
@@ -4063,6 +4080,200 @@ function updateRegStatus(id, status){
     renderRegistrations();
   });
 }
+
+// ── STATS CORRECTION ──
+function openStatsCorrectionModal(){
+  document.getElementById('stats-correction-modal').style.display='flex';
+  populateGamesList();
+}
+
+function closeStatsCorrectionModal(){
+  document.getElementById('stats-correction-modal').style.display='none';
+  document.getElementById('stats-game-select').value='';
+  document.getElementById('stats-player-select').value='';
+  document.getElementById('stats-editor').style.display='none';
+}
+
+function populateGamesList(){
+  var select=document.getElementById('stats-game-select');
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
+  select.innerHTML='<option value="">-- Choose a game --</option>';
+  hist.reverse().forEach(function(g,i){
+    var label=(g.home||'?')+' '+((g.homeScore||0))+' vs '+((g.awayScore||0))+' '+(g.away||'?')+' ('+g.date+')';
+    var opt=document.createElement('option');
+    opt.value=i;
+    opt.textContent=label;
+    select.appendChild(opt);
+  });
+}
+
+function loadGamePlayers(){
+  var select=document.getElementById('stats-game-select');
+  var idx=select.value;
+  if(!idx || idx===''){
+    document.getElementById('stats-player-select').innerHTML='<option value="">-- Choose a player --</option>';
+    return;
+  }
+  
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
+  hist.reverse();
+  
+  var game=hist[idx];
+  if(!game)return;
+  
+  var pSelect=document.getElementById('stats-player-select');
+  pSelect.innerHTML='<option value="">-- Choose a player --</option>';
+  
+  if(!game.playerStats)return;
+  
+  Object.keys(game.playerStats).forEach(function(teamName){
+    var teamStats=game.playerStats[teamName];
+    var teamColor=game[teamName+'Color']||'#888';
+    Object.keys(teamStats).forEach(function(playerNum){
+      var ps=teamStats[playerNum];
+      if(ps&&typeof ps==='object'){
+        var pName=ps.name||('#'+playerNum);
+        var opt=document.createElement('option');
+        opt.value=teamName+'|'+playerNum;
+        opt.textContent=pName+' ('+teamName+')';
+        opt.style.color=teamColor;
+        pSelect.appendChild(opt);
+      }
+    });
+  });
+}
+
+function loadPlayerStats(){
+  var select=document.getElementById('stats-player-select');
+  var val=select.value;
+  if(!val || val===''){
+    document.getElementById('stats-editor').style.display='none';
+    return;
+  }
+  
+  var parts=val.split('|');
+  var teamName=parts[0], playerNum=parts[1];
+  
+  var gameIdx=document.getElementById('stats-game-select').value;
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
+  hist.reverse();
+  
+  var game=hist[gameIdx];
+  if(!game || !game.playerStats || !game.playerStats[teamName])return;
+  
+  var ps=game.playerStats[teamName][playerNum];
+  if(!ps || typeof ps!=='object')return;
+  
+  document.getElementById('stat-pts').value=ps.pts||0;
+  document.getElementById('stat-reb').value=ps.reb||0;
+  document.getElementById('stat-ast').value=ps.ast||0;
+  document.getElementById('stat-stl').value=ps.stl||0;
+  document.getElementById('stat-blk').value=ps.blk||0;
+  document.getElementById('stat-to').value=ps.to||0;
+  
+  document.getElementById('stats-editor').style.display='block';
+}
+
+function saveStatCorrection(){
+  var gameIdx=document.getElementById('stats-game-select').value;
+  var playerVal=document.getElementById('stats-player-select').value;
+  
+  if(!gameIdx || !playerVal){alert('Select game and player');return;}
+  
+  var parts=playerVal.split('|');
+  var teamName=parts[0], playerNum=parts[1];
+  
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
+  hist.reverse();
+  
+  var game=hist[gameIdx];
+  if(!game || !game.playerStats || !game.playerStats[teamName])return;
+  
+  var ps=game.playerStats[teamName][playerNum];
+  if(!ps || typeof ps!=='object')return;
+  
+  ps.pts=parseInt(document.getElementById('stat-pts').value)||0;
+  ps.reb=parseInt(document.getElementById('stat-reb').value)||0;
+  ps.ast=parseInt(document.getElementById('stat-ast').value)||0;
+  ps.stl=parseInt(document.getElementById('stat-stl').value)||0;
+  ps.blk=parseInt(document.getElementById('stat-blk').value)||0;
+  ps.to=parseInt(document.getElementById('stat-to').value)||0;
+  
+  db.ref('ct/history').set(gameHistory,function(err){
+    if(err){alert('Error saving: '+err.message);return;}
+    alert('Stats updated! ✓');
+    closeStatsCorrectionModal();
+  });
+}
 </script>
-</body>
+<!-- ── STATS CORRECTION MODAL ── -->
+<div id="stats-correction-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #333;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="color:var(--orange);margin:0;font-size:18px;">CORRECT PLAYER STATS</h2>
+      <button onclick="closeStatsCorrectionModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+
+    <!-- Game Selector -->
+    <div style="margin-bottom:16px;">
+      <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px;font-weight:700;">SELECT GAME</label>
+      <select id="stats-game-select" onchange="loadGamePlayers()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:6px;font-size:13px;">
+        <option value="">-- Choose a game --</option>
+      </select>
+    </div>
+
+    <!-- Player Selector -->
+    <div style="margin-bottom:16px;">
+      <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px;font-weight:700;">SELECT PLAYER</label>
+      <select id="stats-player-select" onchange="loadPlayerStats()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:6px;font-size:13px;">
+        <option value="">-- Choose a player --</option>
+      </select>
+    </div>
+
+    <!-- Stats Editor -->
+    <div id="stats-editor" style="display:none;border-top:1px solid #333;padding-top:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">PTS</label>
+          <input type="number" id="stat-pts" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">REB</label>
+          <input type="number" id="stat-reb" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">AST</label>
+          <input type="number" id="stat-ast" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">STL</label>
+          <input type="number" id="stat-stl" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">BLK</label>
+          <input type="number" id="stat-blk" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">TO</label>
+          <input type="number" id="stat-to" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveStatCorrection()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">✓ SAVE</button>
+        <button onclick="closeStatsCorrectionModal()" style="flex:1;padding:10px;background:var(--dark3);color:var(--muted);border:1px solid #333;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 </html>
