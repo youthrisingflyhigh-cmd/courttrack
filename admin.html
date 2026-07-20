@@ -1175,12 +1175,10 @@ function broadcastHorn(type){
   if(db) db.ref('ct/game/hornSignal').set({ts:Date.now(), type:type||'manual'});
 }
 function manualHorn(){
-  unlockHornAudio();
   playHorn();
   broadcastHorn('manual');
 }
 function manualSubHorn(){
-  unlockHornAudio();
   playHorn(1);
   broadcastHorn('sub');
 }
