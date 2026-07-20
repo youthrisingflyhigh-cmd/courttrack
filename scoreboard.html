@@ -434,9 +434,64 @@ function stopHorn(){
   if(hornEl){ try{ hornEl.pause(); hornEl.currentTime = 0; }catch(e){} }
 }
 
-// Track previous values so we fire exactly once on the 0-crossing, not on
-// every Firebase snapshot that happens to read 0.
-var _prevClockSecs=null, _prevShotSecs=null;
+// ── LOCAL PREDICTIVE CLOCK ──
+// Firebase updates land here roughly once a second, but the network round
+// trip (admin device -> Firebase servers -> this screen) can lag on gym
+// Wi-Fi. Waiting for that round trip to know the clock hit 0:00 was why
+// the horn fired late. Instead, we resync these values from every Firebase
+// push (so drift/pauses/manual edits stay accurate), but the actual
+// second-by-second countdown and the exact 0:00 horn firing happen in
+// tickLocalClocks() below, driven by this screen's own local timer.
+var localClock = {secs:0, running:false};
+var localShot = {secs:30, running:false, off:false};
+var _clockZeroFired = false;
+var _shotZeroFired = false;
+
+function renderClockDisplay(){
+  var clockEl = document.getElementById('sb-clock');
+  if(!clockEl) return;
+  var secs = localClock.secs;
+  clockEl.textContent = fmtClock(secs);
+  clockEl.className = 'clock' + (secs <= 30 ? ' urgent' : secs <= 60 ? ' warning' : '');
+}
+
+function renderShotClockDisplay(){
+  var scEl = document.getElementById('sb-shotclock');
+  if(!scEl) return;
+  if(localShot.off){
+    scEl.textContent = '—';
+    scEl.className = 'shotclock-num';
+    scEl.style.opacity = '0.35';
+  } else {
+    scEl.style.opacity = '1';
+    scEl.textContent = localShot.secs;
+    scEl.className = 'shotclock-num' + (localShot.secs <= 5 ? ' urgent' : localShot.secs <= 10 ? ' warning' : '');
+  }
+}
+
+// Runs once per second on this screen's own clock, independent of Firebase.
+// Re-synced every time a fresh Firebase value comes in (see below), so it
+// can't drift or go stale — but it doesn't need a fresh network push at
+// the exact 0:00 moment to know the clock hit zero.
+function tickLocalClocks(){
+  if(localClock.running && localClock.secs > 0){
+    localClock.secs--;
+    renderClockDisplay();
+    if(localClock.secs === 0 && !_clockZeroFired){
+      _clockZeroFired = true;
+      playHorn(7);
+    }
+  }
+  if(localShot.running && !localShot.off && localShot.secs > 0){
+    localShot.secs--;
+    renderShotClockDisplay();
+    if(localShot.secs === 0 && !_shotZeroFired){
+      _shotZeroFired = true;
+      playHorn(2.1);
+    }
+  }
+}
+setInterval(tickLocalClocks, 1000);
 
 // Listen for manual horn (and stop) signals from admin.html so this screen
 // stays in sync. Firebase's .on('value') fires immediately with whatever
@@ -524,35 +579,24 @@ db.ref('ct/game').on('value', function(s){
   document.getElementById('sb-away-bonus-dot-1').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
   document.getElementById('sb-away-bonus-dot-2').style.display = hFouls >= DOUBLE_BONUS_THRESHOLD ? 'block' : 'none';
 
-  // Clock
+  // Clock — resync the local predictive clock; tickLocalClocks() owns the
+  // actual countdown display + horn firing (see LOCAL PREDICTIVE CLOCK above).
   if(game.clock){
     var secs = game.clock.seconds || 0;
-    var clockEl = document.getElementById('sb-clock');
-    clockEl.textContent = fmtClock(secs);
-    clockEl.className = 'clock' + (secs <= 30 ? ' urgent' : secs <= 60 ? ' warning' : '');
-    if(secs===0 && _prevClockSecs!==null && _prevClockSecs>0){
-      playHorn(7);
-    }
-    _prevClockSecs = secs;
+    localClock.secs = secs;
+    localClock.running = !!game.clock.running;
+    if(secs > 0) _clockZeroFired = false;
+    renderClockDisplay();
   }
 
-  // Shot clock
+  // Shot clock — same resync pattern as the game clock above.
   if(game.shotClock){
     var scSecs = game.shotClock.seconds != null ? game.shotClock.seconds : 30;
-    var scEl = document.getElementById('sb-shotclock');
-    if(game.shotClock.off){
-      scEl.textContent = '—';
-      scEl.className = 'shotclock-num';
-      scEl.style.opacity = '0.35';
-    } else {
-      scEl.style.opacity = '1';
-      scEl.textContent = scSecs;
-      scEl.className = 'shotclock-num' + (scSecs <= 5 ? ' urgent' : scSecs <= 10 ? ' warning' : '');
-      if(scSecs===0 && _prevShotSecs!==null && _prevShotSecs>0){
-        playHorn(2.1);
-      }
-    }
-    _prevShotSecs = scSecs;
+    localShot.secs = scSecs;
+    localShot.running = !!game.shotClock.running;
+    localShot.off = !!game.shotClock.off;
+    if(scSecs > 0) _shotZeroFired = false;
+    renderShotClockDisplay();
   }
 
   // Bottom ticker
