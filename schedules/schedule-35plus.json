@@ -1,0 +1,114 @@
+{
+  "35plus": {
+    "season": 2,
+    "league": "35+ Men's",
+    "weeks": [
+      {
+        "week": 1,
+        "date": "2026-07-10",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 2,
+        "date": "2026-07-17",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 3,
+        "date": "2026-07-24",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 4,
+        "date": "2026-07-31",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 5,
+        "date": "2026-08-07",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 6,
+        "date": "2026-08-14",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 7,
+        "date": "2026-08-21",
+        "venue": "TBD",
+        "games": [
+          {"time": "18:30", "home": "", "away": ""},
+          {"time": "19:30", "home": "", "away": ""},
+          {"time": "20:30", "home": "", "away": ""}
+        ]
+      },
+      {
+        "week": 8,
+        "date": "2026-08-19",
+        "venue": "Piedmont Hills - Small Gym",
+        "type": "playoff",
+        "round": "First Round",
+        "games": [
+          {"time": "18:30", "matchup": "Seed 2 vs Seed 7"},
+          {"time": "19:30", "matchup": "Seed 3 vs Seed 6"},
+          {"time": "20:30", "matchup": "Seed 4 vs Seed 5"}
+        ]
+      },
+      {
+        "week": 9,
+        "date": "2026-08-26",
+        "venue": "Piedmont Hills - Small Gym",
+        "type": "playoff",
+        "round": "Semifinals",
+        "games": [
+          {"time": "18:30", "matchup": "Winner (2v7) vs Winner (3v6)"},
+          {"time": "19:30", "matchup": "Winner (4v5) vs Seed #1 (bye)"},
+          {"time": "20:30", "event": "Open Gym"}
+        ]
+      },
+      {
+        "week": 10,
+        "date": "2026-09-02",
+        "venue": "Piedmont Hills - Big Gym",
+        "type": "playoff",
+        "round": "Championship",
+        "games": [
+          {"time": "18:30", "duration": "45 min", "event": "3-Point Shooting"},
+          {"time": "19:15", "duration": "60 min", "event": "All-Star Game"},
+          {"time": "20:30", "duration": "60 min", "event": "Championship Game"}
+        ]
+      }
+    ]
+  }
+}
