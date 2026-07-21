@@ -477,6 +477,22 @@ th, td { padding: 10px 8px !important; }
 
 <!-- LIVE TRACKING -->
 <div class="page" id="page-track">
+  <!-- ── RECENT GAMES ── -->
+  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+    <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">RECENT GAMES</div>
+    <div id="recent-games-carousel" style="display:flex;gap:10px;overflow-x:auto;padding:4px 0;scroll-behavior:smooth;">
+      <div style="color:var(--muted);padding:10px;min-width:180px;text-align:center;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── TOP STATS (RECENT) ── -->
+  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+    <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">TOP SCORERS (RECENT GAMES)</div>
+    <div id="recent-top-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;">
+      <div style="color:var(--muted);padding:10px;text-align:center;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+
   <!-- ── STICKY MINI SCOREBAR ── always visible while scrolling down to
        the player stat buttons, so you're never stuck scrolling back up
        just to check the score/clock. Mirrors the full displays below. -->
@@ -615,6 +631,7 @@ th, td { padding: 10px 8px !important; }
           <button class="q-btn" onclick="setQ(2)">H2</button>
         </div>
         <button onclick="openStatsCorrectionModal()" style="margin-top:12px;padding:8px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:140px;white-space:nowrap;">✎ CORRECT STATS</button>
+        <button onclick="openScheduleEditor()" style="margin-top:8px;padding:8px 12px;background:#888;color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:140px;white-space:nowrap;">📅 SCHEDULE</button>
       </div>
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
@@ -1175,10 +1192,12 @@ function broadcastHorn(type){
   if(db) db.ref('ct/game/hornSignal').set({ts:Date.now(), type:type||'manual'});
 }
 function manualHorn(){
+  unlockHornAudio();
   playHorn();
   broadcastHorn('manual');
 }
 function manualSubHorn(){
+  unlockHornAudio();
   playHorn(1);
   broadcastHorn('sub');
 }
@@ -4063,7 +4082,119 @@ function updateRegStatus(id, status){
   });
 }
 
-// ── STATS CORRECTION ──
+// ── SCHEDULE EDITOR ──
+function openScheduleEditor(){
+  document.getElementById('schedule-editor-modal').style.display='flex';
+  populateDivisionSchedule();
+}
+
+function closeScheduleEditor(){
+  document.getElementById('schedule-editor-modal').style.display='none';
+  document.getElementById('sched-division').value='35plus';
+  document.getElementById('sched-week').value='';
+  document.getElementById('week-details').style.display='none';
+}
+
+function populateDivisionSchedule(){
+  // Load all divisions from database
+  db.ref('ct/schedule').once('value',function(snap){
+    var schedData=snap.val();
+    if(!schedData)return;
+    // Data is already loaded, just ready for selection
+  });
+}
+
+function loadDivisionSchedule(){
+  var div=document.getElementById('sched-division').value;
+  var weekSelect=document.getElementById('sched-week');
+  weekSelect.innerHTML='<option value="">-- Choose a week --</option>';
+  
+  db.ref('ct/schedule/'+div).once('value',function(snap){
+    var divData=snap.val();
+    if(!divData || !divData.weeks)return;
+    
+    divData.weeks.forEach(function(w,i){
+      var opt=document.createElement('option');
+      opt.value=i;
+      opt.textContent='Week '+w.week+' - '+w.date+' ('+w.venue+')';
+      weekSelect.appendChild(opt);
+    });
+  });
+}
+
+function loadWeekDetails(){
+  var div=document.getElementById('sched-division').value;
+  var weekIdx=parseInt(document.getElementById('sched-week').value);
+  
+  if(isNaN(weekIdx)){
+    document.getElementById('week-details').style.display='none';
+    return;
+  }
+  
+  db.ref('ct/schedule/'+div).once('value',function(snap){
+    var divData=snap.val();
+    if(!divData || !divData.weeks[weekIdx])return;
+    
+    var week=divData.weeks[weekIdx];
+    document.getElementById('sched-date').value=week.date||'';
+    document.getElementById('sched-venue').value=week.venue||'';
+    
+    // Render games
+    var gamesList=document.getElementById('games-list');
+    gamesList.innerHTML='';
+    
+    if(week.games && Array.isArray(week.games)){
+      week.games.forEach(function(game,idx){
+        var gameDiv=document.createElement('div');
+        gameDiv.style.cssText='margin-bottom:8px;padding:8px;background:var(--dark2);border:1px solid #555;border-radius:4px;';
+        
+        if(game.matchup){
+          // Playoff game
+          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+'</div>'+
+                           '<input type="text" value="'+(game.matchup||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+        } else if(game.event){
+          // Special event (open gym, all-star game, etc)
+          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+' ('+(game.duration||'TBD')+')</div>'+
+                           '<input type="text" value="'+(game.event||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+        } else {
+          // Regular game
+          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+'</div>'+
+                           '<input type="text" placeholder="Home vs Away" value="'+(game.home||'')+' vs '+(game.away||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+        }
+        
+        gamesList.appendChild(gameDiv);
+      });
+    }
+    
+    document.getElementById('week-details').style.display='block';
+  });
+}
+
+function saveWeekSchedule(){
+  var div=document.getElementById('sched-division').value;
+  var weekIdx=parseInt(document.getElementById('sched-week').value);
+  var date=document.getElementById('sched-date').value;
+  var venue=document.getElementById('sched-venue').value;
+  
+  if(!date || !venue){
+    alert('Date and venue are required');
+    return;
+  }
+  
+  db.ref('ct/schedule/'+div+'/weeks/'+weekIdx).update({
+    date:date,
+    venue:venue
+  },function(err){
+    if(err){
+      alert('Error saving: '+err.message);
+      return;
+    }
+    alert('Week '+weekIdx+' updated! ✓');
+    closeScheduleEditor();
+  });
+}
+
+
 function openStatsCorrectionModal(){
   document.getElementById('stats-correction-modal').style.display='flex';
   populateGamesList();
@@ -4196,7 +4327,67 @@ function saveStatCorrection(){
   });
 }
 </script>
-<!-- ── STATS CORRECTION MODAL ── -->
+<!-- ── SCHEDULE EDITOR MODAL ── -->
+<div id="schedule-editor-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;">
+  <div style="background:var(--dark2);border:1px solid #333;border-radius:12px;padding:24px;max-width:700px;width:90%;margin:20px 0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="color:var(--orange);margin:0;font-size:18px;">SCHEDULE EDITOR</h2>
+      <button onclick="closeScheduleEditor()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+
+    <!-- Division Selector -->
+    <div style="margin-bottom:16px;">
+      <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px;font-weight:700;">DIVISION</label>
+      <select id="sched-division" onchange="loadDivisionSchedule()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:6px;font-size:13px;">
+        <option value="35plus">35+ Men's Division</option>
+        <option value="open">Open Division</option>
+        <option value="6ft1">6'1" & Under Division</option>
+      </select>
+    </div>
+
+    <!-- Week Selector & Editor -->
+    <div style="margin-bottom:16px;">
+      <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px;font-weight:700;">SELECT WEEK</label>
+      <select id="sched-week" onchange="loadWeekDetails()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:6px;font-size:13px;">
+        <option value="">-- Choose a week --</option>
+      </select>
+    </div>
+
+    <!-- Week Details Editor -->
+    <div id="week-details" style="display:none;border-top:1px solid #333;padding-top:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">DATE (YYYY-MM-DD)</label>
+          <input type="text" id="sched-date" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">VENUE</label>
+          <input type="text" id="sched-venue" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:6px;font-weight:700;">GAMES/EVENTS</label>
+        <div id="games-list" style="max-height:300px;overflow-y:auto;border:1px solid #333;border-radius:4px;padding:8px;background:var(--dark3);">
+          <!-- Games populate here -->
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveWeekSchedule()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">✓ SAVE WEEK</button>
+        <button onclick="closeScheduleEditor()" style="flex:1;padding:10px;background:var(--dark3);color:var(--muted);border:1px solid #333;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Info Message -->
+    <div id="sched-info" style="color:var(--muted);font-size:11px;margin-top:12px;line-height:1.6;">
+      💡 Select a division and week to edit dates, venues, and game times.
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Editor Button (in control bar) -->
+
 <div id="stats-correction-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #333;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
