@@ -46,7 +46,7 @@
       {
         "week": 5,
         "date": "2026-08-07",
-        "venue": "TBD",
+        "venue": "Piedmont High School - Small Gym",
         "games": [
           {"time": "18:30", "home": "", "away": ""},
           {"time": "19:30", "home": "", "away": ""},
@@ -56,7 +56,7 @@
       {
         "week": 6,
         "date": "2026-08-14",
-        "venue": "TBD",
+        "venue": "Piedmont High School - Small Gym",
         "games": [
           {"time": "18:30", "home": "", "away": ""},
           {"time": "19:30", "home": "", "away": ""},
@@ -66,7 +66,7 @@
       {
         "week": 7,
         "date": "2026-08-21",
-        "venue": "TBD",
+        "venue": "Piedmont High School - Small Gym",
         "games": [
           {"time": "18:30", "home": "", "away": ""},
           {"time": "19:30", "home": "", "away": ""},
@@ -76,7 +76,7 @@
       {
         "week": 8,
         "date": "2026-08-19",
-        "venue": "Piedmont Hills - Small Gym",
+        "venue": "Piedmont High School - Small Gym",
         "type": "playoff",
         "round": "First Round",
         "games": [
@@ -88,7 +88,7 @@
       {
         "week": 9,
         "date": "2026-08-26",
-        "venue": "Piedmont Hills - Small Gym",
+        "venue": "Piedmont High School - Small Gym",
         "type": "playoff",
         "round": "Semifinals",
         "games": [
@@ -100,7 +100,7 @@
       {
         "week": 10,
         "date": "2026-09-02",
-        "venue": "Piedmont Hills - Big Gym",
+        "venue": "Piedmont High School - Big Gym",
         "type": "playoff",
         "round": "Championship",
         "games": [
