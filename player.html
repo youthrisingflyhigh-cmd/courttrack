@@ -1845,9 +1845,9 @@ function populateBoxScoreGames(){
     
     if(hist){
       if(Array.isArray(hist)){
-        games=hist.filter(Boolean).filter(function(g){return g&&g.status==='final';});
+        games=hist.filter(Boolean);
       } else if(typeof hist==='object'){
-        games=Object.values(hist).filter(Boolean).filter(function(g){return g&&g.status==='final';});
+        games=Object.values(hist).filter(Boolean);
       }
     }
     
