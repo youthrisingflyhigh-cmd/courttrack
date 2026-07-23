@@ -310,7 +310,8 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <div class="nav-logo" onclick="showTab('home')">COURT<span>TRACK</span><small>by YUNG RIZZO</small></div>
   <!-- Desktop tabs -->
   <div class="nav-tabs nav-tabs-desktop">
-    <button class="nav-tab active" onclick="showTab('home')">🏠 Home</button>
+    <button class="nav-tab" onclick="showTab('home')">🏠 Home</button>
+    <button class="nav-tab" onclick="showTab('mystats')">⭐ My Stats</button>
     <button class="nav-tab" onclick="showTab('live')">🔴 Live</button>
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
     <button class="nav-tab" onclick="showTab('boxscores')">📋 Box Scores</button>
@@ -330,6 +331,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 <!-- Mobile dropdown menu -->
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
+  <button class="mobile-tab" onclick="showTab('mystats');closeMenu()">⭐ My Stats</button>
   <button class="mobile-tab" onclick="showTab('live');closeMenu()">🔴 Live</button>
   <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
   <button class="mobile-tab" onclick="showTab('boxscores');closeMenu()">📋 Box Scores</button>
@@ -411,7 +413,57 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   </div>
 </div>
 
+<!-- MY STATS -->
+<div class="page" id="tab-mystats">
+  <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">⭐ My Stats</h2>
+  
+  <div style="margin-bottom: 2rem; max-width: 400px;">
+    <label style="display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 700;">ENTER YOUR JERSEY #</label>
+    <div style="display: flex; gap: 8px;">
+      <input type="number" id="mystats-number" placeholder="e.g., 23" style="flex: 1; padding: 10px; background: var(--dark3); border: 1px solid #333; color: #fff; border-radius: 6px; font-size: 13px; font-family: 'Barlow', sans-serif;">
+      <button onclick="loadMyStats()" style="padding: 10px 20px; background: var(--orange); color: #000; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">Search</button>
+    </div>
+  </div>
+
+  <div id="mystats-container" style="display: none;">
+    <div id="mystats-info" style="background: var(--dark2); border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 2rem;">
+      <div style="font-size: 14px; color: #fff; font-weight: 600; margin-bottom: 12px;">
+        <span id="mystats-name">Player Name</span> — <span id="mystats-team" style="color: var(--orange);">Team</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+        <div style="background: var(--dark3); padding: 12px; border-radius: 6px; text-align: center;">
+          <div style="color: var(--muted); font-size: 11px; margin-bottom: 4px;">Games</div>
+          <div id="mystats-gp" style="color: var(--orange); font-size: 24px; font-weight: 700;">0</div>
+        </div>
+        <div style="background: var(--dark3); padding: 12px; border-radius: 6px; text-align: center;">
+          <div style="color: var(--muted); font-size: 11px; margin-bottom: 4px;">PPG</div>
+          <div id="mystats-ppg" style="color: #fff; font-size: 24px; font-weight: 700;">0.0</div>
+        </div>
+        <div style="background: var(--dark3); padding: 12px; border-radius: 6px; text-align: center;">
+          <div style="color: var(--muted); font-size: 11px; margin-bottom: 4px;">RPG</div>
+          <div id="mystats-rpg" style="color: #fff; font-size: 24px; font-weight: 700;">0.0</div>
+        </div>
+        <div style="background: var(--dark3); padding: 12px; border-radius: 6px; text-align: center;">
+          <div style="color: var(--muted); font-size: 11px; margin-bottom: 4px;">APG</div>
+          <div id="mystats-apg" style="color: #fff; font-size: 24px; font-weight: 700;">0.0</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="color: var(--muted); font-size: 14px; margin-bottom: 12px; font-weight: 700;">YOUR GAMES</h3>
+    <div id="mystats-games" style="display: grid; gap: 12px;">
+      <!-- Games populate here -->
+    </div>
+  </div>
+
+  <div id="mystats-notfound" style="display: none; text-align: center; padding: 40px 20px; color: var(--muted);">
+    <p style="font-size: 14px; margin-bottom: 8px;">No player found with that number</p>
+    <p style="font-size: 12px;">Try a different jersey number</p>
+  </div>
+</div>
+
 <!-- LIVE -->
+
 <div class="page" id="tab-live"><div class="loading">🏀 Loading…</div></div>
 
 <!-- SCORES -->
@@ -1770,6 +1822,7 @@ function clearStream(){
 // ── TAB NAV ──
 function renderAll(){
   if(currentTab==='home')        renderHome();
+  if(currentTab==='mystats')     {} // My Stats loads on demand via search button
   if(currentTab==='live')        renderLive();
   if(currentTab==='scores')      renderScores();
   if(currentTab==='film')        renderFilm();
@@ -1802,7 +1855,7 @@ function populateBoxScoreGames(){
     
     select.innerHTML='<option value="">-- Choose a game --</option>';
     games.forEach(function(game,idx){
-      var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+')';
+      var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+' @ '+(game.time||'--:--')+')';
       var opt=document.createElement('option');
       opt.value=JSON.stringify(game);
       opt.textContent=label;
@@ -1908,13 +1961,128 @@ function loadBoxScore(){
   document.getElementById('boxscore-container').style.display='block';
 }
 
+// ── MY STATS (Player Lookup) ──
+function loadMyStats(){
+  var playerNum=document.getElementById('mystats-number').value.trim();
+  if(!playerNum){
+    alert('Enter a jersey number');
+    return;
+  }
+  
+  // Fetch all games from Firebase
+  db.ref('ct/history').once('value',function(snap){
+    var hist=snap.val();
+    var games=[];
+    
+    if(hist){
+      if(Array.isArray(hist)){
+        games=hist.filter(Boolean);
+      } else if(typeof hist==='object'){
+        games=Object.values(hist).filter(Boolean);
+      }
+    }
+    
+    // Find all games where this player appears
+    var playerGames=[];
+    var playerData={name:null,team:null,gp:0,pts:0,reb:0,ast:0,stl:0,blk:0,to:0};
+    
+    games.forEach(function(game){
+      if(!game.playerStats)return;
+      
+      // Check home team
+      if(game.playerStats.home && game.playerStats.home[playerNum]){
+        var ps=game.playerStats.home[playerNum];
+        playerData.name=ps.name||'Player '+playerNum;
+        playerData.team=game.home||'Home';
+        playerData.gp++;
+        playerData.pts+=(ps.pts||0);
+        playerData.reb+=(ps.reb||0);
+        playerData.ast+=(ps.ast||0);
+        playerData.stl+=(ps.stl||0);
+        playerData.blk+=(ps.blk||0);
+        playerData.to+=(ps.to||0);
+        playerGames.push({game:game,ps:ps,team:game.home,homeColor:game.homeColor});
+      }
+      
+      // Check away team
+      if(game.playerStats.away && game.playerStats.away[playerNum]){
+        var ps=game.playerStats.away[playerNum];
+        playerData.name=ps.name||'Player '+playerNum;
+        playerData.team=game.away||'Away';
+        playerData.gp++;
+        playerData.pts+=(ps.pts||0);
+        playerData.reb+=(ps.reb||0);
+        playerData.ast+=(ps.ast||0);
+        playerData.stl+=(ps.stl||0);
+        playerData.blk+=(ps.blk||0);
+        playerData.to+=(ps.to||0);
+        playerGames.push({game:game,ps:ps,team:game.away,awayColor:game.awayColor});
+      }
+    });
+    
+    if(playerGames.length===0){
+      document.getElementById('mystats-container').style.display='none';
+      document.getElementById('mystats-notfound').style.display='block';
+      return;
+    }
+    
+    document.getElementById('mystats-notfound').style.display='none';
+    document.getElementById('mystats-container').style.display='block';
+    
+    // Display player info
+    document.getElementById('mystats-name').textContent=playerData.name+' #'+playerNum;
+    document.getElementById('mystats-team').textContent=playerData.team;
+    document.getElementById('mystats-gp').textContent=playerData.gp;
+    document.getElementById('mystats-ppg').textContent=(playerData.pts/playerData.gp).toFixed(1);
+    document.getElementById('mystats-rpg').textContent=(playerData.reb/playerData.gp).toFixed(1);
+    document.getElementById('mystats-apg').textContent=(playerData.ast/playerData.gp).toFixed(1);
+    
+    // Display games
+    var gamesDiv=document.getElementById('mystats-games');
+    gamesDiv.innerHTML='';
+    
+    playerGames.reverse().forEach(function(pg){
+      var game=pg.game;
+      var ps=pg.ps;
+      var eff=(ps.pts||0)+(ps.reb||0)+(ps.ast||0)+(ps.stl||0)+(ps.blk||0)-(ps.to||0);
+      var result=game.homeScore>game.awayScore?'W':'L';
+      var resultColor=result==='W'?'#4CAF50':'#FF5252';
+      
+      var opp=pg.team===game.home?game.away:game.home;
+      var score=pg.team===game.home?game.homeScore+'-'+game.awayScore:game.awayScore+'-'+game.homeScore;
+      
+      var card=document.createElement('div');
+      card.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;transition:all 0.15s;';
+      card.onmouseover=function(){this.style.borderColor=\'#555\';};
+      card.onmouseout=function(){this.style.borderColor=\'#333\';};
+      card.innerHTML=
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'+
+          '<div>'+
+            '<div style="font-size:13px;font-weight:600;color:#fff;">'+pg.team+' <span style="color:'+resultColor+';font-weight:700;">'+result+'</span> vs '+opp+'</div>'+
+            '<div style="font-size:11px;color:var(--muted);margin-top:4px;">'+game.date+' @ '+(game.time||\'--:--\')+' | '+score+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:11px;">'+
+          '<div style="text-align:center;"><div style="color:var(--muted);margin-bottom:4px;">PTS</div><div style="color:#fff;font-weight:700;font-size:14px;">'+( ps.pts||0)+'</div></div>'+
+          '<div style="text-align:center;"><div style="color:var(--muted);margin-bottom:4px;">REB</div><div style="color:#fff;font-weight:700;font-size:14px;">'+( ps.reb||0)+'</div></div>'+
+          '<div style="text-align:center;"><div style="color:var(--muted);margin-bottom:4px;">AST</div><div style="color:#fff;font-weight:700;font-size:14px;">'+( ps.ast||0)+'</div></div>'+
+          '<div style="text-align:center;"><div style="color:var(--muted);margin-bottom:4px;">STL</div><div style="color:#fff;font-weight:700;font-size:14px;">'+( ps.stl||0)+'</div></div>'+
+          '<div style="text-align:center;"><div style="color:var(--muted);margin-bottom:4px;">BLK</div><div style="color:#fff;font-weight:700;font-size:14px;">'+( ps.blk||0)+'</div></div>'+
+        '</div>'+
+        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #444;text-align:center;font-size:11px;color:#999;">EFF: '+eff+'</div>';
+      
+      gamesDiv.appendChild(card);
+    });
+  });
+}
+
 function showTab(t){
   currentTab=t;
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,boxscores:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
+  var idx={home:0,mystats:0.5,live:1,scores:2,boxscores:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
