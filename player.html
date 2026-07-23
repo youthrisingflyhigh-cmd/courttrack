@@ -1920,92 +1920,43 @@ function showTab(t){
   if(t==='film')        renderFilm();
   if(t==='schedule')    renderSchedule();
   if(t==='standings')   renderStandings();
+  if(t==='games')       renderGames();
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();
   if(t==='locations')   renderLocations();
 }
-</script>
-</body>
-</html>
 
-// ── GAMES TAB ──
+// Games Tab
 function renderGames(){
   var el=document.getElementById('games-list');
-  el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">Loading games...</div>';
-  
   db.ref('ct/history').once('value',function(snap){
-    var hist=snap.val();
     var games=[];
-    
-    if(hist){
-      if(Array.isArray(hist)){
-        games=hist.filter(Boolean);
-      } else if(typeof hist==='object'){
-        games=Object.values(hist).filter(Boolean);
-      }
+    if(snap.val()){
+      var h=snap.val();
+      games=Array.isArray(h)?h.filter(Boolean):Object.values(h).filter(Boolean);
     }
-    
-    console.log('Games found:', games.length);
-    
-    if(!games.length){el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">No games yet</div>';return;}
-    
-    games=games.reverse();
-    el.innerHTML='';
-    games.forEach(function(game,idx){
-      var card=document.createElement('div');
-      card.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;';
-      var gameId='game-'+idx;
-      var expanded=false;
-      
-      var score=game.homeScore+'–'+game.awayScore;
-      var header='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:600;">'+
-        '<div>'+game.home+' '+score+' '+game.away+'</div>'+
-        '<div style="color:var(--muted);font-size:12px;">'+game.date+'</div>'+
-        '</div>';
-      
-      card.innerHTML=header+'<div id="'+gameId+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
-      
-      card.onclick=function(e){
-        if(e.target.closest('table'))return;
-        expanded=!expanded;
-        var detail=document.getElementById(gameId);
-        if(expanded){
-          detail.style.display='block';
-          loadGameDetail(gameId,game);
-        }else{
-          detail.style.display='none';
-        }
-      };
-      
-      el.appendChild(card);
+    if(!games.length){el.innerHTML='<div style="color:var(--muted);padding:20px;">No games</div>';return;}
+    games=games.reverse();el.innerHTML='';
+    games.forEach(function(g,i){
+      var c=document.createElement('div');
+      c.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;margin-bottom:12px;';
+      var gid='game-'+i;var exp=false;
+      c.innerHTML='<div style="display:flex;justify-content:space-between;font-weight:600;">'+g.home+' '+g.homeScore+'-'+g.awayScore+' '+g.away+'</div><div id="'+gid+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
+      c.onclick=function(){exp=!exp;var d=document.getElementById(gid);d.style.display=exp?'block':'none';if(exp)loadGameDetail(gid,g);};
+      el.appendChild(c);
     });
   });
 }
 
-function loadGameDetail(gameId,game){
-  var el=document.getElementById(gameId);
-  var html='<h3 style="color:var(--orange);margin-bottom:12px;font-size:14px;">BOX SCORE</h3>';
-  html+='<table style="width:100%;margin-bottom:16px;font-size:12px;"><tr style="background:#1a1a1a;"><th style="padding:8px;text-align:left;color:var(--orange);">'+game.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
-  
-  if(game.playerStats && game.playerStats.home){
-    Object.keys(game.playerStats.home).forEach(function(pNum){
-      var ps=game.playerStats.home[pNum];
-      if(!ps)return;
-      html+='<tr style="border-bottom:1px solid #333;"><td style="padding:8px;">'+ps.name+'</td><td>'+( ps.pts||0)+'</td><td>'+( ps.reb||0)+'</td><td>'+( ps.ast||0)+'</td><td>'+( ps.stl||0)+'</td><td>'+( ps.blk||0)+'</td></tr>';
-    });
-  }
-  html+='</table>';
-  
-  html+='<table style="width:100%;margin-bottom:16px;font-size:12px;"><tr style="background:#1a1a1a;"><th style="padding:8px;text-align:left;color:#999;">'+game.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
-  
-  if(game.playerStats && game.playerStats.away){
-    Object.keys(game.playerStats.away).forEach(function(pNum){
-      var ps=game.playerStats.away[pNum];
-      if(!ps)return;
-      html+='<tr style="border-bottom:1px solid #333;"><td style="padding:8px;">'+ps.name+'</td><td>'+( ps.pts||0)+'</td><td>'+( ps.reb||0)+'</td><td>'+( ps.ast||0)+'</td><td>'+( ps.stl||0)+'</td><td>'+( ps.blk||0)+'</td></tr>';
-    });
-  }
-  html+='</table>';
-  
-  el.innerHTML=html;
+function loadGameDetail(gid,g){
+  var el=document.getElementById(gid);
+  var h='<table style="width:100%;font-size:12px;margin-bottom:12px;"><tr style="background:#1a1a1a;"><th style="padding:6px;text-align:left;">'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
+  if(g.playerStats&&g.playerStats.home){Object.keys(g.playerStats.home).forEach(function(p){var ps=g.playerStats.home[p];if(ps)h+='<tr><td style="padding:6px;">'+ps.name+'</td><td>'+(ps.pts||0)+'</td><td>'+(ps.reb||0)+'</td><td>'+(ps.ast||0)+'</td></tr>';});}
+  h+='</table><table style="width:100%;font-size:12px;"><tr style="background:#1a1a1a;"><th style="padding:6px;text-align:left;">'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
+  if(g.playerStats&&g.playerStats.away){Object.keys(g.playerStats.away).forEach(function(p){var ps=g.playerStats.away[p];if(ps)h+='<tr><td style="padding:6px;">'+ps.name+'</td><td>'+(ps.pts||0)+'</td><td>'+(ps.reb||0)+'</td><td>'+(ps.ast||0)+'</td></tr>';});}
+  h+='</table>';el.innerHTML=h;
 }
+
+</script>
+</body>
+</html>
