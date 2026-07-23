@@ -326,7 +326,6 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="nav-tab active" onclick="showTab('home')">🏠 Home</button>
     <button class="nav-tab" onclick="showTab('live')">🔴 Live</button>
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
-    <button class="nav-tab" onclick="showTab('stats')">🏀 Game Stats</button>
     <button class="nav-tab" onclick="showTab('film')">🎥 Game Film</button>
     <button class="nav-tab" onclick="showTab('schedule')">📅 Schedule</button>
     <button class="nav-tab" onclick="showTab('standings')">📊 Standings</button>
@@ -345,7 +344,6 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
   <button class="mobile-tab" onclick="showTab('live');closeMenu()">🔴 Live</button>
   <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
-  <button class="mobile-tab" onclick="showTab('stats');closeMenu()">🏀 Game Stats</button>
   <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎥 Game Film</button>
   <button class="mobile-tab" onclick="showTab('schedule');closeMenu()">📅 Schedule</button>
   <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
@@ -471,15 +469,6 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 <!-- SCORES -->
 <div class="page" id="tab-scores"><div class="loading">Loading scores…</div></div>
 
-<div class="page" id="tab-stats">
-  <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">🏀 Game Stats</h2>
-  <div style="margin-bottom: 1.5rem;">
-    <button onclick="renderGames()" style="padding: 10px 20px; background: var(--orange); color: #000; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">🔄 Load Games</button>
-  </div>
-  <div id="games-list" style="display: grid; gap: 12px;">
-    <div style="color: var(--muted); padding: 20px; text-align: center;">Click "Load Games" to fetch from Firebase</div>
-  </div>
-</div>
 
 <div class="page" id="tab-film">
   <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">🎥 Game Film</h2>
@@ -1207,30 +1196,33 @@ function renderLive(){
 // ── SCORES (game history) ──
 function renderScores(){
   var el=document.getElementById('tab-scores');
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean);
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   if(!hist.length){
-    el.innerHTML='<div style="padding:2rem;"><h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Scores</h2><p style="color:var(--muted);font-style:italic;">No completed games yet.</p></div>';
+    el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Scores</h2><p style="color:var(--muted);font-style:italic;">No completed games yet.</p>';
     return;
   }
   var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Scores</h2>';
-  hist.slice().reverse().forEach(function(g){
-    if(!g)return;
-    var hWin=(g.homeScore||0)>(g.awayScore||0);
-    var winner=hWin?g.home:g.away;
-    html+='<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:var(--dark2);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;flex-wrap:wrap;">'
-      +'<div style="font-size:12px;color:var(--muted);min-width:100px;">'+(g.date||'')+'</div>'
-      +'<div style="flex:1;"><div style="font-size:14px;font-weight:600;"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div></div>'
-      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;letter-spacing:1px;">'
-        +'<span style="color:'+(hWin?'var(--white)':'var(--muted)')+'">'+(g.homeScore||0)+'</span>'
-        +' <span style="color:#333;">–</span> '
-        +'<span style="color:'+(hWin?'var(--muted)':'var(--white)')+'">'+(g.awayScore||0)+'</span>'
-      +'</div>'
-      +'<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(34,197,94,0.1);color:var(--green);">FINAL</div>'
-      +'<div style="font-size:12px;color:var(--muted);">W: <span style="color:var(--white);font-weight:700;">'+winner+'</span></div>'
-      +(g.videoUrl?'<a href="'+g.videoUrl+'" target="_blank" style="font-size:12px;font-weight:700;color:var(--orange);text-decoration:none;padding:5px 12px;border:1px solid var(--orange);border-radius:99px;white-space:nowrap;">🎥 Watch</a>':'')
-    +'</div>';
+  hist.forEach(function(g,gi){
+    if(!g)return '';
+    var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
+    var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
+    var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
+    function makeRows(pl,st,color){
+      if(!pl||!st)return '';
+      var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
+      var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
+        var s=(typeof st==='object'?st[p.num]:{})||{};
+        tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
+        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
+      }).join('');
+      rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
+      return rows;
+    }
+    var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
+    var logHtml=log.length?log.map(function(e){
+      return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
+    }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -1771,7 +1763,6 @@ function renderAll(){
   if(currentTab==='film')        renderFilm();
   if(currentTab==='schedule')    renderSchedule();
   if(currentTab==='standings')   renderStandings();
-  if(currentTab==='stats')       renderGames();
   if(currentTab==='teams')       renderTeams();
   if(currentTab==='playerstats') renderPlayerStats();
   if(currentTab==='locations')   renderLocations();
@@ -1925,7 +1916,7 @@ function showTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,stats:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
+  var idx={home:0,live:1,scores:2,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
@@ -1936,40 +1927,9 @@ function showTab(t){
   if(t==='film')        renderFilm();
   if(t==='schedule')    renderSchedule();
   if(t==='standings')   renderStandings();
-  if(t==='games')       renderGames();
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();
   if(t==='locations')   renderLocations();
-}
-function renderGames(){
-  var el=document.getElementById('games-list');
-  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  if(!hist.length){
-    el.innerHTML='<div style="text-align:center;padding:60px 20px;"><div style="font-size:52px;margin-bottom:16px;">🏀</div><h3 style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;color:var(--white);margin-bottom:8px;">No games yet</h3><p style="font-size:13px;color:var(--muted);max-width:360px;margin:0 auto 20px;">Game records will appear here after you finish a game. Each game will show the full box score and play-by-play log.</p></div>';
-    return;
-  }
-  el.innerHTML=hist.map(function(g,gi){
-    if(!g)return '';
-    var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
-    var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
-    var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
-    function makeRows(pl,st,color){
-      if(!pl||!st)return '';
-      var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
-      var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
-        var s=(typeof st==='object'?st[p.num]:{})||{};
-        tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
-        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
-      }).join('');
-      rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
-      return rows;
-    }
-    var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
-    var logHtml=log.length?log.map(function(e){
-      return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
-    }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    return '<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button><button class="game-tab" id="gtab-'+gi+'-video" onclick="switchGameTab('+gi+',\'video\')">🎥 Game Film</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div><div class="game-tab-panel" id="gpanel-'+gi+'-video"><p style="color:var(--muted);font-size:13px;">Game film not available in player view</p></div></div></div>';
-  }).join('');
 }
 
 function toggleGameRecord(gi){
@@ -1987,41 +1947,6 @@ function switchGameTab(gi,tab){
 }
 
 // Games Tab
-function renderGames(){
-  var el=document.getElementById('games-list');
-  
-  // Use the gameHistory variable that's already loaded from Firebase
-  var games=[];
-  try{
-    if(Array.isArray(gameHistory)){
-      games=gameHistory.filter(Boolean);
-    } else if(gameHistory&&typeof gameHistory==='object'){
-      games=Object.values(gameHistory).filter(Boolean);
-    }
-  } catch(e){
-    console.error('Error processing gameHistory:',e);
-  }
-  
-  console.log('Games available:',games.length);
-  
-  if(!games.length){
-    el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">❌ No games loaded yet<br><small>Make sure games are finished in admin.html</small></div>';
-    return;
-  }
-  
-  games=games.reverse();
-  el.innerHTML='';
-  games.forEach(function(g,i){
-    if(!g.home||!g.away){return;}
-    var c=document.createElement('div');
-    c.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;margin-bottom:12px;';
-    var gid='game-'+i;var exp=false;
-    var score=(g.homeScore||0)+'-'+(g.awayScore||0);
-    c.innerHTML='<div style="font-weight:600;margin-bottom:8px;">'+g.home+' '+score+' '+g.away+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div><div id="'+gid+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
-    c.onclick=function(){exp=!exp;var d=document.getElementById(gid);d.style.display=exp?'block':'none';if(exp)loadGameDetail(gid,g);};
-    el.appendChild(c);
-  });
-}
 
 function loadGameDetail(gid,g){
   var el=document.getElementById(gid);
