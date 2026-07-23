@@ -460,8 +460,11 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 
 <div class="page" id="tab-stats">
   <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">🏀 Game Stats</h2>
+  <div style="margin-bottom: 1.5rem;">
+    <button onclick="renderGames()" style="padding: 10px 20px; background: var(--orange); color: #000; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">🔄 Load Games</button>
+  </div>
   <div id="games-list" style="display: grid; gap: 12px;">
-    <div style="color: var(--muted); padding: 20px; text-align: center;">Loading...</div>
+    <div style="color: var(--muted); padding: 20px; text-align: center;">Click "Load Games" to fetch from Firebase</div>
   </div>
 </div>
 
@@ -1929,41 +1932,38 @@ function showTab(t){
 // Games Tab
 function renderGames(){
   var el=document.getElementById('games-list');
-  el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">Loading game stats...</div>';
   
+  // Use the gameHistory variable that's already loaded from Firebase
+  var games=[];
   try{
-    db.ref('ct/history').once('value',function(snap){
-      console.log('Firebase snap received');
-      var games=[];
-      if(snap.val()){
-        var h=snap.val();
-        games=Array.isArray(h)?h.filter(Boolean):Object.values(h).filter(Boolean);
-        console.log('Games found:',games.length);
-      } else {
-        console.log('No data from Firebase');
-      }
-      
-      if(!games.length){el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">No completed games yet. Finish a game in admin.html first.</div>';return;}
-      
-      games=games.reverse();
-      el.innerHTML='';
-      games.forEach(function(g,i){
-        if(!g.home||!g.away)return;
-        var c=document.createElement('div');
-        c.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;margin-bottom:12px;';
-        var gid='game-'+i;var exp=false;
-        c.innerHTML='<div style="display:flex;justify-content:space-between;font-weight:600;">'+g.home+' '+g.homeScore+'-'+g.awayScore+' '+g.away+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div><div id="'+gid+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
-        c.onclick=function(){exp=!exp;var d=document.getElementById(gid);d.style.display=exp?'block':'none';if(exp)loadGameDetail(gid,g);};
-        el.appendChild(c);
-      });
-    }).catch(function(err){
-      console.error('Firebase error:',err);
-      el.innerHTML='<div style="color:#f44;padding:20px;text-align:center;">Error loading games: '+err.message+'</div>';
-    });
+    if(Array.isArray(gameHistory)){
+      games=gameHistory.filter(Boolean);
+    } else if(gameHistory&&typeof gameHistory==='object'){
+      games=Object.values(gameHistory).filter(Boolean);
+    }
   } catch(e){
-    console.error('Error:',e);
-    el.innerHTML='<div style="color:#f44;padding:20px;">Error: '+e.message+'</div>';
+    console.error('Error processing gameHistory:',e);
   }
+  
+  console.log('Games available:',games.length);
+  
+  if(!games.length){
+    el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">❌ No games loaded yet<br><small>Make sure games are finished in admin.html</small></div>';
+    return;
+  }
+  
+  games=games.reverse();
+  el.innerHTML='';
+  games.forEach(function(g,i){
+    if(!g.home||!g.away){return;}
+    var c=document.createElement('div');
+    c.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;margin-bottom:12px;';
+    var gid='game-'+i;var exp=false;
+    var score=(g.homeScore||0)+'-'+(g.awayScore||0);
+    c.innerHTML='<div style="font-weight:600;margin-bottom:8px;">'+g.home+' '+score+' '+g.away+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div><div id="'+gid+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
+    c.onclick=function(){exp=!exp;var d=document.getElementById(gid);d.style.display=exp?'block':'none';if(exp)loadGameDetail(gid,g);};
+    el.appendChild(c);
+  });
 }
 
 function loadGameDetail(gid,g){
