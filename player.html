@@ -1784,35 +1784,48 @@ function renderAll(){
 // ── BOX SCORES ──
 function populateBoxScoreGames(){
   var select=document.getElementById('boxscore-game-select');
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';}).reverse();
   
-  select.innerHTML='<option value="">-- Choose a game --</option>';
-  hist.forEach(function(game,idx){
-    var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+')';
-    var opt=document.createElement('option');
-    opt.value=idx;
-    opt.textContent=label;
-    select.appendChild(opt);
+  // Fetch directly from Firebase
+  db.ref('ct/history').once('value',function(snap){
+    var hist=snap.val();
+    var games=[];
+    
+    if(hist){
+      if(Array.isArray(hist)){
+        games=hist.filter(Boolean).filter(function(g){return g&&g.status==='final';});
+      } else if(typeof hist==='object'){
+        games=Object.values(hist).filter(Boolean).filter(function(g){return g&&g.status==='final';});
+      }
+    }
+    
+    games=games.reverse();
+    
+    select.innerHTML='<option value="">-- Choose a game --</option>';
+    games.forEach(function(game,idx){
+      var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+')';
+      var opt=document.createElement('option');
+      opt.value=JSON.stringify(game);
+      opt.textContent=label;
+      select.appendChild(opt);
+    });
   });
 }
 
 function loadBoxScore(){
   var select=document.getElementById('boxscore-game-select');
-  var idx=select.value;
+  var gameStr=select.value;
   
-  if(!idx || idx===''){
+  if(!gameStr){
     document.getElementById('boxscore-container').style.display='none';
     return;
   }
   
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';}).reverse();
-  
-  var game=hist[idx];
-  if(!game)return;
+  try{
+    var game=JSON.parse(gameStr);
+  } catch(e){
+    console.error('Error parsing game data');
+    return;
+  }
   
   // Render home team
   var homeBody=document.getElementById('boxscore-home-body');
