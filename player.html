@@ -462,9 +462,12 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">📋 Box Scores</h2>
   <div style="margin-bottom: 1.5rem;">
     <label style="display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 700;">SELECT GAME</label>
-    <select id="boxscore-game-select" onchange="loadBoxScore()" style="width: 100%; padding: 10px; background: var(--dark3); border: 1px solid #333; color: #fff; border-radius: 6px; font-size: 13px; font-family: 'Barlow', sans-serif;">
-      <option value="">-- Choose a game --</option>
-    </select>
+    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <select id="boxscore-game-select" onchange="loadBoxScore()" style="flex: 1; padding: 10px; background: var(--dark3); border: 1px solid #333; color: #fff; border-radius: 6px; font-size: 13px; font-family: 'Barlow', sans-serif;">
+        <option value="">-- Choose a game --</option>
+      </select>
+      <button onclick="populateBoxScoreGames()" style="padding: 10px 16px; background: #666; color: #fff; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;">🔄 Refresh</button>
+    </div>
   </div>
   <div id="boxscore-container" style="display: none;">
     <table style="margin-bottom: 1.5rem;">
@@ -1825,32 +1828,44 @@ function renderAll(){
 // ── BOX SCORES ──
 function populateBoxScoreGames(){
   var select=document.getElementById('boxscore-game-select');
-  
-  // Fetch directly from Firebase
+  select.innerHTML='<option value="">Loading...</option>';
   db.ref('ct/history').once('value',function(snap){
-    var hist=snap.val();
-    var games=[];
-    
-    if(hist){
-      if(Array.isArray(hist)){
-        games=hist.filter(Boolean);
-      } else if(typeof hist==='object'){
-        games=Object.values(hist).filter(Boolean);
-      }
-    }
-    
+    var hist=snap.val();var games=[];if(hist){if(Array.isArray(hist)){games=hist.filter(Boolean);}else{games=Object.values(hist).filter(Boolean);}}
+    if(!games.length){select.innerHTML='<option value="">No games</option>';return;}
     games=games.reverse();
-    
     select.innerHTML='<option value="">-- Choose a game --</option>';
-    games.forEach(function(game,idx){
-      var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+' @ '+(game.time||'--:--')+')';
-      var opt=document.createElement('option');
-      opt.value=JSON.stringify(game);
-      opt.textContent=label;
-      select.appendChild(opt);
-    });
+    games.forEach(function(g){if(g.home&&g.away&&g.homeScore!==undefined){var l=g.home+" "+g.homeScore+" vs "+g.awayScore+" "+g.away+" ("+g.date+")";var o=document.createElement('option');o.value=JSON.stringify(g);o.textContent=l;select.appendChild(o);}});
   });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function loadBoxScore(){
   var select=document.getElementById('boxscore-game-select');
