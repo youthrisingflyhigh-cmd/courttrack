@@ -313,7 +313,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="nav-tab active" onclick="showTab('home')">🏠 Home</button>
     <button class="nav-tab" onclick="showTab('live')">🔴 Live</button>
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
-    <button class="nav-tab" onclick="showTab('boxscores')">📋 Box Scores</button>
+    <button class="nav-tab" onclick="showTab('games')">🎮 Games</button>
     <button class="nav-tab" onclick="showTab('film')">🎥 Game Film</button>
     <button class="nav-tab" onclick="showTab('schedule')">📅 Schedule</button>
     <button class="nav-tab" onclick="showTab('standings')">📊 Standings</button>
@@ -332,7 +332,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
   <button class="mobile-tab" onclick="showTab('live');closeMenu()">🔴 Live</button>
   <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
-  <button class="mobile-tab" onclick="showTab('boxscores');closeMenu()">📋 Box Scores</button>
+  <button class="mobile-tab" onclick="showTab('games');closeMenu()">🎮 Games</button>
   <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎥 Game Film</button>
   <button class="mobile-tab" onclick="showTab('schedule');closeMenu()">📅 Schedule</button>
   <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
@@ -458,77 +458,13 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 <!-- SCORES -->
 <div class="page" id="tab-scores"><div class="loading">Loading scores…</div></div>
 
-<div class="page" id="tab-boxscores">
-  <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">📋 Box Scores</h2>
-  <div style="margin-bottom: 1.5rem;">
-    <label style="display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 700;">SELECT GAME</label>
-    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-      <select id="boxscore-game-select" onchange="loadBoxScore()" style="flex: 1; padding: 10px; background: var(--dark3); border: 1px solid #333; color: #fff; border-radius: 6px; font-size: 13px; font-family: 'Barlow', sans-serif;">
-        <option value="">-- Choose a game --</option>
-      </select>
-      <button onclick="populateBoxScoreGames()" style="padding: 10px 16px; background: #666; color: #fff; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;">🔄 Refresh</button>
-    </div>
-  </div>
-  <div id="boxscore-container" style="display: none;">
-    <table style="margin-bottom: 1.5rem;">
-      <thead>
-        <tr style="background: var(--dark2); border-bottom: 2px solid var(--orange);">
-          <th style="text-align: left; padding: 12px; color: var(--orange); font-weight: 700;">Player</th>
-          <th style="text-align: center; padding: 8px;">PTS</th>
-          <th style="text-align: center; padding: 8px;">REB</th>
-          <th style="text-align: center; padding: 8px;">AST</th>
-          <th style="text-align: center; padding: 8px;">STL</th>
-          <th style="text-align: center; padding: 8px;">BLK</th>
-          <th style="text-align: center; padding: 8px;">TO</th>
-          <th style="text-align: center; padding: 8px;">EFF</th>
-        </tr>
-      </thead>
-      <tbody id="boxscore-home-body"></tbody>
-      <tfoot>
-        <tr style="background: var(--dark2); font-weight: 700; border-top: 1px solid #444;">
-          <td style="padding: 12px; color: var(--orange);">TOTALS</td>
-          <td id="box-h-pts" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-h-reb" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-h-ast" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-h-stl" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-h-blk" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-h-to" style="text-align: center; padding: 8px;">—</td>
-          <td style="text-align: center; padding: 8px;">—</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <table>
-      <thead>
-        <tr style="background: var(--dark2); border-bottom: 2px solid #666;">
-          <th style="text-align: left; padding: 12px; color: #ccc; font-weight: 700;">Player</th>
-          <th style="text-align: center; padding: 8px;">PTS</th>
-          <th style="text-align: center; padding: 8px;">REB</th>
-          <th style="text-align: center; padding: 8px;">AST</th>
-          <th style="text-align: center; padding: 8px;">STL</th>
-          <th style="text-align: center; padding: 8px;">BLK</th>
-          <th style="text-align: center; padding: 8px;">TO</th>
-          <th style="text-align: center; padding: 8px;">EFF</th>
-        </tr>
-      </thead>
-      <tbody id="boxscore-away-body"></tbody>
-      <tfoot>
-        <tr style="background: var(--dark2); font-weight: 700; border-top: 1px solid #444;">
-          <td style="padding: 12px; color: #ccc;">TOTALS</td>
-          <td id="box-a-pts" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-a-reb" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-a-ast" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-a-stl" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-a-blk" style="text-align: center; padding: 8px;">—</td>
-          <td id="box-a-to" style="text-align: center; padding: 8px;">—</td>
-          <td style="text-align: center; padding: 8px;">—</td>
-        </tr>
-      </tfoot>
-    </table>
+<div class="page" id="tab-games">
+  <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">🎮 Games</h2>
+  <div id="games-list" style="display: grid; gap: 12px;">
+    <div style="color: var(--muted); padding: 20px; text-align: center;">Loading games...</div>
   </div>
 </div>
 
-<!-- GAME FILM -->
 <div class="page" id="tab-film">
   <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">🎥 Game Film</h2>
   <p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">Full game footage, when available.</p>
@@ -1819,6 +1755,7 @@ function renderAll(){
   if(currentTab==='film')        renderFilm();
   if(currentTab==='schedule')    renderSchedule();
   if(currentTab==='standings')   renderStandings();
+  if(currentTab==='games')       renderGames();
   if(currentTab==='teams')       renderTeams();
   if(currentTab==='playerstats') renderPlayerStats();
   if(currentTab==='locations')   renderLocations();
@@ -1972,7 +1909,7 @@ function showTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,boxscores:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
+  var idx={home:0,live:1,scores:2,games:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
@@ -1990,3 +1927,71 @@ function showTab(t){
 </script>
 </body>
 </html>
+
+// ── GAMES TAB ──
+function renderGames(){
+  var el=document.getElementById('games-list');
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).reverse();
+  
+  if(!hist.length){el.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center;">No games yet</div>';return;}
+  
+  el.innerHTML='';
+  hist.forEach(function(game,idx){
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--dark2);border:1px solid #333;border-radius:8px;padding:16px;cursor:pointer;';
+    var gameId='game-'+idx;
+    var expanded=false;
+    
+    var score=game.homeScore+'–'+game.awayScore;
+    var header='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:600;">'+
+      '<div>'+game.home+' '+score+' '+game.away+'</div>'+
+      '<div style="color:var(--muted);font-size:12px;">'+game.date+'</div>'+
+      '</div>';
+    
+    card.innerHTML=header+'<div id="'+gameId+'" style="display:none;margin-top:16px;border-top:1px solid #444;padding-top:16px;"></div>';
+    
+    card.onclick=function(e){
+      if(e.target.closest('table'))return;
+      expanded=!expanded;
+      var detail=document.getElementById(gameId);
+      if(expanded){
+        detail.style.display='block';
+        loadGameDetail(gameId,game);
+      }else{
+        detail.style.display='none';
+      }
+    };
+    
+    el.appendChild(card);
+  });
+}
+
+function loadGameDetail(gameId,game){
+  var el=document.getElementById(gameId);
+  var html='<h3 style="color:var(--orange);margin-bottom:12px;font-size:14px;">BOX SCORE</h3>';
+  html+='<table style="width:100%;margin-bottom:16px;font-size:12px;"><tr style="background:#1a1a1a;"><th style="padding:8px;text-align:left;color:var(--orange);">'+game.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
+  
+  if(game.playerStats && game.playerStats.home){
+    Object.keys(game.playerStats.home).forEach(function(pNum){
+      var ps=game.playerStats.home[pNum];
+      if(!ps)return;
+      html+='<tr style="border-bottom:1px solid #333;"><td style="padding:8px;">'+ps.name+'</td><td>'+( ps.pts||0)+'</td><td>'+( ps.reb||0)+'</td><td>'+( ps.ast||0)+'</td><td>'+( ps.stl||0)+'</td><td>'+( ps.blk||0)+'</td></tr>';
+    });
+  }
+  html+='</table>';
+  
+  html+='<table style="width:100%;margin-bottom:16px;font-size:12px;"><tr style="background:#1a1a1a;"><th style="padding:8px;text-align:left;color:#999;">'+game.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
+  
+  if(game.playerStats && game.playerStats.away){
+    Object.keys(game.playerStats.away).forEach(function(pNum){
+      var ps=game.playerStats.away[pNum];
+      if(!ps)return;
+      html+='<tr style="border-bottom:1px solid #333;"><td style="padding:8px;">'+ps.name+'</td><td>'+( ps.pts||0)+'</td><td>'+( ps.reb||0)+'</td><td>'+( ps.ast||0)+'</td><td>'+( ps.stl||0)+'</td><td>'+( ps.blk||0)+'</td></tr>';
+    });
+  }
+  html+='</table>';
+  
+  el.innerHTML=html;
+}
