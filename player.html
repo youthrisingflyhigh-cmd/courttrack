@@ -313,6 +313,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="nav-tab active" onclick="showTab('home')">🏠 Home</button>
     <button class="nav-tab" onclick="showTab('live')">🔴 Live</button>
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
+    <button class="nav-tab" onclick="showTab('boxscores')">📋 Box Scores</button>
     <button class="nav-tab" onclick="showTab('film')">🎥 Game Film</button>
     <button class="nav-tab" onclick="showTab('schedule')">📅 Schedule</button>
     <button class="nav-tab" onclick="showTab('standings')">📊 Standings</button>
@@ -331,6 +332,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
   <button class="mobile-tab" onclick="showTab('live');closeMenu()">🔴 Live</button>
   <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
+  <button class="mobile-tab" onclick="showTab('boxscores');closeMenu()">📋 Box Scores</button>
   <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎥 Game Film</button>
   <button class="mobile-tab" onclick="showTab('schedule');closeMenu()">📅 Schedule</button>
   <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
@@ -414,6 +416,73 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 
 <!-- SCORES -->
 <div class="page" id="tab-scores"><div class="loading">Loading scores…</div></div>
+
+<div class="page" id="tab-boxscores">
+  <h2 style="color: var(--orange); margin-bottom: 1.5rem; font-size: 20px;">📋 Box Scores</h2>
+  <div style="margin-bottom: 1.5rem;">
+    <label style="display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 700;">SELECT GAME</label>
+    <select id="boxscore-game-select" onchange="loadBoxScore()" style="width: 100%; padding: 10px; background: var(--dark3); border: 1px solid #333; color: #fff; border-radius: 6px; font-size: 13px; font-family: 'Barlow', sans-serif;">
+      <option value="">-- Choose a game --</option>
+    </select>
+  </div>
+  <div id="boxscore-container" style="display: none;">
+    <table style="margin-bottom: 1.5rem;">
+      <thead>
+        <tr style="background: var(--dark2); border-bottom: 2px solid var(--orange);">
+          <th style="text-align: left; padding: 12px; color: var(--orange); font-weight: 700;">Player</th>
+          <th style="text-align: center; padding: 8px;">PTS</th>
+          <th style="text-align: center; padding: 8px;">REB</th>
+          <th style="text-align: center; padding: 8px;">AST</th>
+          <th style="text-align: center; padding: 8px;">STL</th>
+          <th style="text-align: center; padding: 8px;">BLK</th>
+          <th style="text-align: center; padding: 8px;">TO</th>
+          <th style="text-align: center; padding: 8px;">EFF</th>
+        </tr>
+      </thead>
+      <tbody id="boxscore-home-body"></tbody>
+      <tfoot>
+        <tr style="background: var(--dark2); font-weight: 700; border-top: 1px solid #444;">
+          <td style="padding: 12px; color: var(--orange);">TOTALS</td>
+          <td id="box-h-pts" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-h-reb" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-h-ast" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-h-stl" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-h-blk" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-h-to" style="text-align: center; padding: 8px;">—</td>
+          <td style="text-align: center; padding: 8px;">—</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <table>
+      <thead>
+        <tr style="background: var(--dark2); border-bottom: 2px solid #666;">
+          <th style="text-align: left; padding: 12px; color: #ccc; font-weight: 700;">Player</th>
+          <th style="text-align: center; padding: 8px;">PTS</th>
+          <th style="text-align: center; padding: 8px;">REB</th>
+          <th style="text-align: center; padding: 8px;">AST</th>
+          <th style="text-align: center; padding: 8px;">STL</th>
+          <th style="text-align: center; padding: 8px;">BLK</th>
+          <th style="text-align: center; padding: 8px;">TO</th>
+          <th style="text-align: center; padding: 8px;">EFF</th>
+        </tr>
+      </thead>
+      <tbody id="boxscore-away-body"></tbody>
+      <tfoot>
+        <tr style="background: var(--dark2); font-weight: 700; border-top: 1px solid #444;">
+          <td style="padding: 12px; color: #ccc;">TOTALS</td>
+          <td id="box-a-pts" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-a-reb" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-a-ast" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-a-stl" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-a-blk" style="text-align: center; padding: 8px;">—</td>
+          <td id="box-a-to" style="text-align: center; padding: 8px;">—</td>
+          <td style="text-align: center; padding: 8px;">—</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
 
 <!-- GAME FILM -->
 <div class="page" id="tab-film">
@@ -1709,6 +1778,121 @@ function renderAll(){
   if(currentTab==='teams')       renderTeams();
   if(currentTab==='playerstats') renderPlayerStats();
   if(currentTab==='locations')   renderLocations();
+  if(currentTab==='boxscores')   populateBoxScoreGames();
+}
+
+// ── BOX SCORES ──
+function populateBoxScoreGames(){
+  var select=document.getElementById('boxscore-game-select');
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';}).reverse();
+  
+  select.innerHTML='<option value="">-- Choose a game --</option>';
+  hist.forEach(function(game,idx){
+    var label=(game.home||'?')+' '+((game.homeScore||0))+' vs '+((game.awayScore||0))+' '+(game.away||'?')+' ('+game.date+')';
+    var opt=document.createElement('option');
+    opt.value=idx;
+    opt.textContent=label;
+    select.appendChild(opt);
+  });
+}
+
+function loadBoxScore(){
+  var select=document.getElementById('boxscore-game-select');
+  var idx=select.value;
+  
+  if(!idx || idx===''){
+    document.getElementById('boxscore-container').style.display='none';
+    return;
+  }
+  
+  var hist=[];
+  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';}).reverse();
+  
+  var game=hist[idx];
+  if(!game)return;
+  
+  // Render home team
+  var homeBody=document.getElementById('boxscore-home-body');
+  homeBody.innerHTML='';
+  
+  var hTotals={pts:0,reb:0,ast:0,stl:0,blk:0,to:0};
+  if(game.playerStats && game.playerStats.home){
+    Object.keys(game.playerStats.home).forEach(function(playerNum){
+      var ps=game.playerStats.home[playerNum];
+      if(!ps || typeof ps!=='object')return;
+      
+      var eff=(ps.pts||0)+(ps.reb||0)+(ps.ast||0)+(ps.stl||0)+(ps.blk||0)-(ps.to||0);
+      var row=document.createElement('tr');
+      row.style.cssText='border-bottom:1px solid #333;';
+      row.innerHTML='<td style="padding:10px 12px;color:var(--orange);font-weight:600;">'+ps.name+' #'+playerNum+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.pts||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.reb||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.ast||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.stl||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.blk||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.to||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;color:#999;font-size:12px;">'+eff+'</td>';
+      homeBody.appendChild(row);
+      
+      hTotals.pts+=(ps.pts||0);
+      hTotals.reb+=(ps.reb||0);
+      hTotals.ast+=(ps.ast||0);
+      hTotals.stl+=(ps.stl||0);
+      hTotals.blk+=(ps.blk||0);
+      hTotals.to+=(ps.to||0);
+    });
+  }
+  
+  document.getElementById('box-h-pts').textContent=hTotals.pts;
+  document.getElementById('box-h-reb').textContent=hTotals.reb;
+  document.getElementById('box-h-ast').textContent=hTotals.ast;
+  document.getElementById('box-h-stl').textContent=hTotals.stl;
+  document.getElementById('box-h-blk').textContent=hTotals.blk;
+  document.getElementById('box-h-to').textContent=hTotals.to;
+  
+  // Render away team
+  var awayBody=document.getElementById('boxscore-away-body');
+  awayBody.innerHTML='';
+  
+  var aTotals={pts:0,reb:0,ast:0,stl:0,blk:0,to:0};
+  if(game.playerStats && game.playerStats.away){
+    Object.keys(game.playerStats.away).forEach(function(playerNum){
+      var ps=game.playerStats.away[playerNum];
+      if(!ps || typeof ps!=='object')return;
+      
+      var eff=(ps.pts||0)+(ps.reb||0)+(ps.ast||0)+(ps.stl||0)+(ps.blk||0)-(ps.to||0);
+      var row=document.createElement('tr');
+      row.style.cssText='border-bottom:1px solid #333;';
+      row.innerHTML='<td style="padding:10px 12px;color:#ccc;font-weight:600;">'+ps.name+' #'+playerNum+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.pts||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.reb||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.ast||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.stl||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.blk||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;">'+( ps.to||0)+'</td>'+
+                    '<td style="text-align:center;padding:8px;color:#999;font-size:12px;">'+eff+'</td>';
+      awayBody.appendChild(row);
+      
+      aTotals.pts+=(ps.pts||0);
+      aTotals.reb+=(ps.reb||0);
+      aTotals.ast+=(ps.ast||0);
+      aTotals.stl+=(ps.stl||0);
+      aTotals.blk+=(ps.blk||0);
+      aTotals.to+=(ps.to||0);
+    });
+  }
+  
+  document.getElementById('box-a-pts').textContent=aTotals.pts;
+  document.getElementById('box-a-reb').textContent=aTotals.reb;
+  document.getElementById('box-a-ast').textContent=aTotals.ast;
+  document.getElementById('box-a-stl').textContent=aTotals.stl;
+  document.getElementById('box-a-blk').textContent=aTotals.blk;
+  document.getElementById('box-a-to').textContent=aTotals.to;
+  
+  document.getElementById('boxscore-container').style.display='block';
 }
 
 function showTab(t){
@@ -1717,7 +1901,7 @@ function showTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
+  var idx={home:0,live:1,scores:2,boxscores:2.5,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
