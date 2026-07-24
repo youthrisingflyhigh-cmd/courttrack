@@ -1244,17 +1244,24 @@ function renderLive(){
 // ── SCORES (game history) ──
 function renderScores(){
   var el=document.getElementById('tab-scores');
-  var hist=gameHistory||[];
-  if(!hist.length){el.innerHTML='<h2>Scores</h2><p>No games yet</p>';return;}
-  var html='<h2 style="color:var(--white);margin-bottom:2rem;font-size:28px;font-weight:900;">Scores</h2>';
-  hist.reverse().forEach(function(g,i){
-    if(!g.home)return;
-    html+='<div style="background:var(--dark2);border:1px solid var(--line);padding:16px;margin-bottom:12px;cursor:pointer;border-radius:8px;" onclick="var d=document.getElementById(\'score-'+i+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';"><div style="display:flex;justify-content:space-between;"><div><div style="font-size:18px;font-weight:600;color:var(--white);">'+g.home+' vs '+g.away+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">'+g.date+'</div></div><div style="font-size:28px;font-weight:900;color:var(--white);">'+g.homeScore+'-'+g.awayScore+'</div></div><div id="score-'+i+'" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);"><h3 style="color:var(--orange);font-size:14px;margin-bottom:10px;">Box Score</h3><table style="width:100%;font-size:12px;"><tr style="background:var(--dark3);"><th style="padding:8px;text-align:left;">'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
-    if(g.homePlayers&&g.hStats){(Array.isArray(g.homePlayers)?g.homePlayers:Object.values(g.homePlayers||{})).forEach(function(p){var s=g.hStats[p.num]||{};html+='<tr><td style="padding:8px;">#'+p.num+' '+p.name+'</td><td style="text-align:right;color:var(--orange);font-weight:700;">'+s.pts+'</td><td style="text-align:right;">'+s.reb+'</td><td style="text-align:right;">'+s.ast+'</td></tr>';});};
-    html+='</table><table style="width:100%;font-size:12px;margin-top:16px;"><tr style="background:var(--dark3);"><th style="padding:8px;text-align:left;">'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
-    if(g.awayPlayers&&g.aStats){(Array.isArray(g.awayPlayers)?g.awayPlayers:Object.values(g.awayPlayers||{})).forEach(function(p){var s=g.aStats[p.num]||{};html+='<tr><td style="padding:8px;">#'+p.num+' '+p.name+'</td><td style="text-align:right;color:var(--orange);font-weight:700;">'+s.pts+'</td><td style="text-align:right;">'+s.reb+'</td><td style="text-align:right;">'+s.ast+'</td></tr>';});};
-    html+='</table></div></div>';
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  if(!hist.length){
+    el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Scores</h2><p style="color:var(--muted);font-style:italic;">No completed games yet.</p>';
+    return;
+  }
+  
+  var html='<h2 style="font-size:32px;font-weight:900;color:var(--white);margin-bottom:2rem;">Scores</h2><div class="espn-game-list">';
+  
+  // Reverse for display (newest first)
+  hist.reverse();
+  
+  hist.forEach(function(g,gi){
+    if(!g || !g.home || !g.away) return;
+    var score=(g.homeScore||0)+' – '+(g.awayScore||0);
+    html+='<div class="espn-game-card" data-game-idx="'+gi+'" onclick="event.stopPropagation(); expandGame('+gi+')"><div class="espn-game-summary"><div class="espn-teams"><div><div class="espn-team-name">'+g.home+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div></div><div class="espn-vs">VS</div><div class="espn-team-name">'+g.away+'</div></div><div class="espn-score">'+score+'</div></div><div id="game-expand-'+gi+'" style="display:none;"></div></div>';
   });
+  
+  html+='</div>';
   el.innerHTML=html;
 }
 
