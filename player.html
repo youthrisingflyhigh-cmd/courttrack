@@ -1,32 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CourtTrack Player</title>
+<title>CourtTrack — Player View</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-:root{--orange:#FF5C00;--dark:#0a0a0a;--dark2:#141414;--muted:#8a8a8a;--light:#f0f0f0;--white:#fff;--line:#262626;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:Arial,sans-serif;background:var(--dark);color:var(--light);}
-nav{background:var(--dark2);padding:1rem;border-bottom:1px solid var(--line);sticky:top;display:flex;gap:1rem;flex-wrap:wrap;}
-.nav-tab{background:transparent;color:var(--muted);border:none;padding:0.5rem 1rem;cursor:pointer;font-weight:600;}
-.nav-tab.active{color:var(--orange);}
+:root{--orange:#FF5C00;--gold:#C9A84C;--dark:#0a0a0a;--dark2:#141414;--dark3:#1c1c1c;--muted:#8a8a8a;--light:#f0f0f0;--white:#fff;--green:#22c55e;--line:#262626;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:var(--dark);color:var(--light);}
+nav{display:flex;gap:2px;padding:1rem;background:var(--dark2);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.nav-tab{padding:8px 16px;background:transparent;color:var(--muted);border:none;cursor:pointer;font-weight:600;font-size:13px;}
 .nav-tab:hover{color:var(--light);}
-.page{display:none;padding:2rem;max-width:1000px;margin:0 auto;}
+.nav-tab.active{color:var(--orange);}
+.page{display:none;padding:2rem;max-width:1100px;margin:0 auto;}
 .page.active{display:block;}
-h2{color:var(--white);font-size:28px;margin-bottom:2rem;font-weight:900;}
-.game-card{background:var(--dark2);border:1px solid var(--line);padding:16px;margin-bottom:12px;border-radius:8px;cursor:pointer;}
-.game-card:hover{border-color:var(--orange);}
-.game-header{display:flex;justify-content:space-between;align-items:center;}
-.game-title{font-size:16px;font-weight:600;color:var(--white);}
-.game-date{font-size:11px;color:var(--muted);margin-top:4px;}
-.game-score{font-size:28px;font-weight:900;color:var(--white);}
+h2{font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;}
+.game-card{background:var(--dark2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px;cursor:pointer;}
+.game-card:hover{border-color:var(--orange);background:rgba(255,92,0,0.02);}
+.game-header{display:flex;justify-content:space-between;align-items:center;font-weight:600;}
+.game-info{flex:1;}
+.game-teams{font-size:16px;color:var(--white);margin-bottom:4px;}
+.game-date{font-size:11px;color:var(--muted);}
+.game-score{font-size:24px;font-weight:900;color:var(--white);}
 .game-detail{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
 .game-detail.open{display:block;}
-table{width:100%;font-size:12px;border-collapse:collapse;margin-top:12px;}
-th{background:var(--dark3);padding:8px;text-align:left;font-weight:600;color:var(--muted);}
+table{width:100%;font-size:12px;border-collapse:collapse;margin:12px 0;}
+th{background:var(--dark3);padding:8px;text-align:left;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
 td{padding:8px;border-bottom:1px solid var(--line);}
-.pts{color:var(--orange);font-weight:700;text-align:right;}
+.pts-col{font-weight:700;color:var(--orange);text-align:right;}
+.totals{background:var(--dark3);font-weight:700;border-top:1px solid var(--orange);}
 </style>
 </head>
 <body>
@@ -38,12 +41,12 @@ td{padding:8px;border-bottom:1px solid var(--line);}
 
 <div class="page active" id="tab-home">
   <h2>CourtTrack</h2>
-  <p style="color:var(--muted);">Click Scores to view game statistics.</p>
+  <p style="color:var(--muted);font-size:14px;">Basketball game statistics and box scores.</p>
 </div>
 
 <div class="page" id="tab-scores">
   <h2>Scores</h2>
-  <div id="games-container">Loading...</div>
+  <div id="scores-container"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -60,6 +63,7 @@ firebase.initializeApp({
 });
 
 db=firebase.database();
+
 db.ref('ct/history').on('value',function(snap){
   gameHistory=snap.val()||[];
   console.log('Games loaded:',gameHistory.length);
@@ -75,46 +79,45 @@ function showTab(tab){
 }
 
 function renderScores(){
-  var el=document.getElementById('games-container');
+  var el=document.getElementById('scores-container');
   var games=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  games=games.filter(g=>g&&g.home&&g.away);
+  games=games.filter(g=>g&&g.home&&g.away).reverse();
   
   if(!games.length){
     el.innerHTML='<p style="color:var(--muted);">No games yet</p>';
     return;
   }
   
-  games.reverse();
   var html='';
   games.forEach((g,i)=>{
     html+='<div class="game-card" onclick="toggleDetail('+i+')">';
     html+='<div class="game-header">';
-    html+='<div><div class="game-title">'+g.home+' vs '+g.away+'</div><div class="game-date">'+g.date+'</div></div>';
+    html+='<div class="game-info"><div class="game-teams">'+g.home+' vs '+g.away+'</div><div class="game-date">'+g.date+'</div></div>';
     html+='<div class="game-score">'+g.homeScore+'-'+g.awayScore+'</div>';
     html+='</div>';
     html+='<div class="game-detail" id="detail-'+i+'">';
     
-    // Home team
-    html+='<h3 style="color:var(--orange);font-size:13px;margin-bottom:8px;margin-top:12px;">'+g.home+'</h3>';
-    html+='<table><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
+    // Home team box score
+    html+='<div style="margin-bottom:12px;"><h3 style="color:var(--orange);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'+g.home+'</h3>';
+    html+='<table><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
     if(g.homePlayers&&g.hStats){
       (Array.isArray(g.homePlayers)?g.homePlayers:Object.values(g.homePlayers||{})).forEach(p=>{
         var s=g.hStats[p.num]||{};
-        html+='<tr><td>#'+p.num+' '+p.name+'</td><td class="pts">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td></tr>';
+        html+='<tr><td>#'+p.num+' '+p.name+'</td><td class="pts-col">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td></tr>';
       });
     }
-    html+='</table>';
+    html+='</table></div>';
     
-    // Away team
-    html+='<h3 style="color:var(--orange);font-size:13px;margin-bottom:8px;margin-top:16px;">'+g.away+'</h3>';
-    html+='<table><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th></tr>';
+    // Away team box score
+    html+='<div><h3 style="color:var(--orange);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'+g.away+'</h3>';
+    html+='<table><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>';
     if(g.awayPlayers&&g.aStats){
       (Array.isArray(g.awayPlayers)?g.awayPlayers:Object.values(g.awayPlayers||{})).forEach(p=>{
         var s=g.aStats[p.num]||{};
-        html+='<tr><td>#'+p.num+' '+p.name+'</td><td class="pts">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td></tr>';
+        html+='<tr><td>#'+p.num+' '+p.name+'</td><td class="pts-col">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td></tr>';
       });
     }
-    html+='</table>';
+    html+='</table></div>';
     
     html+='</div></div>';
   });
