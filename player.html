@@ -767,7 +767,7 @@ function getAllPlayers(){
   teams.forEach(function(t){
     var ps=playerStats[t.name]||{};
     t.players.forEach(function(p){
-      rows.push({p:p,teamName:t.name,teamColor:var(--gold),s:ps[p.num]||{}});
+      rows.push({p:p,teamName:t.name,teamColor:t.color||'#FF5C00',s:ps[p.num]||{}});
     });
   });
   return rows;
@@ -806,7 +806,7 @@ function getFormerPlayers(){
       }
       rows.push({
         p:{num:numKey, name:name||('Former Player #'+numKey)},
-        teamName:t.name, teamColor:var(--gold), s:s
+        teamName:t.name, teamColor:t.color||'#FF5C00', s:s
       });
     });
   });
@@ -890,8 +890,8 @@ function computeGameMVP(g){
       candidates.push({p:p,teamName:teamName,teamColor:teamColor,s:s,eff:eff});
     });
   }
-  addSide(g.home,var(--white),g.homePlayers,g.hStats);
-  addSide(g.away,var(--white),g.awayPlayers,g.aStats);
+  addSide(g.home,g.homeColor,g.homePlayers,g.hStats);
+  addSide(g.away,g.awayColor,g.awayPlayers,g.aStats);
   if(!candidates.length) return null;
   candidates.sort(function(a,b){ return b.eff-a.eff; });
   return candidates[0];
@@ -978,7 +978,7 @@ function renderPOTWFallback(card){
   var bpg=((best.s.blk||0)/gp).toFixed(1);
   var ini=best.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   el.innerHTML=
-    '<div class="potw-avatar" style="background:'+best.">'+ini+'</div>'
+    '<div class="potw-avatar" style="background:'+best.teamColor+'">'+ini+'</div>'
     +'<div class="potw-info">'
       +'<div class="potw-name">'+best.p.name+'</div>'
       +'<div class="potw-team">'+best.teamName+' · #'+best.p.num+'</div>'
@@ -1004,7 +1004,7 @@ function renderHomeRecentScores(){
     var hWin=(g.homeScore||0)>(g.awayScore||0);
     return '<div class="recent-row">'
       +'<div class="rr-teams">'
-        +'<div class="rr-home"><span style="color:'+(var(--white)||'var(--white)')+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);font-size:12px;">vs</span> <span style="color:'+(var(--white))+';font-weight:700;">'+g.away+'</span></div>'
+        +'<div class="rr-home"><span style="color:'+(g.homeColor||'var(--white)')+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);font-size:12px;">vs</span> <span style="color:'+(g.awayColor||'#888')+';font-weight:700;">'+g.away+'</span></div>'
         +'<div class="rr-date">'+(g.date||'')+'</div>'
       +'</div>'
       +'<div class="rr-score">'
@@ -1029,7 +1029,7 @@ function renderHomeUpcoming(){
   el.innerHTML=upcoming.slice(0,6).map(function(g){
     return '<div class="upcoming-row">'
       +'<div class="ur-time" style="color:var(--orange);">'+(g.time||g.date||'TBD')+'</div>'
-      +'<div class="ur-teams"><span style="color:'+(var(--white)||'var(--white)')+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(var(--white))+';font-weight:700;">'+g.away+'</span></div>'
+      +'<div class="ur-teams"><span style="color:'+(g.homeColor||'var(--white)')+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(g.awayColor||'#888')+';font-weight:700;">'+g.away+'</span></div>'
       +'<div class="ur-day">'+(g.date||'')+'</div>'
     +'</div>';
   }).join('');
@@ -1057,7 +1057,7 @@ function renderHomeLeagueLeaders(){
       +'<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">'+c.icon+' '+c.label+'</div>'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:900;color:var(--orange);line-height:1;">'+val+'</div>'
       +'<div style="font-size:12px;color:#fff;font-weight:700;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+leader.p.name.split(' ').pop()+'</div>'
-      +'<div style="font-size:10px;color:'+leader.;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+leader.teamName+'</div>'
+      +'<div style="font-size:10px;color:'+leader.teamColor+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+leader.teamName+'</div>'
     +'</div>';
   }).join('');
 }
@@ -1083,7 +1083,7 @@ function renderHomeTopScorers(){
           if(ps&&typeof ps==='object'){
             var pKey=ps.name||playerNum;
             if(!playerStats[pKey]){
-              playerStats[pKey]={name:ps.name||pKey,pts:0,gp:0,teamName:teamName,teamColor:var(--gold)};
+              playerStats[pKey]={name:ps.name||pKey,pts:0,gp:0,teamName:teamName,teamColor:game[teamName+'Color']||'#888'};
             }
             playerStats[pKey].pts+=(ps.pts||0);
             playerStats[pKey].gp+=1;
@@ -1100,7 +1100,7 @@ function renderHomeTopScorers(){
     var rkClass=i===0?'r1':i===1?'r2':i===2?'r3':'';
     return '<div class="tsc-row">'
       +'<div class="tsc-rank '+rkClass+'">'+(i+1)+'</div>'
-      +'<div class="tsc-jersey" style="background:'+r.;color:#fff;">⭐</div>'
+      +'<div class="tsc-jersey" style="background:'+r.teamColor+';color:#fff;">⭐</div>'
       +'<div class="tsc-info"><div class="tsc-name">'+r.name+'</div><div class="tsc-team">'+r.teamName+'</div></div>'
       +'<div><div class="tsc-val">'+ppg+'</div><div class="tsc-lbl">PPG</div></div>'
     +'</div>';
@@ -1206,7 +1206,7 @@ function renderScores(){
     if(!g)return '';
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
-    var wc=(g.homeScore||0)>(g.awayScore||0)?var(--white):var(--white);
+    var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
     function makeRows(pl,st,color){
       if(!pl||!st)return '';
       var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
@@ -1220,9 +1220,9 @@ function renderScores(){
     }
     var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
     var logHtml=log.length?log.map(function(e){
-      return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:var(--gold)+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
+      return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(var(--white))+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(var(--white))+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(var(--white))+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,var(--white))+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(var(--white))+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,var(--white))+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -1268,9 +1268,9 @@ function renderFilm(){
     return '<div style="background:var(--dark2);border:1px solid var(--line);border-radius:12px;overflow:hidden;">'
       +mediaHtml
       +'<div style="padding:10px 14px;">'
-        +'<div style="font-size:13px;"><span style="color:'+(var(--white))+';font-weight:700;">'+(g.home||'')+'</span>'
+        +'<div style="font-size:13px;"><span style="color:'+(g.homeColor||'#fff')+';font-weight:700;">'+(g.home||'')+'</span>'
         +' <span style="color:var(--muted);">'+(g.homeScore||0)+'–'+(g.awayScore||0)+'</span> '
-        +'<span style="color:'+(var(--white))+';font-weight:700;">'+(g.away||'')+'</span></div>'
+        +'<span style="color:'+(g.awayColor||'#888')+';font-weight:700;">'+(g.away||'')+'</span></div>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+(g.date||'')+' · W: <span style="color:var(--white);font-weight:700;">'+winner+'</span></div>'
       +'</div>'
     +'</div>';
@@ -1337,15 +1337,15 @@ function renderSchedule(){
       if(g.isBye){
         html+='<div class="schedule-game-row" style="opacity:0.6;">'
           +'<span class="sgr-date">'+g.date+'</span><span class="sgr-time">'+g.time+'</span>'
-          +'<span class="sgr-teams"><span style="color:'+var(--white)+';font-weight:700;">'+g.home+'</span> — <span style="color:#555;font-weight:700;">BYE</span></span>'
+          +'<span class="sgr-teams"><span style="color:'+g.homeColor+';font-weight:700;">'+g.home+'</span> — <span style="color:#555;font-weight:700;">BYE</span></span>'
           +'<span class="sgr-location">📍 '+g.location+'</span>'
           +'<span class="sgr-status" style="background:rgba(136,136,136,0.1);color:var(--muted);">Bye</span></div>';
       } else {
         var isFinal=g.status==='final';
-        var resultHtml=isFinal?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:'+(g.homeScore>g.awayScore?var(--white):var(--white))+'">'+g.homeScore+'–'+g.awayScore+'</span>':'';
+        var resultHtml=isFinal?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:'+(g.homeScore>g.awayScore?g.homeColor:g.awayColor)+'">'+g.homeScore+'–'+g.awayScore+'</span>':'';
         html+='<div class="schedule-game-row">'
           +'<span class="sgr-date">'+g.date+'</span><span class="sgr-time">'+g.time+'</span>'
-          +'<span class="sgr-teams"><span style="color:'+var(--white)+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+var(--white)+';font-weight:700;">'+g.away+'</span></span>'
+          +'<span class="sgr-teams"><span style="color:'+g.homeColor+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+g.awayColor+';font-weight:700;">'+g.away+'</span></span>'
           +'<span class="sgr-location">📍 '+g.location+'</span>'
           +resultHtml
           +'<span class="sgr-status '+(isFinal?'final':'upcoming')+'">'+(isFinal?'Final':'Upcoming')+'</span></div>';
@@ -1436,7 +1436,7 @@ function renderStandings(){
       var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
       return '<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--dark3);border:1px solid var(--line);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">'
         +'<div style="font-size:12px;color:var(--muted);min-width:110px;">'+(g.date||'')+'</div>'
-        +'<div style="flex:1;font-size:14px;font-weight:600;"><span style="color:'+(var(--white))+'">'+(g.home||'')+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(var(--white))+'">'+(g.away||'')+'</span></div>'
+        +'<div style="flex:1;font-size:14px;font-weight:600;"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div>'
         +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div>'
         +'<div style="font-size:12px;font-weight:700;color:var(--green);">W: '+winner+'</div></div>';
     }).join('');
@@ -1566,9 +1566,9 @@ function showPlayerModal(player){
     +'<div onclick="this.closest(\'[style*=position:fixed]\').remove();" style="background:none;color:var(--orange);font-size:24px;cursor:pointer;padding:0;">✕</div>'
     +'</div>'
     +'<div style="display:flex;gap:20px;margin-bottom:24px;align-items:flex-start;">'
-    +'<div style="background:'+player.;width:90px;height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:900;color:#fff;flex-shrink:0;">#'+player.p.num+'</div>'
+    +'<div style="background:'+player.teamColor+';width:90px;height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:900;color:#fff;flex-shrink:0;">#'+player.p.num+'</div>'
     +'<div style="flex:1;"><div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">TEAM</div>'
-    +'<div style="font-size:20px;font-weight:700;color:'+player.;margin-bottom:18px;">'+player.teamName+'</div>'
+    +'<div style="font-size:20px;font-weight:700;color:'+player.teamColor+';margin-bottom:18px;">'+player.teamName+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">EFF</div><div style="font-size:28px;font-weight:900;color:var(--orange);">'+Math.round(player.eff)+'</div></div>'
     +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">GP</div><div style="font-size:28px;font-weight:900;color:#fff;">'+(player.s.gp||0)+'</div></div></div></div></div>'
@@ -1604,7 +1604,7 @@ function showTeamModal(teamName){
     +'<div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;">PLAYERS</div><div style="font-size:20px;font-weight:900;color:#fff;">'+players.length+'</div></div></div>'
     +'<div style="font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">ROSTER</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">'
-    +players.sort(function(a,b){return b.eff-a.eff;}).map(function(p){return '<div style="background:var(--dark3);padding:12px;border-radius:8px;cursor:pointer;" onclick="showPlayerModal('+JSON.stringify(p).replace(/"/g,'&quot;')+');"><div style="font-weight:700;color:'+p.;">#'+p.p.num+'</div><div style="font-size:12px;margin-top:4px;color:#fff;">'+p.p.name+'</div><div style="font-size:10px;color:var(--orange);margin-top:4px;">'+Math.round(p.eff)+' EFF</div></div>';}).join('')
+    +players.sort(function(a,b){return b.eff-a.eff;}).map(function(p){return '<div style="background:var(--dark3);padding:12px;border-radius:8px;cursor:pointer;" onclick="showPlayerModal('+JSON.stringify(p).replace(/"/g,'&quot;')+');"><div style="font-weight:700;color:'+p.teamColor+';">#'+p.p.num+'</div><div style="font-size:12px;margin-top:4px;color:#fff;">'+p.p.name+'</div><div style="font-size:10px;color:var(--orange);margin-top:4px;">'+Math.round(p.eff)+' EFF</div></div>';}).join('')
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -1643,10 +1643,10 @@ function renderPlayerStats(){
     var rankDisplay = i<3 ? medals[i] : (i+1);
     return '<tr>'
       +'<td style="text-align:left;font-weight:800;font-family:\'Barlow Condensed\',sans-serif;font-size:'+(i<3?'18':'14')+'px;">'+rankDisplay+'</td>'
-      +'<td><span style="color:'+r.;font-weight:700;">#'+r.p.num+'</span></td>'
+      +'<td><span style="color:'+r.teamColor+';font-weight:700;">#'+r.p.num+'</span></td>'
       +'<td style="cursor:pointer;color:var(--orange);text-decoration:underline;" onclick="showPlayerModal('+JSON.stringify(r).replace(/"/g,'&quot;')+')">'+r.p.name+'</td>'
       +'<td style="text-align:left;cursor:pointer;" onclick="showTeamModal(\''+r.teamName+'\')"><span style="display:inline-flex;align-items:center;gap:6px;text-decoration:underline;">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.;display:inline-block;"></span>'+r.teamName+'</span></td>'
+      +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.teamColor+';display:inline-block;"></span>'+r.teamName+'</span></td>'
       +'<td'+(key==='eff'?' style="color:var(--orange);font-weight:700;"':'')+' style="font-family:\'Barlow Condensed\',sans-serif;font-size:'+(key==='eff'?'16':'14')+'px;'+(key==='eff'?'color:var(--orange);font-weight:700;':'')+'">'+r.eff+'</td>'
       +'<td'+(key==='pts'?' style="color:var(--orange);font-weight:700;"':'')+'>'+(r.s.pts||0)+'</td>'
       +'<td'+(key==='reb'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.reb||0)+'</td>'
@@ -1667,10 +1667,10 @@ function renderPlayerStats(){
     formerRows.sort(function(a,b){ return (b.s.pts||0)-(a.s.pts||0); });
     document.getElementById('former-p-body').innerHTML=formerRows.map(function(r){
       return '<tr>'
-        +'<td style="text-align:left;"><span style="color:'+r.;font-weight:700;">#'+r.p.num+'</span></td>'
+        +'<td style="text-align:left;"><span style="color:'+r.teamColor+';font-weight:700;">#'+r.p.num+'</span></td>'
         +'<td style="text-align:left;">'+r.p.name+'</td>'
         +'<td style="text-align:left;"><span style="display:inline-flex;align-items:center;gap:6px;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.;display:inline-block;"></span>'+r.teamName+'</span></td>'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:'+r.teamColor+';display:inline-block;"></span>'+r.teamName+'</span></td>'
         +'<td>'+(r.s.pts||0)+'</td>'
         +'<td>'+(r.s.reb||0)+'</td>'
         +'<td>'+(r.s.ast||0)+'</td>'
