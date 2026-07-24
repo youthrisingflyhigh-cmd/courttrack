@@ -62,6 +62,54 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 /* ── PAGES ── */
 .page{display:none;padding:2rem;max-width:1100px;margin:0 auto;}
 .page.active{display:block;}
+
+/* ── ESPN-STYLE SCORES ── */
+.espn-game-list{display:grid;gap:12px;margin-bottom:2rem;}
+.espn-game-card{background:var(--dark2);border:1px solid var(--line);border-radius:8px;padding:16px;cursor:pointer;transition:all 0.2s ease;}
+.espn-game-card:hover{border-color:var(--orange);background:rgba(255,92,0,0.02);}
+.espn-game-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.espn-teams{flex:1;display:flex;align-items:center;gap:12px;}
+.espn-team-name{font-size:16px;font-weight:600;color:var(--white);}
+.espn-vs{color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:600;letter-spacing:1px;}
+.espn-score{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--white);min-width:80px;text-align:right;}
+.espn-date{font-size:11px;color:var(--muted);text-align:right;}
+
+.espn-game-detail{background:var(--dark);border:1px solid var(--line);border-radius:8px;margin-bottom:2rem;overflow:hidden;}
+.espn-score-header{background:var(--dark2);padding:24px;text-align:center;border-bottom:1px solid var(--line);}
+.espn-final-score{display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:16px;}
+.espn-team-col{text-align:center;}
+.espn-team-name-large{font-size:18px;font-weight:600;color:var(--white);margin-bottom:8px;}
+.espn-score-large{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--white);}
+.espn-vs-text{color:var(--muted);font-size:14px;font-weight:600;}
+.espn-game-info{font-size:12px;color:var(--muted);margin-top:12px;}
+
+.espn-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);}
+.espn-tab{padding:14px 20px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all 0.2s ease;}
+.espn-tab:hover{color:var(--light);}
+.espn-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+.espn-tab-panel{display:none;padding:20px;}
+.espn-tab-panel.active{display:block;}
+
+.espn-box-score{width:100%;font-size:13px;border-collapse:collapse;}
+.espn-box-score thead{background:var(--dark3);border-bottom:1px solid var(--line);}
+.espn-box-score th{padding:10px;text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;}
+.espn-box-score td{padding:10px;border-bottom:1px solid var(--line);}
+.espn-box-score tr:hover{background:rgba(255,92,0,0.03);}
+.espn-box-score .player-name{font-weight:500;color:var(--white);}
+.espn-box-score .pts-cell{font-weight:700;color:var(--orange);text-align:right;}
+.espn-box-score td{text-align:right;}
+.espn-box-score td:first-child{text-align:left;}
+.espn-totals{font-weight:700;background:var(--dark3);border-top:2px solid var(--orange);border-bottom:2px solid var(--orange);}
+
+.espn-play-log{max-height:600px;overflow-y:auto;}
+.espn-play-entry{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--line);font-size:13px;}
+.espn-play-entry:last-child{border-bottom:none;}
+.espn-play-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.espn-play-team{background:rgba(255,255,255,0.08);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:3px;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+.espn-play-player{font-weight:600;color:var(--white);flex:1;}
+.espn-play-stat{margin-left:auto;font-weight:700;color:var(--green);}
+.espn-play-score{font-size:12px;color:var(--muted);margin-left:8px;}
+
 .game-record-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;margin-bottom:1rem;}
 .game-record-header{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;flex-wrap:wrap;}
 .game-record-header:hover{background:rgba(255,255,255,0.02);}
@@ -1201,31 +1249,76 @@ function renderScores(){
     el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Scores</h2><p style="color:var(--muted);font-style:italic;">No completed games yet.</p>';
     return;
   }
-  var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Scores</h2>';
-  hist.forEach(function(g,gi){
-    if(!g)return '';
-    var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
-    var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
-    var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
-    function makeRows(pl,st,color){
-      if(!pl||!st)return '';
-      var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
-      var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
-        var s=(typeof st==='object'?st[p.num]:{})||{};
-        tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
-        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
-      }).join('');
-      rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
-      return rows;
-    }
-    var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
-    var logHtml=log.length?log.map(function(e){
-      return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
-    }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+  
+  var html='<h2 style="font-size:32px;font-weight:900;color:var(--white);margin-bottom:2rem;">Scores</h2><div class="espn-game-list">';
+  
+  // Top events list
+  hist.reverse().forEach(function(g,gi){
+    if(!g || !g.home || !g.away) return;
+    var score=(g.homeScore||0)+' – '+(g.awayScore||0);
+    html+='<div class="espn-game-card" onclick="expandGame('+gi+')"><div class="espn-game-summary"><div class="espn-teams"><div><div class="espn-team-name">'+g.home+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div></div><div class="espn-vs">VS</div><div class="espn-team-name">'+g.away+'</div></div><div class="espn-score">'+score+'</div></div><div id="game-expand-'+gi+'" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);"></div></div>';
   });
+  
+  html+='</div>';
   el.innerHTML=html;
+  
+  // Add event listeners for expansion
+  hist.forEach(function(g,gi){
+    var card=el.querySelector('.espn-game-card:nth-child('+(gi+1)+')');
+    if(card) card.onclick=function(e){
+      if(e.target.closest('#game-expand-'+gi)) return;
+      expandGame(gi,g);
+    };
+  });
 }
+
+function expandGame(gi,g){
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  hist=hist.reverse();
+  if(!g) g=hist[gi];
+  if(!g) return;
+  
+  var expandDiv=document.getElementById('game-expand-'+gi);
+  if(!expandDiv) return;
+  
+  if(expandDiv.innerHTML){
+    expandDiv.innerHTML='';
+    return;
+  }
+  
+  // Build box score rows
+  function makeRows(pl,st,color){
+    if(!pl||!st)return '';
+    var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
+    var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
+      var s=(typeof st==='object'?st[p.num]:{})||{};
+      tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
+      return '<tr><td class="player-name">#'+p.num+' '+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td></tr>';
+    }).join('');
+    rows+='<tr class="espn-totals"><td>TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td></tr>';
+    return rows;
+  }
+  
+  // Play-by-play
+  var log=g.playLog||(g.playLog=[]); 
+  if(!Array.isArray(log)) log=Object.values(log);
+  var logHtml=log.length?log.map(function(e){
+    var dotColor=e.neg?'var(--red)':e.pts?'var(--orange)':'#555';
+    return '<div class="espn-play-entry"><div class="espn-play-dot" style="background:'+dotColor+'"></div><span class="espn-play-team">'+(e.teamName||'').split(' ')[0]+'</span><span class="espn-play-player">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:auto;margin-right:8px;">'+e.label+'</span>'+(e.pts?'<span class="espn-play-stat">+'+e.pts+'</span>':'')+'<span class="espn-play-score">'+e.score+'</span></div>';
+  }).join(''):'<p style="color:var(--muted);font-style:italic;padding:20px 0;">No play log recorded.</p>';
+  
+  expandDiv.innerHTML='<div class="espn-game-detail"><div class="espn-score-header"><div class="espn-final-score"><div class="espn-team-col"><div class="espn-team-name-large">'+g.home+'</div><div class="espn-score-large">'+(g.homeScore||0)+'</div></div><div class="espn-vs-text">FINAL</div><div class="espn-team-col"><div class="espn-team-name-large">'+g.away+'</div><div class="espn-score-large">'+(g.awayScore||0)+'</div></div></div><div class="espn-game-info">'+g.date+'</div></div><div class="espn-tabs"><button class="espn-tab active" onclick="switchEspnTab('+gi+',\'box\')">📊 Box Score</button><button class="espn-tab" onclick="switchEspnTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div id="espn-panel-'+gi+'-box" class="espn-tab-panel active"><div style="overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats)+'</tbody></table></div><div style="margin-top:20px;overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats)+'</tbody></table></div></div><div id="espn-panel-'+gi+'-log" class="espn-tab-panel"><div class="espn-play-log">'+logHtml+'</div></div></div>';
+}
+
+function switchEspnTab(gi,tab){
+  ['box','log'].forEach(function(t){
+    var panel=document.getElementById('espn-panel-'+gi+'-'+t);
+    var tabBtn=event.target.parentElement.querySelector('[onclick*="'+t+'"]');
+    if(panel) panel.classList.toggle('active',t===tab);
+    if(tabBtn) tabBtn.classList.toggle('active',t===tab);
+  });
+}
+
 
 // ── GAME FILM ──
 function extractYouTubeId(url){
