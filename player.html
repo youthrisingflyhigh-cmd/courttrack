@@ -1252,42 +1252,37 @@ function renderScores(){
   
   var html='<h2 style="font-size:32px;font-weight:900;color:var(--white);margin-bottom:2rem;">Scores</h2><div class="espn-game-list">';
   
-  // Top events list
-  hist.reverse().forEach(function(g,gi){
+  // Reverse for display (newest first)
+  hist.reverse();
+  
+  hist.forEach(function(g,gi){
     if(!g || !g.home || !g.away) return;
     var score=(g.homeScore||0)+' – '+(g.awayScore||0);
-    html+='<div class="espn-game-card" onclick="expandGame('+gi+')"><div class="espn-game-summary"><div class="espn-teams"><div><div class="espn-team-name">'+g.home+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div></div><div class="espn-vs">VS</div><div class="espn-team-name">'+g.away+'</div></div><div class="espn-score">'+score+'</div></div><div id="game-expand-'+gi+'" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);"></div></div>';
+    html+='<div class="espn-game-card" data-game-idx="'+gi+'" onclick="event.stopPropagation(); expandGame('+gi+')"><div class="espn-game-summary"><div class="espn-teams"><div><div class="espn-team-name">'+g.home+'</div><div style="font-size:11px;color:var(--muted);">'+g.date+'</div></div><div class="espn-vs">VS</div><div class="espn-team-name">'+g.away+'</div></div><div class="espn-score">'+score+'</div></div><div id="game-expand-'+gi+'" style="display:none;"></div></div>';
   });
   
   html+='</div>';
   el.innerHTML=html;
-  
-  // Add event listeners for expansion
-  hist.forEach(function(g,gi){
-    var card=el.querySelector('.espn-game-card:nth-child('+(gi+1)+')');
-    if(card) card.onclick=function(e){
-      if(e.target.closest('#game-expand-'+gi)) return;
-      expandGame(gi,g);
-    };
-  });
 }
 
-function expandGame(gi,g){
+function expandGame(gi){
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  hist=hist.reverse();
-  if(!g) g=hist[gi];
-  if(!g) return;
+  hist.reverse();
+  var g=hist[gi];
+  if(!g || !g.home) return;
   
   var expandDiv=document.getElementById('game-expand-'+gi);
   if(!expandDiv) return;
   
-  if(expandDiv.innerHTML){
+  // Toggle: if already shown, hide it
+  if(expandDiv.style.display==='block'){
+    expandDiv.style.display='none';
     expandDiv.innerHTML='';
     return;
   }
   
   // Build box score rows
-  function makeRows(pl,st,color){
+  function makeRows(pl,st){
     if(!pl||!st)return '';
     var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
     var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
@@ -1307,17 +1302,30 @@ function expandGame(gi,g){
     return '<div class="espn-play-entry"><div class="espn-play-dot" style="background:'+dotColor+'"></div><span class="espn-play-team">'+(e.teamName||'').split(' ')[0]+'</span><span class="espn-play-player">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:auto;margin-right:8px;">'+e.label+'</span>'+(e.pts?'<span class="espn-play-stat">+'+e.pts+'</span>':'')+'<span class="espn-play-score">'+e.score+'</span></div>';
   }).join(''):'<p style="color:var(--muted);font-style:italic;padding:20px 0;">No play log recorded.</p>';
   
-  expandDiv.innerHTML='<div class="espn-game-detail"><div class="espn-score-header"><div class="espn-final-score"><div class="espn-team-col"><div class="espn-team-name-large">'+g.home+'</div><div class="espn-score-large">'+(g.homeScore||0)+'</div></div><div class="espn-vs-text">FINAL</div><div class="espn-team-col"><div class="espn-team-name-large">'+g.away+'</div><div class="espn-score-large">'+(g.awayScore||0)+'</div></div></div><div class="espn-game-info">'+g.date+'</div></div><div class="espn-tabs"><button class="espn-tab active" onclick="switchEspnTab('+gi+',\'box\')">📊 Box Score</button><button class="espn-tab" onclick="switchEspnTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div id="espn-panel-'+gi+'-box" class="espn-tab-panel active"><div style="overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats)+'</tbody></table></div><div style="margin-top:20px;overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats)+'</tbody></table></div></div><div id="espn-panel-'+gi+'-log" class="espn-tab-panel"><div class="espn-play-log">'+logHtml+'</div></div></div>';
+  var detail='<div class="espn-game-detail" style="margin-top:16px;"><div class="espn-score-header"><div class="espn-final-score"><div class="espn-team-col"><div class="espn-team-name-large">'+g.home+'</div><div class="espn-score-large">'+(g.homeScore||0)+'</div></div><div class="espn-vs-text">FINAL</div><div class="espn-team-col"><div class="espn-team-name-large">'+g.away+'</div><div class="espn-score-large">'+(g.awayScore||0)+'</div></div></div><div class="espn-game-info">'+g.date+'</div></div><div class="espn-tabs"><button class="espn-tab active" onclick="switchEspnTab('+gi+',\'box\')">📊 Box Score</button><button class="espn-tab" onclick="switchEspnTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div id="espn-panel-'+gi+'-box" class="espn-tab-panel active"><div style="overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats)+'</tbody></table></div><div style="margin-top:20px;overflow-x:auto;"><table class="espn-box-score"><thead><tr><th>'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats)+'</tbody></table></div></div><div id="espn-panel-'+gi+'-log" class="espn-tab-panel"><div class="espn-play-log">'+logHtml+'</div></div></div>';
+  
+  expandDiv.innerHTML=detail;
+  expandDiv.style.display='block';
 }
 
 function switchEspnTab(gi,tab){
-  ['box','log'].forEach(function(t){
-    var panel=document.getElementById('espn-panel-'+gi+'-'+t);
-    var tabBtn=event.target.parentElement.querySelector('[onclick*="'+t+'"]');
-    if(panel) panel.classList.toggle('active',t===tab);
-    if(tabBtn) tabBtn.classList.toggle('active',t===tab);
+  var box=document.getElementById('espn-panel-'+gi+'-box');
+  var log=document.getElementById('espn-panel-'+gi+'-log');
+  var btns=document.querySelectorAll('[onclick*="switchEspnTab('+gi)+'"]');
+  
+  if(tab==='box'){
+    if(box) box.classList.add('active');
+    if(log) log.classList.remove('active');
+  } else {
+    if(box) box.classList.remove('active');
+    if(log) log.classList.add('active');
+  }
+  
+  btns.forEach(function(b){
+    b.classList.toggle('active',b.textContent.includes(tab==='box'?'Box':'Play'));
   });
 }
+
 
 
 // ── GAME FILM ──
