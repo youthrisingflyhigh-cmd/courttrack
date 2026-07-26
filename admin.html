@@ -4261,7 +4261,7 @@ function loadGamePlayers(){
   var aStats=g.aStats||{};
 
   function inp(side,num,stat,val){
-    return '<input type="number" min="0" data-side="'+side+'" data-num="'+num+'" data-stat="'+stat+'" value="'+(val||0)+'" style="width:42px;padding:4px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:11px;text-align:center;">';
+    return '<input type="text" inputmode="numeric" pattern="[0-9]*" data-side="'+side+'" data-num="'+num+'" data-stat="'+stat+'" value="'+(val||0)+'" onfocus="this.select()" onchange="this.value=(parseInt(this.value)||0)" style="width:42px;padding:6px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:13px;text-align:center;">';
   }
 
   function buildTeamTable(teamLabel,color,roster,statsObj,side){
