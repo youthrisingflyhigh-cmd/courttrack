@@ -799,10 +799,10 @@ function getFormerPlayers(){
       for(var i=hist.length-1; i>=0; i--){
         var g=hist[i];
         if(!g) continue;
-        var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
-        if(!roster) continue;
-        var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
-        if(match){ name=match.name; break; }
+        var teamStats = g.home===t.name ? (g.playerStats&&g.playerStats.home) : g.away===t.name ? (g.playerStats&&g.playerStats.away) : null;
+        if(!teamStats) continue;
+        var match=teamStats[numKey];
+        if(match&&match.name){ name=match.name; break; }
       }
       rows.push({
         p:{num:numKey, name:name||('Former Player #'+numKey)},
@@ -883,15 +883,17 @@ function openPotwLightbox(src){
 // just scoped to a single game's box score instead of season totals.
 function computeGameMVP(g){
   var candidates=[];
-  function addSide(teamName,teamColor,players,statsObj){
-    (players||[]).forEach(function(p){
-      var s=(statsObj&&statsObj[p.num])||{};
+  function addSide(teamName,teamColor,teamStats){
+    if(!teamStats)return;
+    Object.keys(teamStats).forEach(function(num){
+      var s=teamStats[num];
+      if(!s||typeof s!=='object')return;
       var eff=(s.pts||0)+(s.reb||0)+(s.ast||0)+(s.stl||0)+(s.blk||0)-(s.to||0);
-      candidates.push({p:p,teamName:teamName,teamColor:teamColor,s:s,eff:eff});
+      candidates.push({p:{num:num,name:s.name},teamName:teamName,teamColor:teamColor,s:s,eff:eff});
     });
   }
-  addSide(g.home,g.homeColor,g.homePlayers,g.hStats);
-  addSide(g.away,g.awayColor,g.awayPlayers,g.aStats);
+  addSide(g.home,g.homeColor,g.playerStats&&g.playerStats.home);
+  addSide(g.away,g.awayColor,g.playerStats&&g.playerStats.away);
   if(!candidates.length) return null;
   candidates.sort(function(a,b){ return b.eff-a.eff; });
   return candidates[0];
@@ -1207,13 +1209,14 @@ function renderScores(){
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
     var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
-    function makeRows(pl,st,color){
-      if(!pl||!st)return '';
+    function makeRows(teamStats,color){
+      if(!teamStats)return '';
       var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
-      var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
-        var s=(typeof st==='object'?st[p.num]:{})||{};
+      var rows=Object.keys(teamStats).map(function(num){
+        var s=teamStats[num];
+        if(!s||typeof s!=='object')return '';
         tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
-        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
+        return '<tr><td><span style="color:'+color+'">#'+num+'</span></td><td>'+(s.name||'')+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
       }).join('');
       rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
       return rows;
@@ -1222,7 +1225,7 @@ function renderScores(){
     var logHtml=log.length?log.map(function(e){
       return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.playerStats&&g.playerStats.home,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.playerStats&&g.playerStats.away,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
   });
   el.innerHTML=html;
 }
