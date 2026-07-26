@@ -630,7 +630,7 @@ th, td { padding: 10px 8px !important; }
           <button class="q-btn active" onclick="setQ(1)">H1</button>
           <button class="q-btn" onclick="setQ(2)">H2</button>
         </div>
-        <button onclick="openStatsCorrectionModal()" style="margin-top:12px;padding:8px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:140px;white-space:nowrap;">✎ CORRECT STATS</button>
+        <button onclick="openStatsCorrectionModal()" style="margin-top:12px;padding:8px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:160px;white-space:nowrap;">✎ EDIT BOX SCORE</button>
         <button onclick="openScheduleEditor()" style="margin-top:8px;padding:8px 12px;background:#888;color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;width:100%;max-width:140px;white-space:nowrap;">📅 SCHEDULE</button>
       </div>
       <div class="team-block">
@@ -2401,14 +2401,8 @@ function backfillGameWeeks(){
 // corrupted or out of sync (e.g. a device saving before its own initial
 // load finished), this recomputes them cleanly from every saved game
 // instead of trying to patch numbers by hand.
-function rebuildPlayerStatsFromHistory(){
-  var hist = toArr(gameHistory);
-  if(!hist.length){
-    alert('No games found in Game History to rebuild from.');
-    return;
-  }
-  if(!confirm('This will recompute every player\'s season totals from scratch using the '+hist.length+' game(s) saved in Game History, and replace the current Player Stats with the result.\n\nUse this if totals ever look wrong or incomplete. Continue?')) return;
-
+function computeRebuiltPlayerStats(histInput){
+  var hist = toArr(histInput);
   var rebuilt={};
   function accumRebuild(teamName,players,statsObj,gameMeta){
     if(!teamName || !players) return;
@@ -2437,8 +2431,18 @@ function rebuildPlayerStatsFromHistory(){
     accumRebuild(g.home, g.homePlayers, g.hStats, {id:g.id, date:g.date, opp:g.away, result:hWin?'W':'L'});
     accumRebuild(g.away, g.awayPlayers, g.aStats, {id:g.id, date:g.date, opp:g.home, result:hWin?'L':'W'});
   });
+  return rebuilt;
+}
 
-  playerStats = rebuilt;
+function rebuildPlayerStatsFromHistory(){
+  var hist = toArr(gameHistory);
+  if(!hist.length){
+    alert('No games found in Game History to rebuild from.');
+    return;
+  }
+  if(!confirm('This will recompute every player\'s season totals from scratch using the '+hist.length+' game(s) saved in Game History, and replace the current Player Stats with the result.\n\nUse this if totals ever look wrong or incomplete. Continue?')) return;
+
+  playerStats = computeRebuiltPlayerStats(gameHistory);
   if(!_dataFullyLoaded){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
@@ -4203,18 +4207,21 @@ function openStatsCorrectionModal(){
 function closeStatsCorrectionModal(){
   document.getElementById('stats-correction-modal').style.display='none';
   document.getElementById('stats-game-select').value='';
-  document.getElementById('stats-player-select').value='';
-  document.getElementById('stats-editor').style.display='none';
+  var wrap=document.getElementById('stats-editor');
+  wrap.style.display='none';
+  wrap.innerHTML='';
+  _boxEditGameIdx=null;
 }
 
 function populateGamesList(){
   var select=document.getElementById('stats-game-select');
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
+  var hist=toArr(gameHistory);
   select.innerHTML='<option value="">-- Choose a game --</option>';
-  hist.reverse().forEach(function(g,i){
-    var label=(g.home||'?')+' '+((g.homeScore||0))+' vs '+((g.awayScore||0))+' '+(g.away||'?')+' ('+g.date+')';
+  hist.forEach(function(g,i){
+    if(!g) return;
+    var hasStats = g.hStats && Object.keys(g.hStats).length;
+    var flag = hasStats ? '' : '  ⚠️ no box score yet';
+    var label=(g.date||'?')+' — '+(g.home||'?')+' '+((g.homeScore||0))+' vs '+((g.awayScore||0))+' '+(g.away||'?')+flag;
     var opt=document.createElement('option');
     opt.value=i;
     opt.textContent=label;
@@ -4222,109 +4229,120 @@ function populateGamesList(){
   });
 }
 
+var _boxEditGameIdx=null;
+
 function loadGamePlayers(){
   var select=document.getElementById('stats-game-select');
-  var idx=select.value;
-  if(!idx || idx===''){
-    document.getElementById('stats-player-select').innerHTML='<option value="">-- Choose a player --</option>';
+  var idxVal=select.value;
+  var wrap=document.getElementById('stats-editor');
+  if(idxVal===''){
+    wrap.style.display='none';
+    wrap.innerHTML='';
+    _boxEditGameIdx=null;
     return;
   }
-  
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
-  hist.reverse();
-  
-  var game=hist[idx];
-  if(!game)return;
-  
-  var pSelect=document.getElementById('stats-player-select');
-  pSelect.innerHTML='<option value="">-- Choose a player --</option>';
-  
-  if(!game.playerStats)return;
-  
-  Object.keys(game.playerStats).forEach(function(teamName){
-    var teamStats=game.playerStats[teamName];
-    var teamColor=game[teamName+'Color']||'#888';
-    Object.keys(teamStats).forEach(function(playerNum){
-      var ps=teamStats[playerNum];
-      if(ps&&typeof ps==='object'){
-        var pName=ps.name||('#'+playerNum);
-        var opt=document.createElement('option');
-        opt.value=teamName+'|'+playerNum;
-        opt.textContent=pName+' ('+teamName+')';
-        opt.style.color=teamColor;
-        pSelect.appendChild(opt);
-      }
-    });
-  });
-}
 
-function loadPlayerStats(){
-  var select=document.getElementById('stats-player-select');
-  var val=select.value;
-  if(!val || val===''){
-    document.getElementById('stats-editor').style.display='none';
-    return;
+  var hist=toArr(gameHistory);
+  var idx=parseInt(idxVal);
+  var g=hist[idx];
+  if(!g){wrap.style.display='none';return;}
+  _boxEditGameIdx=idx;
+
+  var homeTeam=teams.find(function(t){return t.name===g.home;});
+  var awayTeam=teams.find(function(t){return t.name===g.away;});
+  var homeRoster=(g.homePlayers&&g.homePlayers.length)?g.homePlayers:((homeTeam&&homeTeam.players)||[]);
+  var awayRoster=(g.awayPlayers&&g.awayPlayers.length)?g.awayPlayers:((awayTeam&&awayTeam.players)||[]);
+  var hStats=g.hStats||{};
+  var aStats=g.aStats||{};
+
+  function inp(side,num,stat,val){
+    return '<input type="number" min="0" data-side="'+side+'" data-num="'+num+'" data-stat="'+stat+'" value="'+(val||0)+'" style="width:42px;padding:4px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:11px;text-align:center;">';
   }
-  
-  var parts=val.split('|');
-  var teamName=parts[0], playerNum=parts[1];
-  
-  var gameIdx=document.getElementById('stats-game-select').value;
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
-  hist.reverse();
-  
-  var game=hist[gameIdx];
-  if(!game || !game.playerStats || !game.playerStats[teamName])return;
-  
-  var ps=game.playerStats[teamName][playerNum];
-  if(!ps || typeof ps!=='object')return;
-  
-  document.getElementById('stat-pts').value=ps.pts||0;
-  document.getElementById('stat-reb').value=ps.reb||0;
-  document.getElementById('stat-ast').value=ps.ast||0;
-  document.getElementById('stat-stl').value=ps.stl||0;
-  document.getElementById('stat-blk').value=ps.blk||0;
-  document.getElementById('stat-to').value=ps.to||0;
-  
-  document.getElementById('stats-editor').style.display='block';
+
+  function buildTeamTable(teamLabel,color,roster,statsObj,side){
+    if(!roster.length){
+      return '<div style="color:var(--muted);font-size:12px;padding:8px 0;">No roster found for '+teamLabel+' — add players to this team first.</div>';
+    }
+    var rows=roster.map(function(p){
+      var s=statsObj[p.num]||{};
+      return '<tr>'
+        +'<td style="padding:4px 6px;color:'+color+';font-size:11px;font-weight:700;white-space:nowrap;">#'+p.num+'</td>'
+        +'<td style="padding:4px 8px;font-size:12px;color:#fff;white-space:nowrap;">'+p.name+'</td>'
+        +'<td>'+inp(side,p.num,'pts',s.pts)+'</td>'
+        +'<td>'+inp(side,p.num,'reb',s.reb)+'</td>'
+        +'<td>'+inp(side,p.num,'ast',s.ast)+'</td>'
+        +'<td>'+inp(side,p.num,'stl',s.stl)+'</td>'
+        +'<td>'+inp(side,p.num,'blk',s.blk)+'</td>'
+        +'<td>'+inp(side,p.num,'to',s.to)+'</td>'
+        +'<td>'+inp(side,p.num,'fgm',s.fgm)+'</td>'
+        +'<td>'+inp(side,p.num,'3pm',s['3pm'])+'</td>'
+        +'<td>'+inp(side,p.num,'ftm',s.ftm)+'</td>'
+        +'</tr>';
+    }).join('');
+    return '<div style="overflow-x:auto;margin-bottom:14px;">'
+      +'<div style="color:'+color+';font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">'+teamLabel+'</div>'
+      +'<table style="border-collapse:collapse;width:100%;">'
+      +'<thead><tr style="color:var(--muted);font-size:10px;text-align:center;">'
+      +'<th></th><th style="text-align:left;">Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  var rosterWarning='';
+  if(!(g.homePlayers&&g.homePlayers.length)||!(g.awayPlayers&&g.awayPlayers.length)){
+    rosterWarning='<div style="background:rgba(255,92,0,0.1);border:1px solid rgba(255,92,0,0.3);color:var(--orange);font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:12px;">This game has no saved roster snapshot — using each team\'s CURRENT roster instead. Saving will attach that roster to this game going forward.</div>';
+  }
+
+  wrap.innerHTML=rosterWarning
+    +buildTeamTable(g.home||'Home',g.homeColor||'#fff',homeRoster,hStats,'home')
+    +buildTeamTable(g.away||'Away',g.awayColor||'#888',awayRoster,aStats,'away')
+    +'<div style="display:flex;gap:8px;margin-top:4px;">'
+      +'<button onclick="saveStatCorrection()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">✓ SAVE BOX SCORE</button>'
+      +'<button onclick="closeStatsCorrectionModal()" style="flex:1;padding:10px;background:var(--dark3);color:var(--muted);border:1px solid #333;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">Cancel</button>'
+    +'</div>';
+  wrap.style.display='block';
 }
 
 function saveStatCorrection(){
-  var gameIdx=document.getElementById('stats-game-select').value;
-  var playerVal=document.getElementById('stats-player-select').value;
-  
-  if(!gameIdx || !playerVal){alert('Select game and player');return;}
-  
-  var parts=playerVal.split('|');
-  var teamName=parts[0], playerNum=parts[1];
-  
-  var hist=[];
-  try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean).filter(function(g){return g.status==='final';});
-  hist.reverse();
-  
-  var game=hist[gameIdx];
-  if(!game || !game.playerStats || !game.playerStats[teamName])return;
-  
-  var ps=game.playerStats[teamName][playerNum];
-  if(!ps || typeof ps!=='object')return;
-  
-  ps.pts=parseInt(document.getElementById('stat-pts').value)||0;
-  ps.reb=parseInt(document.getElementById('stat-reb').value)||0;
-  ps.ast=parseInt(document.getElementById('stat-ast').value)||0;
-  ps.stl=parseInt(document.getElementById('stat-stl').value)||0;
-  ps.blk=parseInt(document.getElementById('stat-blk').value)||0;
-  ps.to=parseInt(document.getElementById('stat-to').value)||0;
-  
-  db.ref('ct/history').set(gameHistory,function(err){
-    if(err){alert('Error saving: '+err.message);return;}
-    alert('Stats updated! ✓');
-    closeStatsCorrectionModal();
+  if(_boxEditGameIdx===null || _boxEditGameIdx===undefined){alert('Select a game first.');return;}
+  var hist=toArr(gameHistory);
+  var g=hist[_boxEditGameIdx];
+  if(!g){alert('Game not found.');return;}
+
+  if(!confirm('Save this box score for '+(g.home||'?')+' vs '+(g.away||'?')+' ('+g.date+')?\n\nThis will also recompute every player\'s season totals from all saved games so everything stays in sync.')) return;
+
+  var homeTeam=teams.find(function(t){return t.name===g.home;});
+  var awayTeam=teams.find(function(t){return t.name===g.away;});
+  var homeRoster=(g.homePlayers&&g.homePlayers.length)?g.homePlayers:((homeTeam&&homeTeam.players)||[]);
+  var awayRoster=(g.awayPlayers&&g.awayPlayers.length)?g.awayPlayers:((awayTeam&&awayTeam.players)||[]);
+
+  var hStats={}, aStats={};
+  document.querySelectorAll('#stats-editor input[data-side]').forEach(function(el){
+    var side=el.getAttribute('data-side'), num=el.getAttribute('data-num'), stat=el.getAttribute('data-stat');
+    var val=parseInt(el.value)||0;
+    var target=side==='home'?hStats:aStats;
+    if(!target[num]) target[num]={};
+    target[num][stat]=val;
   });
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+
+  g.hStats=hStats;
+  g.aStats=aStats;
+  g.homePlayers=homeRoster;
+  g.awayPlayers=awayRoster;
+  gameHistory=hist;
+
+  fbSet('ct/history', gameHistory);
+  playerStats = computeRebuiltPlayerStats(gameHistory);
+  fbSet('ct/playerStats', playerStats);
+
+  alert('✅ Box score saved and player totals resynced!');
+  closeStatsCorrectionModal();
+  if(typeof renderPlayerStats==='function') renderPlayerStats();
+  if(typeof renderSchedule==='function') renderSchedule();
 }
 </script>
 <!-- ── SCHEDULE EDITOR MODAL ── -->
@@ -4388,10 +4406,10 @@ function saveStatCorrection(){
 
 <!-- Schedule Editor Button (in control bar) -->
 
-<div id="stats-correction-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;">
-  <div style="background:var(--dark2);border:1px solid #333;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
+<div id="stats-correction-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--dark2);border:1px solid #333;border-radius:12px;padding:24px;max-width:820px;width:100%;max-height:86vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h2 style="color:var(--orange);margin:0;font-size:18px;">CORRECT PLAYER STATS</h2>
+      <h2 style="color:var(--orange);margin:0;font-size:18px;">EDIT BOX SCORE</h2>
       <button onclick="closeStatsCorrectionModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&times;</button>
     </div>
 
@@ -4403,48 +4421,8 @@ function saveStatCorrection(){
       </select>
     </div>
 
-    <!-- Player Selector -->
-    <div style="margin-bottom:16px;">
-      <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px;font-weight:700;">SELECT PLAYER</label>
-      <select id="stats-player-select" onchange="loadPlayerStats()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:6px;font-size:13px;">
-        <option value="">-- Choose a player --</option>
-      </select>
-    </div>
-
-    <!-- Stats Editor -->
-    <div id="stats-editor" style="display:none;border-top:1px solid #333;padding-top:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">PTS</label>
-          <input type="number" id="stat-pts" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">REB</label>
-          <input type="number" id="stat-reb" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">AST</label>
-          <input type="number" id="stat-ast" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">STL</label>
-          <input type="number" id="stat-stl" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">BLK</label>
-          <input type="number" id="stat-blk" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-        <div>
-          <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px;">TO</label>
-          <input type="number" id="stat-to" min="0" style="width:100%;padding:6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;">
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;">
-        <button onclick="saveStatCorrection()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">✓ SAVE</button>
-        <button onclick="closeStatsCorrectionModal()" style="flex:1;padding:10px;background:var(--dark3);color:var(--muted);border:1px solid #333;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">Cancel</button>
-      </div>
-    </div>
+    <!-- Box Score Editor (built dynamically per game) -->
+    <div id="stats-editor" style="display:none;border-top:1px solid #333;padding-top:16px;"></div>
   </div>
 </div>
 
