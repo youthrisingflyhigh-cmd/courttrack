@@ -1899,7 +1899,79 @@ function startGame(){
   if(isNaN(hi)||isNaN(ai)){alert('Select both teams');return;}
   if(hi===ai){alert('Pick two different teams');return;}
   if(!teams[hi].players.length||!teams[ai].players.length){alert('Both teams need players! Run Season Reset first to load rosters, then add players in the Setup tab.');return;}
+
+  // Safety net: starting a new game used to silently overwrite whatever
+  // live game was already sitting at ct/game if "Finish Game" was never
+  // clicked on it — permanently losing that box score/play-by-play with
+  // no trace anywhere. Now we archive it first instead.
+  if(game){
+    var ghn=(teams[game.hi]&&teams[game.hi].name)||'Home', gan=(teams[game.ai]&&teams[game.ai].name)||'Away';
+    var proceed=confirm('There\'s already an unfinished game in progress: '+ghn+' '+(game.homeScore||0)+' \u2013 '+(game.awayScore||0)+' '+gan+'.\n\nStarting a new game will archive that one to Game History as-is (marked "Interrupted") first, so nothing is lost — then begin the new matchup.\n\nContinue?');
+    if(!proceed) return;
+    if(!archiveUnfinishedGame()) return;
+  }
+
   openLineupModal(hi,ai);
+}
+
+// Archives whatever's currently in the live game slot (ct/game) into
+// permanent Game History, exactly like Finish Game does, but flagged
+// as "interrupted" so it's clear this wasn't closed out normally and
+// may need a trip through Edit Box Score to fill in/verify anything.
+function archiveUnfinishedGame(){
+  if(!game) return true;
+  if(!_dataFullyLoaded){
+    alert('⚠️ This device never fully confirmed it loaded current season data. Refresh with a solid connection before starting a new game, so the in-progress one can be archived safely.');
+    return false;
+  }
+  try{
+    var hi=game.hi, ai=game.ai;
+    if(!teams[hi] || !teams[ai]){
+      alert('⚠️ Could not identify the teams for the in-progress game — refusing to overwrite it. Please finish or fix that game first.');
+      return false;
+    }
+    var hn=teams[hi].name, an=teams[ai].name;
+    var hc=teams[hi].color, ac=teams[ai].color;
+    var hs=game.homeScore||0, as_=game.awayScore||0;
+
+    if(!standings[hn])standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
+    if(!standings[an])standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
+    standings[hn].color=hc; standings[an].color=ac;
+    standings[hn].pf=(standings[hn].pf||0)+hs; standings[hn].pa=(standings[hn].pa||0)+as_;
+    standings[an].pf=(standings[an].pf||0)+as_; standings[an].pa=(standings[an].pa||0)+hs;
+    if(hs>as_){standings[hn].w++;standings[an].l++;}
+    else if(as_>hs){standings[an].w++;standings[hn].l++;}
+
+    var gameId='game_interrupted_'+Date.now();
+    var gameRecord={
+      id:gameId,
+      home:hn,away:an,homeScore:hs,awayScore:as_,
+      date:game.date,homeColor:hc,awayColor:ac,
+      hStats:game.hStats||{},aStats:game.aStats||{},
+      homePlayers:teams[hi].players,awayPlayers:teams[ai].players,
+      playLog:game.playLog||[],
+      week:null,
+      season:appSettings.season||'',
+      hLineup:game.hLineup||[],aLineup:game.aLineup||[],
+      interrupted:true
+    };
+    gameHistory.unshift(gameRecord);
+    playerStats = computeRebuiltPlayerStats(gameHistory);
+
+    fbSet('ct/standings',standings);
+    fbSet('ct/history',gameHistory);
+    fbSet('ct/playerStats',playerStats);
+    clearGame();
+    game=null;
+    if(typeof renderGameHistory==='function') renderGameHistory();
+    if(typeof renderPlayerStats==='function') renderPlayerStats();
+    alert('✅ Previous unfinished game archived to Game History (marked "Interrupted"). You can review/fix it anytime via Edit Box Score.');
+    return true;
+  }catch(err){
+    console.error('archiveUnfinishedGame() failed:', err);
+    alert('⚠️ Could not archive the in-progress game — hit an unexpected error:\n\n'+err.message+'\n\nNothing was changed. Please finish that game normally instead.');
+    return false;
+  }
 }
 
 // ── STARTING LINEUP SELECTOR ──
@@ -4226,6 +4298,7 @@ function populateGamesList(){
     if(!g) return;
     var hasStats = g.hStats && Object.keys(g.hStats).length;
     var flag = hasStats ? '' : '  ⚠️ no box score yet';
+    if(g.interrupted) flag = '  ⚠️ interrupted';
     var label=(g.date||'?')+' — '+(g.home||'?')+' '+((g.homeScore||0))+' vs '+((g.awayScore||0))+' '+(g.away||'?')+flag;
     var opt=document.createElement('option');
     opt.value=i;
