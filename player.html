@@ -762,55 +762,92 @@ function renderHome(){
   buildTicker();
 }
 
-function getAllPlayers(){
-  var rows=[];
+// Resolve the name attached to a given team+number at any point in time —
+// current roster first, then falling back to old game history snapshots
+// (each saved game records the roster as it was for that game).
+function resolveNameForNum(t,numKey){
+  var cur=t.players.find(function(p){ return String(p.num)===String(numKey); });
+  if(cur) return cur.name;
+  var hist=[];
+  try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
+  for(var i=hist.length-1; i>=0; i--){
+    var g=hist[i];
+    if(!g) continue;
+    var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
+    if(!roster) continue;
+    var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
+    if(match) return match.name;
+  }
+  return null;
+}
+
+// Stats are stored per team + jersey number, but a person can end up under
+// several different number-keys over a season (a number gets edited/reused,
+// a roster gets rebuilt, etc). Rather than showing that same person as
+// several separate rows with fragments of their real total, this merges
+// every number-key back together by matching on team + player name, so
+// each person shows up exactly once with their full combined stats —
+// whether they're still on the roster or not.
+function getMergedPlayerRows(){
+  var merged=[];
   teams.forEach(function(t){
     var ps=playerStats[t.name]||{};
-    t.players.forEach(function(p){
-      rows.push({p:p,teamName:t.name,teamColor:t.color||'#FF5C00',s:ps[p.num]||{}});
+    var byName={};
+    var order=[];
+
+    function ensureRow(name,numKey,isCurrent){
+      var key=(name||'').trim().toLowerCase();
+      if(!key) return null;
+      if(!byName[key]){
+        byName[key]={
+          p:{num:numKey,name:name},
+          teamName:t.name, teamColor:t.color||'#FF5C00', isCurrent:isCurrent,
+          s:{pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]}
+        };
+        order.push(key);
+      }
+      // A current-roster sighting always wins for which number/flag to display
+      // (so the merged row shows their current number, not an old one).
+      if(isCurrent){ byName[key].p.num=numKey; byName[key].isCurrent=true; }
+      return byName[key];
+    }
+
+    // Seed every current roster player first, so they always get a row
+    // (even at 0 stats) and their current number is locked in for display.
+    t.players.forEach(function(p){ ensureRow(p.name,p.num,true); });
+
+    // Fold in every stat entry — current or orphaned — by resolved name.
+    Object.keys(ps).forEach(function(numKey){
+      var s=ps[numKey]||{};
+      var hasStats=(s.gp||0)>0||(s.pts||0)>0||(s.reb||0)>0||(s.ast||0)>0;
+      if(!hasStats) return;
+      var isCurrentNum = t.players.some(function(p){ return String(p.num)===String(numKey); });
+      var nm=resolveNameForNum(t,numKey);
+      if(!nm) nm='Former Player #'+numKey;
+      var row=ensureRow(nm,numKey,isCurrentNum);
+      if(!row) return;
+      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'].forEach(function(k){
+        row.s[k]=(row.s[k]||0)+(s[k]||0);
+      });
+      if(s.games&&s.games.length) row.s.games=row.s.games.concat(s.games);
     });
+
+    order.forEach(function(key){ merged.push(byName[key]); });
   });
-  return rows;
+  return merged;
+}
+
+function getAllPlayers(){
+  return getMergedPlayerRows().filter(function(r){ return r.isCurrent; });
 }
 
 // Stats are stored per team + jersey number. If someone is removed from a
 // roster, or a number gets reused by a different person, their old stats
 // have nobody current to attach to and silently drop out of getAllPlayers().
-// This finds those orphaned entries and tries to recover the player's name
-// from old game history (which snapshots the roster at the time each game
-// was played), so their contribution stays visible instead of just
-// vanishing from the total.
+// This finds those orphaned entries (already merged by name above) so
+// their contribution stays visible instead of just vanishing from the total.
 function getFormerPlayers(){
-  var rows=[];
-  teams.forEach(function(t){
-    var ps=playerStats[t.name]||{};
-    var currentNums={};
-    t.players.forEach(function(p){ currentNums[p.num]=true; });
-    Object.keys(ps).forEach(function(numKey){
-      if(currentNums[numKey]) return; // still on the roster, not "former"
-      var s=ps[numKey]||{};
-      var hasStats=(s.gp||0)>0 || (s.pts||0)>0 || (s.reb||0)>0 || (s.ast||0)>0;
-      if(!hasStats) return;
-      // Try to recover their name from the most recent game history entry
-      // that involved this team and this jersey number.
-      var name=null;
-      var hist=[];
-      try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
-      for(var i=hist.length-1; i>=0; i--){
-        var g=hist[i];
-        if(!g) continue;
-        var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
-        if(!roster) continue;
-        var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
-        if(match){ name=match.name; break; }
-      }
-      rows.push({
-        p:{num:numKey, name:name||('Former Player #'+numKey)},
-        teamName:t.name, teamColor:t.color||'#FF5C00', s:s
-      });
-    });
-  });
-  return rows;
+  return getMergedPlayerRows().filter(function(r){ return !r.isCurrent; });
 }
 
 function renderPOTW(){
@@ -1502,8 +1539,11 @@ function renderTeams(){
   teams.forEach(function(t){
     var st=standings[t.name]||{w:0,l:0,pf:0,pa:0}; var gp=st.w+st.l;
     var ps=playerStats[t.name]||{};
+    var mergedForTeam=getAllPlayers().filter(function(r){return r.teamName===t.name;});
+    var mergedByNum={};
+    mergedForTeam.forEach(function(r){ mergedByNum[r.p.num]=r.s; });
     var rosterHtml=t.players.map(function(p){
-      var s=ps[p.num]||{};
+      var s=mergedByNum[p.num]||{};
       return '<tr><td><span style="color:'+t.color+'">#'+p.num+'</span></td><td>'+p.name+'</td>'
         +'<td style="color:var(--muted)">'+p.pos+'</td><td class="pts-cell">'+(s.pts||0)+'</td>'
         +'<td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.gp||0)+'</td></tr>';
@@ -1529,13 +1569,11 @@ function showPlayerModal(player){
     player.eff = (player.s.pts||0) + (player.s.reb||0) + (player.s.ast||0) + (player.s.stl||0) + (player.s.blk||0) - (player.s.to||0);
   }
   
-  // Get game log for this player
+  // Get game log for this player — s.games is already merged across every
+  // jersey number this person has ever played under for this team (see
+  // getMergedPlayerRows), so this shows their complete history in one place.
   var gameLog=[];
-  try{
-    if(playerStats[player.teamName] && playerStats[player.teamName][player.p.num] && playerStats[player.teamName][player.p.num].games){
-      gameLog=playerStats[player.teamName][player.p.num].games||[];
-    }
-  }catch(e){}
+  try{ gameLog = (player.s && player.s.games) || []; }catch(e){}
   
   var gameLogHtml='';
   if(gameLog.length>0){
