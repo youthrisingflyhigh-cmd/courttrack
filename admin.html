@@ -1224,21 +1224,6 @@ function flashClock(ms){
 }
 
 // ── LAST-10-SECONDS COUNTDOWN (game clock only, fires each half) ──
-// Tick: quick synthesized beep via Web Audio API — no audio file needed.
-var _ctBeepCtx = null;
-function playCountdownTick(){
-  try{
-    if(!_ctBeepCtx) _ctBeepCtx = new (window.AudioContext||window.webkitAudioContext)();
-    var osc = _ctBeepCtx.createOscillator();
-    var gain = _ctBeepCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.3, _ctBeepCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, _ctBeepCtx.currentTime + 0.15);
-    osc.connect(gain); gain.connect(_ctBeepCtx.destination);
-    osc.start(); osc.stop(_ctBeepCtx.currentTime + 0.15);
-  }catch(e){}
-}
 // Voice: spoken number via the browser's built-in speech synthesis.
 function speakCountdownNumber(n){
   try{
@@ -1255,7 +1240,6 @@ function speakCountdownNumber(n){
 // each half since it just checks the current seconds value.
 function gameClockCountdownCheck(sec){
   if(sec >= 1 && sec <= 10){
-    playCountdownTick();
     speakCountdownNumber(sec);
   }
 }
