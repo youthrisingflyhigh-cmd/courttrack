@@ -1288,10 +1288,11 @@ function timerStart(){
       timerSeconds--;
       timerUpdate();
       gameClockCountdownCheck(timerSeconds);
-    } else {
-      timerStop();
-      playHorn();
-      flashClock();
+      if(timerSeconds === 0){
+        timerStop();
+        playHorn();
+        flashClock();
+      }
     }
   }, 1000);
   timerUpdate();
