@@ -619,7 +619,12 @@ th, td { padding: 10px 8px !important; }
         <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="home-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
           <button onclick="adjustTeamFouls('home',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
-          <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+          <button onclick="adjustTeamFouls('home',1)" title="Add a team foul not tied to a specific player" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:8px;">BENCH/COACH TECH: <span id="home-bench-tech" style="color:#a855f7;font-weight:700;">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
+          <button onclick="addBenchTech('home',-1)" title="Remove a bench/coach technical (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="addBenchTech('home',1)" title="Add a technical foul charged to the bench or coach — not tied to any player" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
         <div style="font-size:12px;color:#888;margin-top:8px;">TIMEOUTS (2 per half): <span id="home-timeouts-display" style="color:#4FC3F7;font-weight:700;cursor:pointer;" onclick="toggleTimeout('home')" title="Click to use a timeout (2 allowed per half)">● ●</span></div>
       </div>
@@ -637,7 +642,12 @@ th, td { padding: 10px 8px !important; }
         <div style="font-size:12px;color:#888;margin-top:4px;">TEAM FOULS: <span id="away-team-fouls" style="color:#FF4500;font-weight:700;">0</span></div>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
           <button onclick="adjustTeamFouls('away',-1)" title="Remove a team foul (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
-          <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player (e.g. bench technical)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+          <button onclick="adjustTeamFouls('away',1)" title="Add a team foul not tied to a specific player" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:8px;">BENCH/COACH TECH: <span id="away-bench-tech" style="color:#a855f7;font-weight:700;">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;">
+          <button onclick="addBenchTech('away',-1)" title="Remove a bench/coach technical (e.g. correcting a mistake)" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">−</button>
+          <button onclick="addBenchTech('away',1)" title="Add a technical foul charged to the bench or coach — not tied to any player" style="width:36px;height:36px;border-radius:8px;background:var(--dark3);border:1px solid #555;color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;padding:0;">+</button>
         </div>
         <div style="font-size:12px;color:#888;margin-top:8px;">TIMEOUTS (2 per half): <span id="away-timeouts-display" style="color:#4FC3F7;font-weight:700;cursor:pointer;" onclick="toggleTimeout('away')" title="Click to use a timeout (2 allowed per half)">● ●</span></div>
       </div>
@@ -1574,6 +1584,8 @@ var STATS=[
   {key:'blk', label:'Block',      pts:0},
   {key:'foul',label:'Foul',       pts:0, neg:true},
   {key:'foul',label:'-1 Foul',    pts:0, neg:true, decr:true},
+  {key:'tech',label:'Tech Foul',  pts:0, neg:true},
+  {key:'tech',label:'-1 Tech',    pts:0, neg:true, decr:true},
   {key:'to',  label:'Turnover',   pts:0, neg:true},
 ];
 
@@ -1673,8 +1685,39 @@ function toArr(v){
 db.ref('ct/teams').on('value',function(s){
   teams=toArr(s.val());
   if(_booted){ renderTeams(); renderRoster(); renderSelects(); }
+  // If a game is live, a roster edit (rename/renumber/add/delete a player)
+  // can silently strand selPlayerHome/selPlayerAway on a number that no
+  // longer belongs to anyone — every stat tap after that was writing into
+  // a "ghost" record instead of updating anything visible. Re-validate the
+  // selection and force the live-tracking view to refresh so it reflects
+  // whatever the roster now actually looks like.
+  if(_booted && game){
+    revalidateTrackedSelection('home');
+    revalidateTrackedSelection('away');
+    var trackPage=document.getElementById('page-track');
+    if(trackPage && trackPage.classList.contains('active')){
+      renderDualChips(); renderDualStatBtns();
+    }
+  }
   _check();
 });
+// Clears selPlayerHome/selPlayerAway if the player they point to no longer
+// exists under that number in the current roster (e.g. was just renumbered,
+// renamed away, or removed). Leaves a valid selection untouched.
+function revalidateTrackedSelection(side){
+  if(!game)return;
+  var isH=side==='home';
+  var selNum=isH?selPlayerHome:selPlayerAway;
+  if(selNum===null||selNum===undefined)return;
+  var ti=isH?game.hi:game.ai;
+  var roster=teams[ti]?teams[ti].players:[];
+  var stillExists=roster.some(function(p){return p.num==selNum;});
+  if(!stillExists){
+    if(isH) selPlayerHome=null; else selPlayerAway=null;
+    var lbl=document.getElementById(isH?'track-lbl-home':'track-lbl-away');
+    if(lbl) lbl.textContent='Tracking: — (player changed, please reselect)';
+  }
+}
 fbOnce('ct/game',       function(v){game=v||null;        _check();});
 fbOnce('ct/standings',  function(v){standings=v||{};     _check();});
 fbOnce('ct/history',    function(v){gameHistory=toArr(v);    _check();});
@@ -2085,14 +2128,14 @@ function confirmStartGame(){
   var hi=lineupHi, ai=lineupAi;
   if(hi==null||ai==null)return;
   if(lineupHomeSel.length!==lineupNeeded(hi)||lineupAwaySel.length!==lineupNeeded(ai))return;
-  function mk(pl){var s={};pl.forEach(function(p){s[p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0};});return s;}
+  function mk(pl){var s={};pl.forEach(function(p){s[p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0};});return s;}
   function mkStatus(pl,starters,outs){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':(outs.indexOf(p.num)!==-1?'OUT':'SUB');});return s;}
   var homeSelSnap=lineupHomeSel.slice(), awaySelSnap=lineupAwaySel.slice();
   var homeOutSnap=lineupHomeOut.slice(), awayOutSnap=lineupAwayOut.slice();
   game={hi:hi,ai:ai,homeScore:0,awayScore:0,hStats:mk(teams[hi].players),aStats:mk(teams[ai].players),
     hStatus:mkStatus(teams[hi].players,homeSelSnap,homeOutSnap),aStatus:mkStatus(teams[ai].players,awaySelSnap,awayOutSnap),
     hLineup:homeSelSnap,aLineup:awaySelSnap,
-    q:1,playLog:[],hTeamFoulAdj:0,aTeamFoulAdj:0,
+    q:1,playLog:[],hTeamFoulAdj:0,aTeamFoulAdj:0,hBenchTech:0,aBenchTech:0,
     date:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})};
   // Log the starting lineups into the play-by-play (informational only — not undoable)
   teams[hi].players.forEach(function(p){
@@ -2846,6 +2889,11 @@ function renderDualChips(){
   var aFoulEl=document.getElementById('away-team-fouls');
   if(hFoulEl) hFoulEl.textContent=homeFouls;
   if(aFoulEl) aFoulEl.textContent=awayFouls;
+  // Bench/coach technicals — game-long, not reset at halftime like team fouls above
+  var hBenchTechEl=document.getElementById('home-bench-tech');
+  var aBenchTechEl=document.getElementById('away-bench-tech');
+  if(hBenchTechEl) hBenchTechEl.textContent=game.hBenchTech||0;
+  if(aBenchTechEl) aBenchTechEl.textContent=game.aBenchTech||0;
   // Keep the sticky mini scorebar in sync too — renderDualChips() runs
   // after nearly every action, so this is the most reliable single spot.
   var miniHP=document.getElementById('mini-home-pts'), miniAP=document.getElementById('mini-away-pts');
@@ -2870,8 +2918,9 @@ function renderDualChips(){
     var stats=isHome?game.hStats:game.aStats;
     var statusMap=isHome?game.hStatus:game.aStatus;
     var sel=selNum===p.num||selNum===String(p.num);
-    var pStats=stats[p.num]||stats[String(p.num)]||{pts:0,foul:0};
+    var pStats=stats[p.num]||stats[String(p.num)]||{pts:0,foul:0,tech:0};
     var fouls=pStats.foul||0;
+    var techs=pStats.tech||0;
     var foulColor=fouls>=6?'#ef4444':fouls===5?'#eab308':fouls>=2?'#FF4500':'#555';
     var fouledOut=fouls>=6;
     var status=(statusMap&&statusMap[p.num]!==undefined)?statusMap[p.num]:(statusMap&&statusMap[String(p.num)]!==undefined?statusMap[String(p.num)]:'SUB');
@@ -2887,7 +2936,7 @@ function renderDualChips(){
       +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
       +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+(isPending?' <span style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick swap</span>':'')+'</div>'
       +'<div class="ppts">'+pStats.pts+' pts</div>'
-      +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F</div></div>'
+      +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F'+(techs?' · <span style="color:#a855f7;">'+techs+' T</span>':'')+'</div></div>'
       +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
       +'<button type="button" onclick="event.stopPropagation();triggerSwap(\''+side+'\','+p.num+')" title="Swap this player with another — tap here, then tap who they\'re subbing with" style="margin-left:4px;font-size:11px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid '+(isPending?'#60a5fa':'#444')+';color:'+(isPending?'#60a5fa':'#888')+';background:'+(isPending?'rgba(96,165,250,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;">⇄</button>'
       +'</div>';
@@ -3056,7 +3105,7 @@ function adjustPointsSide(side,delta){
   if(selNum===null||selNum===undefined){ alert('Select a player first.'); return; }
   var st=isH?game.hStats:game.aStats;
   var stKey=st[selNum]!==undefined?selNum:String(selNum);
-  if(st[stKey]===undefined){ st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0}; }
+  if(st[stKey]===undefined){ st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0}; }
   var amtInput=document.getElementById('manual-pts-'+side);
   var amt=amtInput?parseInt(amtInput.value):1;
   if(isNaN(amt)||amt<1) amt=1;
@@ -3107,6 +3156,34 @@ function adjustTeamFouls(side,delta){
   saveLiveGame(); renderDualChips(); renderTimeouts();
 }
 
+// Tracks a TECHNICAL FOUL charged to the bench or coach — not tied to any
+// player, and NOT part of team foul totals (technicals don't feed the
+// bonus the way common fouls do) or any player's foul-out count. Carries
+// for the whole game, not reset at halftime. Logged and undoable.
+function addBenchTech(side,delta){
+  if(!game)return;
+  var isH=side==='home';
+  var key=isH?'hBenchTech':'aBenchTech';
+  var cur=game[key]||0;
+  var next=Math.max(0,cur+delta);
+  var actualDelta=next-cur;
+  game[key]=next;
+  var ti=isH?game.hi:game.ai;
+  if(!game.playLog) game.playLog=[];
+  var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  var entry={
+    id:entryId, side:side, num:'-',
+    playerName:'Bench/Coach', teamName:teams[ti].name, teamColor:teams[ti].color,
+    key:'benchtech', label:(actualDelta>=0?'Bench/Coach Tech +':'Bench/Coach Tech ')+actualDelta, pts:0, neg:actualDelta<0,
+    score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds), timestamp:Date.now(),
+    benchTechDelta:actualDelta
+  };
+  game.playLog.push(entry);
+  logStack.push({id:entryId,side:side,num:'-',key:'benchtech',pts:0,neg:actualDelta<0,benchTechDelta:actualDelta});
+  addSubLogRow(entry);
+  saveLiveGame(); renderDualChips();
+}
+
 function renderDualStatBtns(){
   if(!game)return;
   // Home stat buttons
@@ -3146,7 +3223,7 @@ function doStatSide(side,key,pts,neg,decr){
   var stKey=st[selNum]!==undefined?selNum:String(selNum);
   if(st[stKey]===undefined){
     // Initialize stats for this player if missing
-    st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0};
+    st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0};
   }
   selNum=stKey;
   if(key!=='miss'){
@@ -3321,8 +3398,13 @@ function reverseLogEntryEffect(entry){
     return;
   }
   if(entry.key==='teamfoul'){
-    var adjKey=entry.side==='home'?'hTeamFoulAdj':'aTeamFoulAdj';
-    game[adjKey]=Math.max(0,(game[adjKey]||0)-(entry.teamFoulDelta||0));
+    var foulKey=entry.side==='home'?'hHalfTeamFouls':'aHalfTeamFouls';
+    game[foulKey]=Math.max(0,(game[foulKey]||0)-(entry.teamFoulDelta||0));
+    return;
+  }
+  if(entry.key==='benchtech'){
+    var btKey=entry.side==='home'?'hBenchTech':'aBenchTech';
+    game[btKey]=Math.max(0,(game[btKey]||0)-(entry.benchTechDelta||0));
     return;
   }
   var st=entry.side==='home'?game.hStats:game.aStats;
@@ -3356,14 +3438,15 @@ function rebuildLogBody(){
   }
   lb.innerHTML='';
   logStack.forEach(function(entry){
-    if(entry.key==='sub'||entry.key==='manual'||entry.key==='teamfoul'){
+    if(entry.key==='sub'||entry.key==='manual'||entry.key==='teamfoul'||entry.key==='benchtech'){
       var ti=entry.side==='home'?game.hi:game.ai;
       var p=teams[ti].players.find(function(x){return x.num===entry.num||x.num==entry.num;});
       addSubLogRow({
         id:entry.id, teamColor:teams[ti].color, teamName:teams[ti].name,
-        playerName:entry.key==='teamfoul'?'Team':(p?p.name:''),
+        playerName:entry.key==='teamfoul'?'Team':entry.key==='benchtech'?'Bench/Coach':(p?p.name:''),
         label:entry.key==='sub'?(function(){var c={IN:'SUB',SUB:'OUT',OUT:'IN'};var l={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};return l[c[entry.prevStatus]]||'Sub';})()
           :entry.key==='teamfoul'?((entry.teamFoulDelta>=0?'Team Foul +':'Team Foul ')+entry.teamFoulDelta)
+          :entry.key==='benchtech'?((entry.benchTechDelta>=0?'Bench/Coach Tech +':'Bench/Coach Tech ')+entry.benchTechDelta)
           :((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
         pts:entry.pts, neg:entry.neg, clock:timerFmt(timerSeconds)
       });
