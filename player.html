@@ -1477,11 +1477,13 @@ function renderStandings(){
     entries=Object.keys(standings).map(function(name){
       var s=standings[name]||{}; var gp=(s.w||0)+(s.l||0), diff=(s.pf||0)-(s.pa||0);
       return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:s.pf||0,pa:s.pa||0,diff:diff,
+        pctNum:gp>0?(s.w||0)/gp:0,
         pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
         ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
     }).sort(function(a,b){
-      // 1. Wins desc, 2. Head-to-head vs the tied team, 3. Point diff desc, 4. PPG desc
-      if(b.w!==a.w) return b.w-a.w;
+      // 1. Win % desc (not raw wins — games played can differ across teams),
+      // 2. Head-to-head vs the tied team, 3. Point diff desc, 4. PPG desc
+      if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
       var h2h=headToHeadRecord(a.name,b.name);
       if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
       if(b.diff!==a.diff) return b.diff-a.diff;

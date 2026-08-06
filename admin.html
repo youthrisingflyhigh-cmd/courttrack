@@ -3530,16 +3530,36 @@ function renderBox(){
 }
 
 // ── STANDINGS ──
+// Head-to-head record between two teams this season, used as the standings
+// tiebreaker before point differential. Looks at completed games only.
+function headToHeadRecord(nameA,nameB){
+  var aw=0,bw=0;
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  hist.forEach(function(g){
+    if(!g) return;
+    var isMatchup=(g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA);
+    if(!isMatchup) return;
+    var winner=g.homeScore>g.awayScore?g.home:(g.awayScore>g.homeScore?g.away:null);
+    if(winner===nameA) aw++;
+    else if(winner===nameB) bw++;
+  });
+  return {aw:aw,bw:bw};
+}
+
 function renderStandings(){
   var tbody=document.getElementById('standings-body');
   var entries=Object.keys(standings).map(function(name){
     var s=standings[name]; var gp=s.w+s.l, diff=s.pf-s.pa;
     return {name:name,w:s.w,l:s.l,gp:gp,pf:s.pf,pa:s.pa,diff:diff,
+      pctNum:gp>0?s.w/gp:0,
       pct:gp>0?(s.w/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?(s.pf/gp).toFixed(1):'0.0',papg:gp>0?(s.pa/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
   }).sort(function(a,b){
-    // 1. Wins desc, 2. Point diff desc, 3. PPG desc
-    if(b.w!==a.w) return b.w-a.w;
+    // 1. Win % desc (not raw wins — games played can differ across teams),
+    // 2. Head-to-head vs the tied team, 3. Point diff desc, 4. PPG desc
+    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
+    var h2h=headToHeadRecord(a.name,b.name);
+    if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
     if(b.diff!==a.diff) return b.diff-a.diff;
     return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
