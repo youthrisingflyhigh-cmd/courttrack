@@ -1390,53 +1390,61 @@ function renderSchedule(){
     });
     html+='</div>';
   });
-  // Playoff Bracket
+  // Playoff Bracket — seeds pulled live from getSeededStandings(), same
+  // tiebreak logic as the standings table above. #1 seed gets a bye into
+  // Round 2. Round 1 order below is chronological (6:30/7:30/8:30 PM),
+  // with the #4-vs-#5 game deliberately placed in the 7:30 PM slot.
+  var seeds=[];
+  try{ seeds=getSeededStandings(); }catch(e){ seeds=[]; }
+  function seedName(i){ return (seeds[i]&&seeds[i].name)?seeds[i].name:'TBD'; }
+  var s1=seedName(0),s2=seedName(1),s3=seedName(2),s4=seedName(3),s5=seedName(4),s6=seedName(5),s7=seedName(6);
+
   html += '<div style="margin-top:2rem;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
   html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:800px;">';
-  
-  // Round 1 - Aug 19
+
+  // Round 1 - Aug 19 (chronological: #2v#7 @6:30, #4v#5 @7:30, #3v#6 @8:30)
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">ROUND 1 · AUG 19</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#888;">TBD</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#ddd;">'+s2+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#ddd;">'+s7+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#888;">TBD</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#ddd;">'+s4+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#ddd;">'+s5+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#888;">TBD</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#ddd;">'+s3+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#ddd;">'+s6+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">8:30 PM</div></div></div>';
-  
+
   // Connector 1
   html += '<div style="position:relative;width:40px;height:340px;flex-shrink:0;">';
   html += '<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:32px;right:0;width:2px;height:306px;background:#333;"></div>';
   html += '<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
-  
-  // Round 2 - Aug 26
+
+  // Round 2 - Aug 26 — Semi 1: #1 (bye) vs winner of #4/#5; Semi 2: winner of #2/#7 vs winner of #3/#6
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">ROUND 2 · AUG 26</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W1</span><span style="color:#888;">TBD</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;">'+s1+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s4+'/'+s5+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W2</span><span style="color:#888;">TBD</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W3</span><span style="color:#888;">TBD</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s2+'/'+s7+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s3+'/'+s6+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div></div>';
-  
+
   // Connector 2
   html += '<div style="position:relative;width:40px;height:340px;flex-shrink:0;">';
   html += '<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:32px;right:0;width:2px;height:306px;background:#333;"></div>';
   html += '<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
-  
+
   // Championship - Sep 2
   html += '<div style="display:flex;flex-direction:column;justify-content:center;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">CHAMPIONSHIP · SEP 2</div>';
@@ -1445,7 +1453,7 @@ function renderSchedule(){
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
   html += '<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WED · SEP 2 · 8:00 PM</div>';
   html += '<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div></div></div>';
-  
+
   html += '</div></div>';
   html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs · #1 seed bye in Round 1 · Championship rings for winners</div>';
   html += '</div>';
@@ -1470,25 +1478,30 @@ function headToHeadRecord(nameA,nameB){
   return {aw:aw,bw:bw};
 }
 
+// Shared seeding logic — used by both the standings table and the playoff
+// bracket, so seeds always match what's shown in the table. Same tiebreak
+// order: win % desc, head-to-head, point diff desc, PPG desc.
+function getSeededStandings(){
+  return Object.keys(standings).map(function(name){
+    var s=standings[name]||{}; var gp=(s.w||0)+(s.l||0), diff=(s.pf||0)-(s.pa||0);
+    return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:s.pf||0,pa:s.pa||0,diff:diff,
+      pctNum:gp>0?(s.w||0)/gp:0,
+      pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
+      ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
+  }).sort(function(a,b){
+    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
+    var h2h=headToHeadRecord(a.name,b.name);
+    if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
+    if(b.diff!==a.diff) return b.diff-a.diff;
+    return parseFloat(b.ppg)-parseFloat(a.ppg);
+  });
+}
+
 function renderStandings(){
   var el=document.getElementById('tab-standings');
   var entries=[];
   try {
-    entries=Object.keys(standings).map(function(name){
-      var s=standings[name]||{}; var gp=(s.w||0)+(s.l||0), diff=(s.pf||0)-(s.pa||0);
-      return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:s.pf||0,pa:s.pa||0,diff:diff,
-        pctNum:gp>0?(s.w||0)/gp:0,
-        pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
-        ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
-    }).sort(function(a,b){
-      // 1. Win % desc (not raw wins — games played can differ across teams),
-      // 2. Head-to-head vs the tied team, 3. Point diff desc, 4. PPG desc
-      if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
-      var h2h=headToHeadRecord(a.name,b.name);
-      if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
-      if(b.diff!==a.diff) return b.diff-a.diff;
-      return parseFloat(b.ppg)-parseFloat(a.ppg);
-    });
+    entries=getSeededStandings();
   } catch(e){ entries=[]; }
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
