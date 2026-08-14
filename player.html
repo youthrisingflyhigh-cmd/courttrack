@@ -1365,14 +1365,17 @@ function renderSchedule(){
   var el=document.getElementById('tab-schedule');
   if(!schedule.length){el.innerHTML='<div style="padding:2rem;"><h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Schedule</h2><p style="color:var(--muted);font-style:italic;">No schedule generated yet.</p></div>';return;}
   var rounds={};
-  schedule.forEach(function(g,i){var r=g.round||1;if(!rounds[r])rounds[r]=[];rounds[r].push({g:g,i:i});});
-  var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Schedule</h2>';
+  // Playoff weeks (round 9+) are covered by the bracket below now — drop
+  // the placeholder TBD-vs-TBD rows for them out of this weekly list.
+  schedule.forEach(function(g,i){var r=g.round||1;if(g.isPlayoff||r>=9)return;if(!rounds[r])rounds[r]=[];rounds[r].push({g:g,i:i});});
+  var html='';
+  var weeksHtml='';
   Object.keys(rounds).sort(function(a,b){return a-b;}).forEach(function(r){
-    html+='<div class="schedule-week"><div class="schedule-week-header">Week '+r+'</div>';
+    weeksHtml+='<div class="schedule-week"><div class="schedule-week-header">Week '+r+'</div>';
     rounds[r].forEach(function(item){
       var g=item.g;
       if(g.isBye){
-        html+='<div class="schedule-game-row" style="opacity:0.6;">'
+        weeksHtml+='<div class="schedule-game-row" style="opacity:0.6;">'
           +'<span class="sgr-date">'+g.date+'</span><span class="sgr-time">'+g.time+'</span>'
           +'<span class="sgr-teams"><span style="color:'+g.homeColor+';font-weight:700;">'+g.home+'</span> — <span style="color:#555;font-weight:700;">BYE</span></span>'
           +'<span class="sgr-location">📍 '+g.location+'</span>'
@@ -1380,7 +1383,7 @@ function renderSchedule(){
       } else {
         var isFinal=g.status==='final';
         var resultHtml=isFinal?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:'+(g.homeScore>g.awayScore?g.homeColor:g.awayColor)+'">'+g.homeScore+'–'+g.awayScore+'</span>':'';
-        html+='<div class="schedule-game-row">'
+        weeksHtml+='<div class="schedule-game-row">'
           +'<span class="sgr-date">'+g.date+'</span><span class="sgr-time">'+g.time+'</span>'
           +'<span class="sgr-teams"><span style="color:'+g.homeColor+';font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+g.awayColor+';font-weight:700;">'+g.away+'</span></span>'
           +'<span class="sgr-location">📍 '+g.location+'</span>'
@@ -1388,7 +1391,7 @@ function renderSchedule(){
           +'<span class="sgr-status '+(isFinal?'final':'upcoming')+'">'+(isFinal?'Final':'Upcoming')+'</span></div>';
       }
     });
-    html+='</div>';
+    weeksHtml+='</div>';
   });
   // Playoff Bracket — seeds pulled live from getSeededStandings(), same
   // tiebreak logic as the standings table above. #1 seed gets a bye into
@@ -1405,7 +1408,8 @@ function renderSchedule(){
 
   // Round 1 - Aug 19 (chronological: #2v#7 @6:30, #4v#5 @7:30, #3v#6 @8:30)
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">ROUND 1 · AUG 19</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 1 · AUG 19</div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#ddd;">'+s2+'</span></div>';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#ddd;">'+s7+'</span></div>';
@@ -1429,7 +1433,8 @@ function renderSchedule(){
   // Round 2 - Aug 26 — Semi 1: winner of #2/#7 vs winner of #3/#6 (6:30 PM);
   // Semi 2: #1 (bye) vs winner of #4/#5 (7:30 PM, per Ohana's requested time)
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">ROUND 2 · AUG 26</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 2 · AUG 26</div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s2+'/'+s7+'</span></div>';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s3+'/'+s6+'</span></div>';
@@ -1448,7 +1453,8 @@ function renderSchedule(){
 
   // Sep 2 — Shootout, All-Star, then Championship
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">SEP 2</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEP 2</div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Main Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30–7:30 PM</div></div>';
@@ -1465,7 +1471,9 @@ function renderSchedule(){
   html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs · #1 seed bye in Round 1 · Championship rings for winners</div>';
   html += '</div>';
 
-  el.innerHTML=html;
+  // Bracket first (season's done, playoffs are what matters now), then the
+  // full regular-season week-by-week list below it.
+  el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Schedule</h2>'+html+weeksHtml;
 }
 
 // ── STANDINGS ──
