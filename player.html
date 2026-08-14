@@ -339,6 +339,11 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   </button>
 </nav>
 
+<div style="background:var(--dark2);border-bottom:1px solid #333;padding:6px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="font-size:10px;color:#888;font-weight:700;letter-spacing:1px;">VIEWING:</span>
+  <select id="season-division-select" onchange="switchSeasonDivisionPublic()" style="padding:5px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
+</div>
+
 <!-- Mobile dropdown menu -->
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-tab" onclick="showTab('home');closeMenu()">🏠 Home</button>
@@ -596,10 +601,44 @@ try {
   db=firebase.database();
 } catch(e){ db=firebase.database(); }
 
+// ── Season / Division context ──
+// Public pages have no login, so the active season+division comes from a
+// URL param (?ct=<base>) instead of localStorage — that way a link can be
+// shared/bookmarked per division. No param at all = the legacy Summer 2026
+// 35+ League root ('ct'), so every existing bookmark/link keeps working
+// exactly as it does today with zero changes required.
+var LEGACY_BASE='ct';
+function getUrlParam(name){
+  try{ return new URLSearchParams(window.location.search).get(name); }catch(e){ return null; }
+}
+var CT_BASE=getUrlParam('ct')||LEGACY_BASE;
+function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
+
+function populateSeasonDivisionSelector(){
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var sel=document.getElementById('season-division-select');
+    if(!sel||!list.length)return;
+    sel.innerHTML=list.map(function(entry){
+      var selected=(entry.base===CT_BASE)?' selected':'';
+      return '<option value="'+entry.base+'"'+selected+'>'+entry.label+'</option>';
+    }).join('');
+  });
+}
+function switchSeasonDivisionPublic(){
+  var sel=document.getElementById('season-division-select');
+  if(!sel)return;
+  var base=sel.value;
+  var url=new URL(window.location.href);
+  if(base===LEGACY_BASE) url.searchParams.delete('ct');
+  else url.searchParams.set('ct',base);
+  window.location.href=url.toString();
+}
+
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
 var currentTab='home', _ready=false, currentStatTab='eff', currentStreamPlatform='youtube';
 var appSeasonName='';
-db.ref('ct/settings').once('value').then(function(s){
+db.ref(ctPath('settings')).once('value').then(function(s){
   var v=s.val();
   if(v) appSeasonName=v.season||'';
   if(_booted && currentTab==='film') renderFilm();
@@ -652,19 +691,19 @@ function toTeamArr(v){
 
 // ── LOAD ──
 var _loaded=0, _booted=false;
-function _check(){if(++_loaded>=4 && !_booted){_booted=true;_ready=true;showTab('home');}}
+function _check(){if(++_loaded>=4 && !_booted){_booted=true;_ready=true;populateSeasonDivisionSelector();showTab('home');}}
 setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},2500);
 // Auto-show league overlay on first load
 if(document.getElementById('league-overlay') && !localStorage.getItem('sbh_league')){
   document.getElementById('league-overlay').style.display='flex';
 }
-db.ref('ct/teams').once('value').then(function(s){teams=toTeamArr(s.val());_check();}).catch(function(){_check();});
-db.ref('ct/standings').on('value',function(s){standings=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref('ct/history').on('value',function(s){gameHistory=toArr(s.val());if(_booted)renderAll();else _check();});
-db.ref('ct/playerStats').on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref('ct/schedule').on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
+db.ref(ctPath('teams')).once('value').then(function(s){teams=toTeamArr(s.val());_check();}).catch(function(){_check();});
+db.ref(ctPath('standings')).on('value',function(s){standings=s.val()||{};if(_booted)renderAll();else _check();});
+db.ref(ctPath('history')).on('value',function(s){gameHistory=toArr(s.val());if(_booted)renderAll();else _check();});
+db.ref(ctPath('playerStats')).on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
+db.ref(ctPath('schedule')).on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
 
-db.ref('ct/game').on('value',function(s){
+db.ref(ctPath('game')).on('value',function(s){
   game=s.val()||null;
   if(_ready&&currentTab==='live') renderLive();
   if(_ready) buildTicker();
@@ -1243,7 +1282,6 @@ function renderScores(){
     if(!g)return '';
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
-    var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
     function makeRows(pl,st,color){
       if(!pl||!st)return '';
       var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
@@ -1259,7 +1297,7 @@ function renderScores(){
     var logHtml=log.length?log.map(function(e){
       return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:'+(e.teamColor||'#888')+';font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--muted);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -1864,7 +1902,7 @@ function renderAll(){
 function populateBoxScoreGames(){
   var select=document.getElementById('boxscore-game-select');
   select.innerHTML='<option value="">Loading...</option>';
-  db.ref('ct/history').once('value',function(snap){
+  db.ref(ctPath('history')).once('value',function(snap){
     var hist=snap.val();var games=[];if(hist){if(Array.isArray(hist)){games=hist.filter(Boolean);}else{games=Object.values(hist).filter(Boolean);}}
     if(!games.length){select.innerHTML='<option value="">No games</option>';return;}
     games=games.reverse();

@@ -290,6 +290,26 @@ th, td { padding: 10px 8px !important; }
   </button>
 </nav>
 
+<div style="background:var(--dark2);border-bottom:1px solid #333;padding:8px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="font-size:11px;color:#888;font-weight:700;letter-spacing:1px;">SEASON / DIVISION:</span>
+  <select id="season-division-select" onchange="switchSeasonDivision()" style="padding:6px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
+  <button onclick="openNewSeasonDivisionModal()" style="padding:6px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ New Season/Division</button>
+</div>
+
+<div id="new-season-division-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:90%;max-width:380px;">
+    <h3 style="color:#fff;margin:0 0 16px;font-size:16px;">Create New Season / Division</h3>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Season (e.g. "Summer 2026")</label>
+    <input type="text" id="new-sd-season" placeholder="Summer 2026" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:12px;">
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Division (e.g. "6'1&quot; & Under Division")</label>
+    <input type="text" id="new-sd-division" placeholder="6'1&quot; & Under Division" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;">
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeNewSeasonDivisionModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="createNewSeasonDivision()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Create</button>
+    </div>
+  </div>
+</div>
+
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-tab" onclick="showPage('setup');closeMenu()">⚙ Setup</button>
   <button class="mobile-tab" onclick="showPage('schedule');closeMenu()">📅 Schedule</button>
@@ -997,7 +1017,7 @@ function shotClockUpdate(){
     el.style.opacity = '0.35';
     el.style.animation = '';
     if(miniEl){ miniEl.textContent = '—'; miniEl.style.opacity = '0.35'; }
-    if(db) db.ref('ct/game/shotClock').set({seconds: shotClockSeconds, running: shotClockRunning, off: true});
+    if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: true});
     return;
   }
   el.style.opacity = '1';
@@ -1018,7 +1038,7 @@ function shotClockUpdate(){
     if(miniEl) miniEl.style.color = '#FF4500';
   }
   // Sync to Firebase
-  if(db) db.ref('ct/game/shotClock').set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
+  if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
 }
 
 function shotClockStart(){
@@ -1129,7 +1149,7 @@ function updateShotClockOffUI(){
     display.textContent = shotClockOff ? '—' : shotClockSeconds;
     display.style.opacity = shotClockOff ? '0.35' : '1';
   }
-  if(db) db.ref('ct/game/shotClock').set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
+  if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
 }
 
 // Quick nudge — doesn't stop a running shot clock.
@@ -1203,7 +1223,7 @@ var HORN_SRC = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU5LjI3L
 // Push a signal to Firebase so scoreboard.html (or any other open display)
 // plays (or stops) the horn too, in sync with this admin device.
 function broadcastHorn(type){
-  if(db) db.ref('ct/game/hornSignal').set({ts:Date.now(), type:type||'manual'});
+  if(db) db.ref(ctPath('game/hornSignal')).set({ts:Date.now(), type:type||'manual'});
 }
 function manualHorn(){
   unlockHornAudio();
@@ -1266,7 +1286,7 @@ function timerUpdate(){
   var miniEl = document.getElementById('mini-clock');
   if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
   // Sync to Firebase regardless of game state
-  if(db) db.ref('ct/game/clock').set({seconds: timerSeconds, running: timerRunning});
+  if(db) db.ref(ctPath('game/clock')).set({seconds: timerSeconds, running: timerRunning});
 }
 
 function timerStart(){
@@ -1536,6 +1556,97 @@ try {
   db = firebase.database();
 }
 
+// ── Season / Division context ──
+// CT_BASE is the root path for ALL match data (teams, game, standings,
+// history, playerStats, schedule, activeSession, registrations, settings)
+// for whichever season+division is currently active. Summer 2026's 35+
+// League — the one running playoffs right now — keeps using the plain
+// 'ct' root exactly as it always has; nothing about its live data path
+// changes, so nothing about the in-progress playoffs is at risk. Every
+// NEW season/division (like the 6'1" & Under Division) gets its own
+// isolated path under 'ct/seasons/{seasonId}/{divisionId}' instead, so
+// two divisions' teams/games/standings can never collide.
+var LEGACY_BASE='ct';
+var LEGACY_LABEL="Summer 2026 · 35+ Men's League";
+var CT_BASE=localStorage.getItem('ct_active_base')||LEGACY_BASE;
+var CT_ACTIVE_LABEL=localStorage.getItem('ct_active_label')||LEGACY_LABEL;
+function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
+
+// The index of every season+division that exists lives at a fixed,
+// never-namespaced path (outside 'ct/') so it can always be found no
+// matter which one is currently active. Seeded once with the legacy
+// entry if it doesn't exist yet.
+function ensureSeasonsIndexSeeded(cb){
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var val=snap.val();
+    if(!val || (Array.isArray(val)&&!val.length)){
+      var legacyEntry={id:'legacy',base:LEGACY_BASE,seasonLabel:'Summer 2026',divisionLabel:"35+ Men's League",label:LEGACY_LABEL,isLegacy:true};
+      db.ref('ctIndex/seasons').set([legacyEntry],function(){ if(cb)cb([legacyEntry]); });
+    } else {
+      if(cb)cb(toArr(val));
+    }
+  });
+}
+
+function populateSeasonDivisionSelector(){
+  ensureSeasonsIndexSeeded(function(list){
+    var sel=document.getElementById('season-division-select');
+    if(!sel)return;
+    sel.innerHTML=list.map(function(entry){
+      var selected=(entry.base===CT_BASE)?' selected':'';
+      return '<option value="'+entry.base+'" data-label="'+entry.label+'"'+selected+'>'+entry.label+'</option>';
+    }).join('');
+  });
+}
+
+function switchSeasonDivision(){
+  var sel=document.getElementById('season-division-select');
+  if(!sel)return;
+  var base=sel.value;
+  var label=sel.options[sel.selectedIndex].getAttribute('data-label');
+  localStorage.setItem('ct_active_base',base);
+  localStorage.setItem('ct_active_label',label);
+  // Reload rather than try to re-wire live listeners in place — every
+  // fbOnce/fbListen/db.ref call attaches once at boot, so a clean reload
+  // against the new CT_BASE is far safer than trying to detach/reattach
+  // dozens of listeners without leaking or racing one of them.
+  location.reload();
+}
+
+function openNewSeasonDivisionModal(){
+  document.getElementById('new-sd-season').value='';
+  document.getElementById('new-sd-division').value='';
+  document.getElementById('new-season-division-modal').style.display='flex';
+}
+function closeNewSeasonDivisionModal(){
+  document.getElementById('new-season-division-modal').style.display='none';
+}
+function slugify(s){
+  return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||'div';
+}
+function createNewSeasonDivision(){
+  var seasonLabel=document.getElementById('new-sd-season').value.trim();
+  var divisionLabel=document.getElementById('new-sd-division').value.trim();
+  if(!seasonLabel||!divisionLabel){ alert('Please fill in both the season and division name.'); return; }
+  var seasonId=slugify(seasonLabel), divisionId=slugify(divisionLabel);
+  var base='ct/seasons/'+seasonId+'/'+divisionId;
+  var label=seasonLabel+' · '+divisionLabel;
+  var entry={id:seasonId+'__'+divisionId,base:base,seasonLabel:seasonLabel,divisionLabel:divisionLabel,label:label,isLegacy:false};
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    if(list.some(function(e){return e.base===base;})){
+      alert('That season + division combo already exists.');
+      return;
+    }
+    list.push(entry);
+    db.ref('ctIndex/seasons').set(list,function(){
+      localStorage.setItem('ct_active_base',base);
+      localStorage.setItem('ct_active_label',label);
+      location.reload();
+    });
+  });
+}
+
 // ── State ──
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
 var selTeam=null,selPlayer=null,trackSide='home',logStack=[];
@@ -1558,8 +1669,8 @@ if(db){
 var SESSION_ID = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
 var isActiveSession = true;
 if(db){
-  db.ref('ct/activeSession').set({ id: SESSION_ID, claimedAt: Date.now() });
-  db.ref('ct/activeSession').on('value', function(s){
+  db.ref(ctPath('activeSession')).set({ id: SESSION_ID, claimedAt: Date.now() });
+  db.ref(ctPath('activeSession')).on('value', function(s){
     var v = s.val();
     var wasActive = isActiveSession;
     isActiveSession = !v || v.id === SESSION_ID;
@@ -1571,7 +1682,7 @@ if(db){
   });
 }
 function reclaimSession(){
-  if(db) db.ref('ct/activeSession').set({ id: SESSION_ID, claimedAt: Date.now() });
+  if(db) db.ref(ctPath('activeSession')).set({ id: SESSION_ID, claimedAt: Date.now() });
 }
 
 var STATS=[
@@ -1610,12 +1721,12 @@ function save(){
     alert('⚠️ This device never fully confirmed it loaded the current season data (likely a slow/dropped connection). To protect existing stats and standings, that action was NOT saved.\n\nPlease refresh once you have a solid connection and try again.');
     return;
   }
-  fbSet('ct/teams',teams);
-  fbSet('ct/standings',standings);
-  fbSet('ct/history',gameHistory);
-  fbSet('ct/playerStats',playerStats);
-  fbSet('ct/schedule',schedule);
-  if(game) fbSet('ct/game',game);
+  fbSet(ctPath('teams'),teams);
+  fbSet(ctPath('standings'),standings);
+  fbSet(ctPath('history'),gameHistory);
+  fbSet(ctPath('playerStats'),playerStats);
+  fbSet(ctPath('schedule'),schedule);
+  if(game) fbSet(ctPath('game'),game);
 }
 // Every point/foul/sub tap was calling save() above, which re-uploads the
 // ENTIRE app state every time — full team rosters, the whole season's
@@ -1626,14 +1737,14 @@ function save(){
 // actions should only need to write the current game.
 function saveLiveGame(){
   if(!game) return;
-  fbSet('ct/game',game);
+  fbSet(ctPath('game'),game);
   // Also sync just the score to its own tiny path — same trick already
   // used for the clocks — so scoreboard.html can show it instantly
   // without waiting on the full (and steadily growing, play-log-included)
   // game object to transfer.
-  if(db) db.ref('ct/game/liveScore').set({home: game.homeScore||0, away: game.awayScore||0});
+  if(db) db.ref(ctPath('game/liveScore')).set({home: game.homeScore||0, away: game.awayScore||0});
 }
-function clearGame(){ fbRemove('ct/game'); }
+function clearGame(){ fbRemove(ctPath('game')); }
 
 // Wipe an in-progress game completely — no schedule/standings/history
 // writes happen. Safe to use for testing lineup/subs/points features
@@ -1682,7 +1793,7 @@ function toArr(v){
 }
 
 // Live listeners — keep local state in sync with Firebase at all times
-db.ref('ct/teams').on('value',function(s){
+db.ref(ctPath('teams')).on('value',function(s){
   teams=toArr(s.val());
   if(_booted){ renderTeams(); renderRoster(); renderSelects(); }
   // If a game is live, a roster edit (rename/renumber/add/delete a player)
@@ -1718,12 +1829,12 @@ function revalidateTrackedSelection(side){
     if(lbl) lbl.textContent='Tracking: — (player changed, please reselect)';
   }
 }
-fbOnce('ct/game',       function(v){game=v||null;        _check();});
-fbOnce('ct/standings',  function(v){standings=v||{};     _check();});
-fbOnce('ct/history',    function(v){gameHistory=toArr(v);    _check();});
-fbOnce('ct/playerStats',function(v){playerStats=v||{};   _check();});
-fbOnce('ct/schedule',   function(v){schedule=toArr(v);   _check();});
-fbListen('ct/game', function(v){
+fbOnce(ctPath('game'),       function(v){game=v||null;        _check();});
+fbOnce(ctPath('standings'),  function(v){standings=v||{};     _check();});
+fbOnce(ctPath('history'),    function(v){gameHistory=toArr(v);    _check();});
+fbOnce(ctPath('playerStats'),function(v){playerStats=v||{};   _check();});
+fbOnce(ctPath('schedule'),   function(v){schedule=toArr(v);   _check();});
+fbListen(ctPath('game'), function(v){
   game=v||null;
   // If already on track tab, refresh it
   var trackPage = document.getElementById('page-track');
@@ -1755,7 +1866,7 @@ fbListen('ct/game', function(v){
 // Start here), just mirror whatever the active device is broadcasting —
 // that way switching from one scorekeeping device to another always
 // picks up the real current time instead of some stale local default.
-fbListen('ct/game/clock', function(v){
+fbListen(ctPath('game/clock'), function(v){
   if(!v || timerRunning) return;
   timerSeconds = v.seconds;
   var el = document.getElementById('game-timer-display');
@@ -1768,7 +1879,7 @@ fbListen('ct/game/clock', function(v){
     else { miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   }
 });
-fbListen('ct/game/shotClock', function(v){
+fbListen(ctPath('game/shotClock'), function(v){
   if(!v || shotClockRunning) return;
   shotClockSeconds = v.seconds != null ? v.seconds : 30;
   shotClockOff = !!v.off;
@@ -1809,6 +1920,7 @@ fbListen('ct/game/shotClock', function(v){
 function onAllLoaded(){
   var overlay=document.getElementById('loading-overlay');
   if(overlay) overlay.style.display='none';
+  populateSeasonDivisionSelector();
   hookSrIntoShowPage();
   renderTeams(); renderRoster(); renderSelects();
   document.getElementById('color-preview-swatch').style.background='transparent';
@@ -1853,14 +1965,14 @@ function addTeam(){
   document.getElementById('team-color-input').value='';
   document.getElementById('color-preview-swatch').style.background='transparent';
   // Save teams — listener on ct/teams will auto-update the UI
-  fbSet('ct/teams', teams);
+  fbSet(ctPath('teams'), teams);
   renderSelects();
 }
 
 function resetTeams(){
   if(!confirm('Delete ALL teams and rosters? This cannot be undone.'))return;
   teams=[]; selTeam=null;
-  fbRemove('ct/teams');
+  fbRemove(ctPath('teams'));
   document.getElementById('roster-title').textContent='2. Roster — select a team';
   document.getElementById('del-team-btn').style.display='none';
   renderRoster(); renderSelects();
@@ -1888,7 +2000,7 @@ function delSelectedTeam(){
   teams.splice(selTeam,1); selTeam=null;
   document.getElementById('roster-title').textContent='2. Roster — select a team';
   document.getElementById('del-team-btn').style.display='none';
-  fbSet('ct/teams',teams); renderRoster(); renderSelects();
+  fbSet(ctPath('teams'),teams); renderRoster(); renderSelects();
 }
 
 function addPlayer(){
@@ -1901,7 +2013,7 @@ function addPlayer(){
   teams[selTeam].players.push({name:n,num:num,pos:pos});
   document.getElementById('player-name-input').value='';
   document.getElementById('player-num-input').value='';
-  fbSet('ct/teams',teams); renderRoster();
+  fbSet(ctPath('teams'),teams); renderRoster();
 }
 
 function renderRoster(){
@@ -1942,13 +2054,13 @@ function savePlayer(i){
   var dup=teams[selTeam].players.find(function(p,idx){return p.num===num&&idx!==i;});
   if(dup){alert('#'+num+' is already taken.');return;}
   teams[selTeam].players[i]={name:name,num:num,pos:pos};
-  fbSet('ct/teams',teams); renderRoster();
+  fbSet(ctPath('teams'),teams); renderRoster();
 }
 
 function delPlayer(i){
   if(!confirm('Remove '+teams[selTeam].players[i].name+'?'))return;
   teams[selTeam].players.splice(i,1);
-  fbSet('ct/teams',teams); renderRoster();
+  fbSet(ctPath('teams'),teams); renderRoster();
 }
 
 function renderSelects(){
@@ -2023,9 +2135,9 @@ function archiveUnfinishedGame(){
     gameHistory.unshift(gameRecord);
     playerStats = computeRebuiltPlayerStats(gameHistory);
 
-    fbSet('ct/standings',standings);
-    fbSet('ct/history',gameHistory);
-    fbSet('ct/playerStats',playerStats);
+    fbSet(ctPath('standings'),standings);
+    fbSet(ctPath('history'),gameHistory);
+    fbSet(ctPath('playerStats'),playerStats);
     clearGame();
     game=null;
     if(typeof renderGameHistory==='function') renderGameHistory();
@@ -2212,7 +2324,7 @@ function generateSchedule(){
   schedule=games;
   renderSchedule();
   if(db){
-    db.ref('ct/schedule').set(games).then(function(){
+    db.ref(ctPath('schedule')).set(games).then(function(){
       alert('✅ Season 1 schedule loaded! 7 game days + 2 playoff days.');
     }).catch(function(err){
       alert('⚠️ Schedule saved locally but Firebase error: '+err.message);
@@ -2285,7 +2397,7 @@ function saveGame(idx){
 
 function clearSchedule(){
   if(!confirm('Clear the entire schedule?'))return;
-  schedule=[]; fbRemove('ct/schedule'); renderSchedule();
+  schedule=[]; fbRemove(ctPath('schedule')); renderSchedule();
 }
 
 // ── FINISH GAME ──
@@ -2311,12 +2423,12 @@ function hideSavingOverlay(){
 function writeFinishPayload(payload){
   var histData = payload.gameHistory !== undefined ? payload.gameHistory : payload.history;
   return Promise.all([
-    db.ref('ct/standings').set(payload.standings),
-    db.ref('ct/history').set(histData),
-    db.ref('ct/playerStats').set(payload.playerStats),
-    db.ref('ct/schedule').set(payload.schedule),
+    db.ref(ctPath('standings')).set(payload.standings),
+    db.ref(ctPath('history')).set(histData),
+    db.ref(ctPath('playerStats')).set(payload.playerStats),
+    db.ref(ctPath('schedule')).set(payload.schedule),
   ]).then(function(){
-    return db.ref('ct/game').remove();
+    return db.ref(ctPath('game')).remove();
   });
 }
 
@@ -2532,8 +2644,8 @@ function backfillGameWeeks(){
     return;
   }
   gameHistory=hist;
-  fbSet('ct/history', gameHistory);
-  fbSet('ct/schedule', schedule);
+  fbSet(ctPath('history'), gameHistory);
+  fbSet(ctPath('schedule'), schedule);
   alert('✅ Fixed the week and schedule status for '+fixed+' game(s).'+(skippedNoMatch?(' '+skippedNoMatch+' other game(s) had no schedule match and were left as-is.'):''));
 }
 
@@ -2589,7 +2701,7 @@ function rebuildPlayerStatsFromHistory(){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
-  fbSet('ct/playerStats', playerStats);
+  fbSet(ctPath('playerStats'), playerStats);
   alert('✅ Player Stats rebuilt from '+hist.length+' saved game(s) and re-synced.');
   if(typeof renderPlayerStats==='function') renderPlayerStats();
 }
@@ -2726,8 +2838,8 @@ function mergePlayerStats(){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
-  fbSet('ct/history', gameHistory);
-  fbSet('ct/playerStats', playerStats);
+  fbSet(ctPath('history'), gameHistory);
+  fbSet(ctPath('playerStats'), playerStats);
   alert('✅ Patched '+gamesPatched+' past game(s)'+(gamesSkipped?(', skipped '+gamesSkipped+' due to a number collision in that game — review manually'):'')+'. Re-rebuilding season totals now — hit OK on the next prompt to finish.');
   rebuildPlayerStatsFromHistory();
   populateMergeDropdowns();
@@ -2771,7 +2883,7 @@ function transferPlayerStat(){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
-  fbSet('ct/playerStats', playerStats);
+  fbSet(ctPath('playerStats'), playerStats);
   alert('✅ Moved '+amount+' '+statLabel+'. '+fromName+' now has '+fromStats[statKey]+', '+toName+' now has '+toStats[statKey]+'.');
   populateMergeDropdowns();
 }
@@ -2819,7 +2931,7 @@ function transferGameBoxScoreStat(){
     return;
   }
   gameHistory=hist;
-  fbSet('ct/history', gameHistory);
+  fbSet(ctPath('history'), gameHistory);
   alert('✅ Fixed this game\'s box score. Now re-rebuilding season totals from history to match — hit OK on the next prompt to finish.');
   rebuildPlayerStatsFromHistory();
   populateMergeDropdowns();
@@ -3636,7 +3748,7 @@ function toggleHistory(gi){
 function clearStandings(){
   if(!confirm('Reset all standings, history, and player stats?'))return;
   standings={};gameHistory=[];playerStats={};
-  fbRemove('ct/standings');fbRemove('ct/history');fbRemove('ct/playerStats');
+  fbRemove(ctPath('standings'));fbRemove(ctPath('history'));fbRemove(ctPath('playerStats'));
   renderStandings();
 }
 
@@ -3799,7 +3911,7 @@ function saveGameVideo(gi){
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   hist[gi].videoUrl=url;
   gameHistory=hist;
-  fbSet('ct/history', gameHistory);
+  fbSet(ctPath('history'), gameHistory);
   renderGames();
 }
 
@@ -4081,7 +4193,7 @@ function showPage(p){
 var appSettings={locations:[],potw:null,streamURL:'',leagueName:'',season:''};
 
 // Load settings from Firebase on boot
-db.ref('ct/settings').once('value').then(function(s){
+db.ref(ctPath('settings')).once('value').then(function(s){
   var v=s.val();
   if(v){
     appSettings.locations=v.locations||[];
@@ -4093,7 +4205,7 @@ db.ref('ct/settings').once('value').then(function(s){
 }).catch(function(){});
 
 function saveSettings(){
-  fbSet('ct/settings', appSettings);
+  fbSet(ctPath('settings'), appSettings);
 }
 
 function renderSettings(){
@@ -4237,7 +4349,7 @@ function renderLeagueNameAdmin(){
 
 // ── REGISTRATIONS ──
 function renderRegistrations(){
-  db.ref('ct/registrations').once('value').then(function(s){
+  db.ref(ctPath('registrations')).once('value').then(function(s){
     var val=s.val();
     var regs=val?Object.entries(val).map(function(e){return Object.assign({id:e[0]},e[1]);}):[];
     regs.sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0);});
@@ -4290,7 +4402,7 @@ function renderRegistrations(){
 }
 
 function updateRegStatus(id, status){
-  db.ref('ct/registrations/'+id).update({status:status}).then(function(){
+  db.ref(ctPath('registrations/'+id)).update({status:status}).then(function(){
     renderRegistrations();
   });
 }
@@ -4310,7 +4422,7 @@ function closeScheduleEditor(){
 
 function populateDivisionSchedule(){
   // Load all divisions from database
-  db.ref('ct/schedule').once('value',function(snap){
+  db.ref(ctPath('schedule')).once('value',function(snap){
     var schedData=snap.val();
     if(!schedData)return;
     // Data is already loaded, just ready for selection
@@ -4571,9 +4683,9 @@ function saveStatCorrection(){
   g.awayPlayers=awayRoster;
   gameHistory=hist;
 
-  fbSet('ct/history', gameHistory);
+  fbSet(ctPath('history'), gameHistory);
   playerStats = computeRebuiltPlayerStats(gameHistory);
-  fbSet('ct/playerStats', playerStats);
+  fbSet(ctPath('playerStats'), playerStats);
 
   alert('✅ Box score saved and player totals resynced!');
   closeStatsCorrectionModal();

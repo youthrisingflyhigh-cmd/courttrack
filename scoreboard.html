@@ -341,6 +341,18 @@ firebase.initializeApp({
 });
 var db = firebase.database();
 
+// ── Season / Division context ──
+// Same convention as player.html: ?ct=<base> in the URL, defaulting to
+// the legacy Summer 2026 35+ League root when absent. Whoever sets up the
+// courtside device for a given division's game just needs that division's
+// URL with the right ?ct= param — no dropdown needed on this screen.
+var LEGACY_BASE='ct';
+function getUrlParam(name){
+  try{ return new URLSearchParams(window.location.search).get(name); }catch(e){ return null; }
+}
+var CT_BASE=getUrlParam('ct')||LEGACY_BASE;
+function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
+
 var teams = [];
 
 // ── SOUND UNLOCK ──
@@ -520,7 +532,7 @@ setInterval(tickLocalClocks, 1000);
 // is already stored, so skip that very first callback — otherwise every
 // fresh page load would replay the last horn that was ever pushed.
 var _hornSignalReady=false;
-db.ref('ct/game/hornSignal').on('value', function(s){
+db.ref(ctPath('game/hornSignal')).on('value', function(s){
   if(!_hornSignalReady){ _hornSignalReady=true; return; }
   var v=s.val();
   if(!v || !v.ts) return;
@@ -543,14 +555,14 @@ function hexToRgb(hex){
 }
 
 // Load teams
-db.ref('ct/teams').on('value', function(s){
+db.ref(ctPath('teams')).on('value', function(s){
   var v = s.val();
   if(!v) return;
   teams = Array.isArray(v) ? v.filter(Boolean) : Object.values(v).filter(Boolean);
 });
 
 // Watch game
-db.ref('ct/game').on('value', function(s){
+db.ref(ctPath('game')).on('value', function(s){
   var game = s.val();
   if(!game || (game.homeScore == null && game.awayScore == null)){
     document.getElementById('no-game').style.display = 'flex';
@@ -628,7 +640,7 @@ db.ref('ct/game').on('value', function(s){
 });
 
 // Fast score listener — updates instantly without waiting for full game sync
-db.ref('ct/game/liveScore').on('value', function(s){
+db.ref(ctPath('game/liveScore')).on('value', function(s){
   var score = s.val();
   if(!score) return;
   document.getElementById('sb-home-score').textContent = score.home || 0;
@@ -636,7 +648,7 @@ db.ref('ct/game/liveScore').on('value', function(s){
 });
 
 // Settings
-db.ref('ct/settings').once('value').then(function(s){
+db.ref(ctPath('settings')).once('value').then(function(s){
   var v = s.val();
   if(v && v.leagueName) document.getElementById('league-label').textContent = v.leagueName;
 });
