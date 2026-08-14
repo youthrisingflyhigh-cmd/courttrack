@@ -294,6 +294,7 @@ th, td { padding: 10px 8px !important; }
   <span style="font-size:11px;color:#888;font-weight:700;letter-spacing:1px;">SEASON / DIVISION:</span>
   <select id="season-division-select" onchange="switchSeasonDivision()" style="padding:6px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
   <button onclick="openNewSeasonDivisionModal()" style="padding:6px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ New Season/Division</button>
+  <button onclick="openRenameSeasonDivisionModal()" style="padding:6px 12px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">✏️ Rename</button>
 </div>
 
 <div id="new-season-division-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
@@ -306,6 +307,21 @@ th, td { padding: 10px 8px !important; }
     <div style="display:flex;gap:8px;">
       <button onclick="closeNewSeasonDivisionModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
       <button onclick="createNewSeasonDivision()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="rename-season-division-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:90%;max-width:380px;">
+    <h3 style="color:#fff;margin:0 0 16px;font-size:16px;">Rename Season / Division</h3>
+    <div style="font-size:11px;color:#888;margin-bottom:12px;">Renaming only changes the display name — the underlying data (teams, games, standings) stays exactly where it is.</div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Season</label>
+    <input type="text" id="rename-sd-season" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:12px;">
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Division</label>
+    <input type="text" id="rename-sd-division" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;">
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeRenameSeasonDivisionModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="saveRenameSeasonDivision()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Save</button>
     </div>
   </div>
 </div>
@@ -388,14 +404,9 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
             <option value="Open Division">🏀 Open Division</option>
           </select>
           <input type="text" id="team-name-input" placeholder="Team name" maxlength="30"/>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <input type="color" id="team-color-picker" value="#FF5C00" oninput="syncColorHex()"/>
-            <input type="text" id="team-color-input" placeholder="#FF5C00" style="width:90px;" maxlength="7" oninput="syncColorPicker()"/>
-          </div>
-          <div class="color-preview-swatch" id="color-preview-swatch"></div>
           <button class="btn btn-orange" onclick="addTeam()">+ Add</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Click a team to manage its roster →</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Click a team to manage its roster → · click 🎨 to change a team's color anytime</div>
         <div class="list-area" id="team-list"><div class="empty-state">No teams yet</div></div>
       </div>
     </div>
@@ -1670,6 +1681,44 @@ function createNewSeasonDivision(){
   });
 }
 
+// Renaming only touches the display labels in the index — it never moves
+// or touches the underlying teams/game/standings/etc data for that
+// season+division, so it's safe to do anytime without any migration risk.
+function openRenameSeasonDivisionModal(){
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var entry=list.find(function(e){return e.base===CT_BASE;});
+    if(!entry){ alert("Couldn't find the current season/division in the index."); return; }
+    document.getElementById('rename-sd-season').value=entry.seasonLabel||'';
+    document.getElementById('rename-sd-division').value=entry.divisionLabel||'';
+    document.getElementById('rename-season-division-modal').style.display='flex';
+  });
+}
+function closeRenameSeasonDivisionModal(){
+  document.getElementById('rename-season-division-modal').style.display='none';
+}
+function saveRenameSeasonDivision(){
+  var seasonLabel=document.getElementById('rename-sd-season').value.trim();
+  var divisionLabel=document.getElementById('rename-sd-division').value.trim();
+  if(!seasonLabel||!divisionLabel){ alert('Please fill in both the season and division name.'); return; }
+  var label=seasonLabel+' · '+divisionLabel;
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var idx=list.findIndex(function(e){return e.base===CT_BASE;});
+    if(idx<0){ alert("Couldn't find the current season/division in the index."); return; }
+    list[idx].seasonLabel=seasonLabel;
+    list[idx].divisionLabel=divisionLabel;
+    list[idx].label=label;
+    db.ref('ctIndex/seasons').set(list,function(){
+      localStorage.setItem('ct_active_label',label);
+      CT_ACTIVE_LABEL=label;
+      populateSeasonDivisionSelector();
+      closeRenameSeasonDivisionModal();
+      alert('Renamed! ✓');
+    });
+  });
+}
+
 // ── State ──
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
 var selTeam=null,selPlayer=null,trackSide='home',logStack=[];
@@ -1946,7 +1995,6 @@ function onAllLoaded(){
   populateSeasonDivisionSelector();
   hookSrIntoShowPage();
   renderTeams(); renderRoster(); renderSelects();
-  document.getElementById('color-preview-swatch').style.background='transparent';
   if(game && teams.length){
     var b=document.getElementById('game-banner');
     b.style.display='block';
@@ -1973,30 +2021,26 @@ document.addEventListener('DOMContentLoaded', function(){
 // ── Helpers ──
 function hexToRgb(h){var r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);return r?(parseInt(r[1],16)+','+parseInt(r[2],16)+','+parseInt(r[3],16)):null;}
 function teamInitials(n){return n.split(' ').map(function(w){return w[0];}).join('').slice(0,3).toUpperCase()||'??';}
-function syncColorHex(){var c=document.getElementById('team-color-picker').value;document.getElementById('team-color-input').value=c;document.getElementById('color-preview-swatch').style.background=c;}
-function syncColorPicker(){var v=document.getElementById('team-color-input').value.trim();if(/^#[0-9a-fA-F]{6}$/.test(v)){document.getElementById('team-color-picker').value=v;document.getElementById('color-preview-swatch').style.background=v;}}
 function fmt12(hh,mm){var h=hh%24;return (h%12||12)+':'+(mm<10?'0':'')+mm+(h>=12?' PM':' AM');}
 
 // ── SETUP ──
 function addTeam(){
   var n=document.getElementById('team-name-input').value.trim();
-  var c=document.getElementById('team-color-picker').value||'#FF5C00';
   var league=document.getElementById('team-league-select').value||'35+ Mens League';
   if(!n){ alert('Please enter a team name.'); return; }
+  var c=TEAM_COLOR_PALETTE[teams.length%TEAM_COLOR_PALETTE.length];
   teams.push({name:n,color:c,players:[],league:league});
   document.getElementById('team-name-input').value='';
-  document.getElementById('team-color-input').value='';
-  document.getElementById('color-preview-swatch').style.background='transparent';
   // Save teams — listener on ct/teams will auto-update the UI
   fbSet(ctPath('teams'), teams);
-  renderSelects();
+  renderTeams(); renderSelects();
 }
 
 // ── BULK IMPORT ──
 // Parses "TEAM: Name" blocks followed by one player per line ("Name" or
 // "Name, Number"). Missing numbers get an auto-assigned placeholder that
 // avoids colliding with any number already given in that same team.
-var BULK_IMPORT_PALETTE=['#FF5C00','#3b82f6','#22c55e','#a855f7','#eab308','#ef4444','#06b6d4','#f97316'];
+var TEAM_COLOR_PALETTE=['#FF5C00','#3b82f6','#22c55e','#a855f7','#eab308','#ef4444','#06b6d4','#f97316'];
 function parseBulkImportText(text){
   var lines=text.split('\n');
   var result=[]; // [{name, players:[{name,num}]}]
@@ -2062,7 +2106,7 @@ function runBulkImport(){
   if(!parsed.length){ alert('Nothing parsed — check the format (each team needs a "TEAM: Name" line).'); return; }
   var league=document.getElementById('team-league-select')?document.getElementById('team-league-select').value:'';
   parsed.forEach(function(t,i){
-    var color=BULK_IMPORT_PALETTE[(teams.length+i)%BULK_IMPORT_PALETTE.length];
+    var color=TEAM_COLOR_PALETTE[(teams.length+i)%TEAM_COLOR_PALETTE.length];
     teams.push({
       name:t.name,
       color:color,
@@ -2090,8 +2134,18 @@ function renderTeams(){
   var el=document.getElementById('team-list');
   if(!teams.length){el.innerHTML='<div class="empty-state">No teams — run Season Reset tab to load teams</div>';return;}
   el.innerHTML=teams.map(function(t,i){
-    return '<div class="team-item '+(selTeam===i?'selected':'')+'" onclick="pickTeam('+i+')">'      +'<div class="color-dot" style="background:'+t.color+'"></div>'      +'<div class="team-item-name">'+t.name+'</div>'      +'<div class="team-item-meta">'+t.players.length+' player'+(t.players.length!==1?'s':'')+'</div></div>';
+    return '<div class="team-item '+(selTeam===i?'selected':'')+'" onclick="pickTeam('+i+')">'      +'<div class="color-dot" style="background:'+t.color+'"></div>'      +'<div class="team-item-name">'+t.name+'</div>'      +'<div class="team-item-meta">'+t.players.length+' player'+(t.players.length!==1?'s':'')+'</div>'      +'<input type="color" value="'+t.color+'" onclick="event.stopPropagation()" onchange="changeTeamColor('+i+',this.value)" title="Change '+t.name+'\'s color" style="width:28px;height:28px;padding:0;border:1px solid #555;border-radius:6px;cursor:pointer;background:none;flex-shrink:0;">'      +'</div>';
   }).join('');
+}
+
+// Lets a team's color be changed anytime after creation — colors are
+// auto-assigned when a team is added now (no picker required up front),
+// but can still be adjusted here whenever needed.
+function changeTeamColor(i,color){
+  if(!teams[i])return;
+  teams[i].color=color;
+  fbSet(ctPath('teams'),teams);
+  renderTeams(); renderRoster();
 }
 
 function pickTeam(i){
