@@ -2844,6 +2844,13 @@ function setQ(q){
   if(q===2){
     game.hHalfTeamFouls=0;
     game.aHalfTeamFouls=0;
+    // Close-game rule: if the margin is 10 points or less heading into the
+    // second half, switch the shot clock to a 20-second clock (instead of
+    // whatever it was set to) to keep late-game possessions moving.
+    var margin=Math.abs((game.homeScore||0)-(game.awayScore||0));
+    if(margin<=10){
+      shotClockSet(20);
+    }
   }
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
@@ -4328,6 +4335,8 @@ function loadDivisionSchedule(){
   });
 }
 
+var _schedGames=[], _schedDiv=null, _schedWeekIdx=null;
+
 function loadWeekDetails(){
   var div=document.getElementById('sched-division').value;
   var weekIdx=parseInt(document.getElementById('sched-week').value);
@@ -4344,36 +4353,55 @@ function loadWeekDetails(){
     var week=divData.weeks[weekIdx];
     document.getElementById('sched-date').value=week.date||'';
     document.getElementById('sched-venue').value=week.venue||'';
-    
-    // Render games
-    var gamesList=document.getElementById('games-list');
-    gamesList.innerHTML='';
-    
-    if(week.games && Array.isArray(week.games)){
-      week.games.forEach(function(game,idx){
-        var gameDiv=document.createElement('div');
-        gameDiv.style.cssText='margin-bottom:8px;padding:8px;background:var(--dark2);border:1px solid #555;border-radius:4px;';
-        
-        if(game.matchup){
-          // Playoff game
-          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+'</div>'+
-                           '<input type="text" value="'+(game.matchup||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
-        } else if(game.event){
-          // Special event (open gym, all-star game, etc)
-          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+' ('+(game.duration||'TBD')+')</div>'+
-                           '<input type="text" value="'+(game.event||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
-        } else {
-          // Regular game
-          gameDiv.innerHTML='<div style="color:var(--muted);font-size:11px;margin-bottom:4px;">'+(game.time||'--:--')+'</div>'+
-                           '<input type="text" placeholder="Home vs Away" value="'+(game.home||'')+' vs '+(game.away||'')+'" id="game-'+idx+'" style="width:100%;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
-        }
-        
-        gamesList.appendChild(gameDiv);
-      });
-    }
+
+    // Keep an editable in-memory copy — this is what actually gets saved,
+    // as opposed to just re-reading the raw text boxes (see saveWeekSchedule).
+    _schedDiv=div; _schedWeekIdx=weekIdx;
+    _schedGames=(week.games&&Array.isArray(week.games))?JSON.parse(JSON.stringify(week.games)):[];
+    renderGamesList();
     
     document.getElementById('week-details').style.display='block';
   });
+}
+
+// Renders the current in-memory _schedGames array into editable rows.
+// Each row's inputs are re-read into _schedGames on every change, so
+// add/remove/save always operate on up-to-date data, not stale DOM state.
+function renderGamesList(){
+  var gamesList=document.getElementById('games-list');
+  gamesList.innerHTML='';
+  _schedGames.forEach(function(game,idx){
+    var gameDiv=document.createElement('div');
+    gameDiv.style.cssText='margin-bottom:8px;padding:8px;background:var(--dark2);border:1px solid #555;border-radius:4px;display:flex;gap:6px;align-items:flex-start;';
+    var timeInput='<input type="text" placeholder="e.g. 7:30 PM" value="'+(game.time||'')+'" onchange="_schedGames['+idx+'].time=this.value;" style="width:90px;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+    var mainField='';
+    if(game.matchup!==undefined){
+      mainField='<input type="text" placeholder="e.g. Fly High vs Treez" value="'+(game.matchup||'')+'" onchange="_schedGames['+idx+'].matchup=this.value;" style="flex:1;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+    } else if(game.event!==undefined){
+      mainField='<input type="text" placeholder="e.g. 3-Point Shootout" value="'+(game.event||'')+'" onchange="_schedGames['+idx+'].event=this.value;" style="flex:1;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;margin-right:6px;">'+
+        '<input type="text" placeholder="Duration e.g. 6:30\u20137:30 PM" value="'+(game.duration||'')+'" onchange="_schedGames['+idx+'].duration=this.value;" style="flex:1;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+    } else {
+      mainField='<input type="text" placeholder="Home vs Away" value="'+(game.home||'')+' vs '+(game.away||'')+'" onchange="var parts=this.value.split(/\\s+vs\\s+/i);_schedGames['+idx+'].home=(parts[0]||\'\').trim();_schedGames['+idx+'].away=(parts[1]||\'\').trim();" style="flex:1;padding:4px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:3px;font-size:11px;">';
+    }
+    gameDiv.innerHTML=timeInput+mainField+'<button onclick="removeScheduleRow('+idx+')" title="Remove this slot" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">&times;</button>';
+    gamesList.appendChild(gameDiv);
+  });
+  var addRow=document.createElement('div');
+  addRow.style.cssText='display:flex;gap:8px;margin-top:8px;';
+  addRow.innerHTML='<button onclick="addScheduleRow(\'game\')" style="flex:1;padding:6px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Add Game</button>'+
+    '<button onclick="addScheduleRow(\'event\')" style="flex:1;padding:6px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">+ Add Event</button>';
+  gamesList.appendChild(addRow);
+}
+
+function addScheduleRow(type){
+  if(type==='event') _schedGames.push({event:'',time:'',duration:''});
+  else _schedGames.push({home:'',away:'',time:''});
+  renderGamesList();
+}
+
+function removeScheduleRow(idx){
+  _schedGames.splice(idx,1);
+  renderGamesList();
 }
 
 function saveWeekSchedule(){
@@ -4387,9 +4415,14 @@ function saveWeekSchedule(){
     return;
   }
   
+  // Previously this only saved date/venue — any edits made to the game
+  // rows above were silently discarded. Now the in-memory _schedGames
+  // array (kept up to date by each row's onchange handler) gets written
+  // back too.
   db.ref('ct/schedule/'+div+'/weeks/'+weekIdx).update({
     date:date,
-    venue:venue
+    venue:venue,
+    games:_schedGames
   },function(err){
     if(err){
       alert('Error saving: '+err.message);

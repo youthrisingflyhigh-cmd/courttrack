@@ -1426,16 +1426,17 @@ function renderSchedule(){
   html += '<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
 
-  // Round 2 - Aug 26 — Semi 1: #1 (bye) vs winner of #4/#5; Semi 2: winner of #2/#7 vs winner of #3/#6
+  // Round 2 - Aug 26 — Semi 1: winner of #2/#7 vs winner of #3/#6 (6:30 PM);
+  // Semi 2: #1 (bye) vs winner of #4/#5 (7:30 PM, per Ohana's requested time)
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">ROUND 2 · AUG 26</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;">'+s1+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s4+'/'+s5+'</span></div>';
-  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
-  html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s2+'/'+s7+'</span></div>';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s3+'/'+s6+'</span></div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
+  html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;">'+s1+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s4+'/'+s5+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div></div>';
 
   // Connector 2
@@ -1445,13 +1446,19 @@ function renderSchedule(){
   html += '<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
   html += '<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
 
-  // Championship - Sep 2
-  html += '<div style="display:flex;flex-direction:column;justify-content:center;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">CHAMPIONSHIP · SEP 2</div>';
-  html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:20px 16px;text-align:center;width:180px;">';
-  html += '<div style="font-size:32px;margin-bottom:6px;">🏆</div>';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
-  html += '<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WED · SEP 2 · 8:00 PM</div>';
+  // Sep 2 — Shootout, All-Star, then Championship
+  html += '<div style="display:flex;flex-direction:column;gap:0;">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">SEP 2</div>';
+  html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30–7:30 PM</div></div>';
+  html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">⭐ All-Star Game</div>';
+  html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30–8:30 PM</div></div>';
+  html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:180px;">';
+  html += '<div style="font-size:28px;margin-bottom:4px;">🏆</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
+  html += '<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:30–9:30 PM</div>';
   html += '<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div></div></div>';
 
   html += '</div></div>';
