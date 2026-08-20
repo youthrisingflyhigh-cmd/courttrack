@@ -1418,15 +1418,18 @@ function renderSchedule(){
     return null;
   }
 
-  // Playoff Bracket — seeds pulled live from getSeededStandings(), same
-  // tiebreak logic as the standings table above. #1 seed gets a bye into
-  // Round 2. Round 1 order below is chronological (6:30/7:30/8:30 PM),
-  // with the #4-vs-#5 game deliberately placed in the 7:30 PM slot.
+  // Playoff Bracket — same tiebreak logic as the standings table above.
+  // #1 seed gets a bye into Round 2.
   // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
   // recomputed live from getSeededStandings(). Locking it here means it
   // can't shift if regular-season standings data ever gets touched again
   // (e.g. a correction, a rebuild) after the bracket's already real.
-  var s1='Ohana',s2='Fly High',s3='United',s4='Moneyball',s5='SB Hoops',s6='Fleetwork',s7='Treez';
+  // Seed groups matter here: #4/#5 play at 7:30 (Fleetwork/United), #3/#6
+  // play at 8:30 (Moneyball/SB Hoops) — this specific grouping is what
+  // makes the standard "winner of 4v5 faces the #1 bye" advancement land
+  // on United vs Ohana, and "winner of 2v7 faces winner of 3v6" land on
+  // Fly High vs Moneyball, matching how Round 1 actually played out.
+  var s1='Ohana',s2='Fly High',s3='Moneyball',s4='Fleetwork',s5='United',s6='SB Hoops',s7='Treez';
 
   // Round 1 results (Aug 19): Fly High beat Treez, United beat Fleetwork,
   // Moneyball beat SB Hoops. Hardcoded here so they show immediately;
@@ -1434,8 +1437,8 @@ function renderSchedule(){
   // are actually finished in Live Tracking the same names come from real
   // data instead — no conflict either way.
   var w27=findPlayoffWinner(s2,s7,9)||'Fly High';
-  var w36=findPlayoffWinner(s3,s6,9)||'United';
-  var w45=findPlayoffWinner(s4,s5,9)||'Moneyball';
+  var w36=findPlayoffWinner(s3,s6,9)||'Moneyball';
+  var w45=findPlayoffWinner(s4,s5,9)||'United';
   var r2aLabel=w27?w27:('Winner: '+s2+'/'+s7);
   var r2bLabel=w36?w36:('Winner: '+s3+'/'+s6);
   var r2cLabel=w45?w45:('Winner: '+s4+'/'+s5);
