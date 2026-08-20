@@ -797,6 +797,12 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Recompute Standings from Schedule</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Rebuilds every team's W/L/PF/PA from scratch using only completed regular-season games (week 1–8) in the Schedule — playoff games (week 9+) are always excluded, no matter how they were entered or tagged. Use this if a playoff or exhibition game's result ever leaks into the regular-season standings.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="recomputeStandingsFromSchedule()">🔧 Recompute Standings from Schedule</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
@@ -2877,6 +2883,58 @@ function rebuildPlayerStatsFromHistory(){
   fbSet(ctPath('playerStats'), playerStats);
   alert('✅ Player Stats rebuilt from '+hist.length+' saved game(s) and re-synced.');
   if(typeof renderPlayerStats==='function') renderPlayerStats();
+}
+
+// ── RECOVERY: recompute standings from scratch using the Schedule ──
+// Standings get built incrementally, game by game, as each one is
+// finished — which means a playoff/exhibition game whose schedule entry
+// wasn't correctly tagged with a week 9+ round number can slip through
+// and get counted into the regular-season standings. Rather than trying
+// to manually subtract a specific game's stats back out (error-prone),
+// this recomputes every team's W/L/PF/PA from zero using ONLY completed
+// (status==='final') games in the Schedule with round < 9 — playoff
+// games are excluded categorically here, regardless of how any single
+// game got entered or mistagged.
+function computeStandingsFromSchedule(){
+  var rebuilt={};
+  schedule.forEach(function(g){
+    if(!g || g.status!=='final') return;
+    if(g.isPlayoff) return;
+    if(g.round!=null && g.round>=9) return;
+    if(!g.home || !g.away) return;
+    var hs=g.homeScore, as_=g.awayScore;
+    if(hs==null || as_==null) return;
+    var homeTeam=teams.find(function(t){return t.name===g.home;});
+    var awayTeam=teams.find(function(t){return t.name===g.away;});
+    var hc=(homeTeam&&homeTeam.color)||'#FF5C00';
+    var ac=(awayTeam&&awayTeam.color)||'#FF5C00';
+    if(!rebuilt[g.home]) rebuilt[g.home]={w:0,l:0,pf:0,pa:0,color:hc};
+    if(!rebuilt[g.away]) rebuilt[g.away]={w:0,l:0,pf:0,pa:0,color:ac};
+    rebuilt[g.home].color=hc; rebuilt[g.away].color=ac;
+    rebuilt[g.home].pf+=hs; rebuilt[g.home].pa+=as_;
+    rebuilt[g.away].pf+=as_; rebuilt[g.away].pa+=hs;
+    if(hs>as_){ rebuilt[g.home].w++; rebuilt[g.away].l++; }
+    else if(as_>hs){ rebuilt[g.away].w++; rebuilt[g.home].l++; }
+  });
+  return rebuilt;
+}
+
+function recomputeStandingsFromSchedule(){
+  var finalCount=schedule.filter(function(g){return g && g.status==='final' && !g.isPlayoff && (g.round==null||g.round<9);}).length;
+  if(!finalCount){
+    alert('No completed regular-season games found in the Schedule to recompute from.');
+    return;
+  }
+  if(!confirm('This will recompute every team\'s standings from scratch using the '+finalCount+' completed regular-season game(s) in the Schedule, and replace the current Standings with the result. Playoff games (week 9+) are always excluded.\n\nUse this if a playoff or exhibition game\'s result ever leaks into the standings. Continue?')) return;
+
+  standings = computeStandingsFromSchedule();
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('standings'), standings);
+  alert('✅ Standings recomputed from '+finalCount+' regular-season game(s) — playoff games excluded.');
+  if(typeof renderStandings==='function') renderStandings();
 }
 
 // ── MERGE: fold an old/former jersey-number entry into a current player ──
