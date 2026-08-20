@@ -4419,13 +4419,14 @@ function renderPlayersTab(){
       +'<div class="player-game-log">'
       +'<div class="player-game-log-header">Game-by-Game Log — '+r.p.name+'</div>'
       +'<div style="overflow-x:auto;"><table>'
-      +'<thead><tr><th style="text-align:left;">Date</th><th style="text-align:left;">Opp</th><th style="text-align:left;">Result</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead>'
+      +'<thead><tr><th style="text-align:left;">Date</th><th style="text-align:left;">Opp</th><th style="text-align:left;">Result</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th></th></tr></thead>'
       +'<tbody>'+games.map(function(g){
         return '<tr><td style="text-align:left;font-size:12px;color:var(--muted);">'+(g.date||'')+'</td>'
           +'<td style="text-align:left;font-size:13px;font-weight:600;color:var(--white);">vs '+(g.opp||'')+'</td>'
           +'<td style="text-align:left;font-weight:700;color:'+(g.result==='W'?'var(--green)':'var(--red)')+';">'+(g.result||'')+'</td>'
           +'<td class="pts-cell">'+(g.pts||0)+'</td><td>'+(g.reb||0)+'</td><td>'+(g.ast||0)+'</td>'
-          +'<td>'+(g.stl||0)+'</td><td>'+(g.blk||0)+'</td><td>'+(g.to||0)+'</td></tr>';
+          +'<td>'+(g.stl||0)+'</td><td>'+(g.blk||0)+'</td><td>'+(g.to||0)+'</td>'
+          +'<td><button onclick="event.stopPropagation();removeGameFromPlayerLog(\''+r.teamName.replace(/'/g,"\\'")+'\','+r.p.num+',\''+(g.gameId||'').replace(/'/g,"\\'")+'\')" title="Remove this game from '+r.p.name+'\'s profile" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 6px;">🗑</button></td></tr>';
       }).join('')+'</tbody></table></div></div>'
       +'</td></tr>':'';
     return '<tr onclick="togglePlayerLog('+ri+')" style="cursor:pointer;" title="Click to see game-by-game stats">'
@@ -4441,6 +4442,34 @@ function renderPlayersTab(){
 function togglePlayerLog(ri){
   var el=document.getElementById('pglog-'+ri);
   if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+// Removes one specific game from a player's profile — pulls it out of
+// their per-game log AND subtracts its stats (points, rebounds, etc.)
+// and one game-played from their season totals, so the two always stay
+// in sync. Does not touch the team's W/L or the game's box score in
+// Game History — this only affects this one player's individual profile.
+function removeGameFromPlayerLog(teamName,num,gameId){
+  var ps=playerStats[teamName] && playerStats[teamName][num];
+  if(!ps || !ps.games){ alert('Could not find that game on this player\'s profile.'); return; }
+  var idx=ps.games.findIndex(function(g){return g.gameId===gameId;});
+  if(idx<0){ alert('Could not find that specific game — it may have already been removed.'); return; }
+  var g=ps.games[idx];
+  if(!confirm('Remove the game vs '+(g.opp||'?')+' on '+(g.date||'?')+' ('+(g.pts||0)+' pts) from this player\'s profile? This cannot be undone.')) return;
+
+  ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].forEach(function(k){
+    ps[k]=Math.max(0,(ps[k]||0)-(g[k]||0));
+  });
+  ps.gp=Math.max(0,(ps.gp||0)-1);
+  ps.games.splice(idx,1);
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('playerStats'), playerStats);
+  if(typeof renderPlayersTab==='function') renderPlayersTab();
+  alert('✅ Removed.');
 }
 
 // ── EXPORT ALL DATA ──
