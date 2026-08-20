@@ -1556,14 +1556,16 @@ function getSeededStandings(){
       pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
   }).sort(function(a,b){
-    // Head-to-head is checked FIRST now, ahead of win % — if two teams
-    // have played each other this season, whoever won that matchup ranks
-    // higher, even if their overall record/percentage differs (e.g. from
-    // a bye giving one team a game the other didn't get). Win % only
-    // decides it when they haven't played, or split evenly.
+    // Win % is primary again — checking head-to-head unconditionally for
+    // every pair (regardless of how different the records were) produced
+    // a genuinely broken, non-transitive order (a team with a far better
+    // record could rank below two teams with worse ones). Head-to-head is
+    // back to being a tiebreaker for teams tied on win %, which is also
+    // exactly what correctly separates two teams with an identical
+    // record but a season-series result between them.
+    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
     var h2h=headToHeadRecord(a.name,b.name);
     if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
-    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
     if(b.diff!==a.diff) return b.diff-a.diff;
     return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
