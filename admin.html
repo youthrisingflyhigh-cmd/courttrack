@@ -1691,6 +1691,11 @@ function saveRenameSeasonDivision(){
 
 // ── State ──
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
+// Playoffs started Aug 19, 2026 — anything on or after this date is a
+// playoff game and must never count toward regular-season standings.
+// Used as the primary signal (not just schedule round/isPlayoff tags,
+// which turned out to be unreliable on at least one entry in practice).
+var PLAYOFF_START_DATE = new Date('2026-08-19T00:00:00');
 var selTeam=null,selPlayer=null,trackSide='home',logStack=[];
 
 // ── Connection status ──
@@ -2658,7 +2663,12 @@ function finishGame(){
         break;
       }
     }
-    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9);
+    // Date is checked in addition to the schedule match — relying only on
+    // finding an "upcoming" schedule entry with the right round number
+    // missed at least one real playoff game (its entry either didn't
+    // match or wasn't tagged round 9+), which let that game's result leak
+    // into the regular-season standings.
+    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (new Date() >= PLAYOFF_START_DATE);
     if(!standings[hn])standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
     if(!standings[an])standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
     standings[hn].color=hc; standings[an].color=ac;
@@ -2895,12 +2905,29 @@ function rebuildPlayerStatsFromHistory(){
 // (status==='final') games in the Schedule with round < 9 — playoff
 // games are excluded categorically here, regardless of how any single
 // game got entered or mistagged.
+// Anything on or after this date is a playoff game and must never count
+// toward regular-season standings, regardless of whether its schedule
+// entry happens to have the right round number or isPlayoff flag set.
+// Tagging a couple of entries correctly turned out to be unreliable in
+// practice, so date is now the primary, authoritative signal instead of
+// a secondary check. See PLAYOFF_START_DATE near the top of the file.
+function parseScheduleDate(dateStr){
+  if(!dateStr) return null;
+  var d = new Date(dateStr);
+  if(!isNaN(d.getTime())) return d;
+  // Fallback: strip a leading "Wed, " style weekday prefix and retry
+  var stripped = dateStr.replace(/^[A-Za-z]+,\s*/,'');
+  d = new Date(stripped);
+  return isNaN(d.getTime()) ? null : d;
+}
 function computeStandingsFromSchedule(){
   var rebuilt={};
   schedule.forEach(function(g){
     if(!g || g.status!=='final') return;
     if(g.isPlayoff) return;
     if(g.round!=null && g.round>=9) return;
+    var gd = parseScheduleDate(g.date);
+    if(gd && gd.getTime() >= PLAYOFF_START_DATE.getTime()) return;
     if(!g.home || !g.away) return;
     var hs=g.homeScore, as_=g.awayScore;
     if(hs==null || as_==null) return;
