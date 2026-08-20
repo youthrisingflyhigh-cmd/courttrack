@@ -1970,6 +1970,21 @@ function onAllLoaded(){
   populateSeasonDivisionSelector();
   hookSrIntoShowPage();
   renderTeams(); renderRoster(); renderSelects();
+  // Auto-heal standings: if playoff games have leaked into the
+  // regular-season standings (the exact bug we kept chasing on Aug 19),
+  // silently recompute and re-save on load instead of requiring someone
+  // to remember to click the recovery button in Settings.
+  try{
+    if(_dataFullyLoaded && schedule && schedule.length){
+      var corrected = computeStandingsFromSchedule();
+      if(JSON.stringify(corrected) !== JSON.stringify(standings)){
+        standings = corrected;
+        fbSet(ctPath('standings'), standings);
+        if(typeof renderStandings==='function') renderStandings();
+        console.log('Auto-corrected standings on load — playoff/excluded games were leaking in.');
+      }
+    }
+  }catch(e){ console.log('Standings auto-heal skipped:', e); }
   if(game && teams.length){
     var b=document.getElementById('game-banner');
     b.style.display='block';
@@ -2920,6 +2935,19 @@ function parseScheduleDate(dateStr){
   d = new Date(stripped);
   return isNaN(d.getTime()) ? null : d;
 }
+// Tonight's (Aug 19) three Round 1 matchups, excluded by exact team-name
+// pair as an absolute guarantee — independent of the round/isPlayoff tag
+// and independent of whether g.date happens to parse correctly. Belt and
+// suspenders: the date-cutoff check above should already catch these,
+// but this makes sure they're excluded no matter what.
+var KNOWN_PLAYOFF_PAIRS = [
+  ['Fly High','Treez'], ['Fleetwork','United'], ['Moneyball','SB Hoops']
+];
+function isKnownPlayoffPair(home,away){
+  return KNOWN_PLAYOFF_PAIRS.some(function(pair){
+    return (pair[0]===home && pair[1]===away) || (pair[0]===away && pair[1]===home);
+  });
+}
 function computeStandingsFromSchedule(){
   var rebuilt={};
   schedule.forEach(function(g){
@@ -2928,6 +2956,7 @@ function computeStandingsFromSchedule(){
     if(g.round!=null && g.round>=9) return;
     var gd = parseScheduleDate(g.date);
     if(gd && gd.getTime() >= PLAYOFF_START_DATE.getTime()) return;
+    if(g.home && g.away && isKnownPlayoffPair(g.home,g.away)) return;
     if(!g.home || !g.away) return;
     var hs=g.homeScore, as_=g.awayScore;
     if(hs==null || as_==null) return;
