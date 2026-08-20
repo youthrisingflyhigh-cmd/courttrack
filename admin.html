@@ -944,6 +944,16 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
         <button class="btn btn-orange" onclick="saveLeagueName()">💾 Save</button>
       </div>
       <div id="league-name-current" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong>Season Name</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Saved onto every finished game's record, and used as the section heading in Game History. If this is left blank, games default to showing under a generic "Season 1" heading instead of the real season name.</p>
+      <div class="input-row">
+        <input type="text" id="season-name-input" placeholder="e.g. Summer 2026" style="flex:1;"/>
+        <button class="btn btn-orange" onclick="saveSeasonName()">💾 Save</button>
+      </div>
+      <div id="season-name-current" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
     </div>
   </div>
 </div>
@@ -2489,7 +2499,7 @@ function generateSchedule(){
   renderSchedule();
   if(db){
     db.ref(ctPath('schedule')).set(games).then(function(){
-      alert('✅ Season 1 schedule loaded! 7 game days + 2 playoff days.');
+      alert('✅ Schedule loaded! 7 game days + 2 playoff days.');
     }).catch(function(err){
       alert('⚠️ Schedule saved locally but Firebase error: '+err.message);
     });
@@ -3963,9 +3973,14 @@ function getSeededStandings(){
       pct:gp>0?(s.w/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?(s.pf/gp).toFixed(1):'0.0',papg:gp>0?(s.pa/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
   }).sort(function(a,b){
-    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
+    // Head-to-head is checked FIRST now, ahead of win % — if two teams
+    // have played each other this season, whoever won that matchup ranks
+    // higher, even if their overall record/percentage differs (e.g. from
+    // a bye giving one team a game the other didn't get). Win % only
+    // decides it when they haven't played, or split evenly.
     var h2h=headToHeadRecord(a.name,b.name);
     if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
+    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
     if(b.diff!==a.diff) return b.diff-a.diff;
     return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
@@ -4087,7 +4102,7 @@ function renderPlayoffBracket(){
     ? '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;">'+champion+'</div>'
     : '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
   html+='<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:30–9:30 PM</div>';
-  html+='<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div></div></div>';
+  html+='<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SUMMER 2026</div></div></div>';
 
   html+='</div></div>';
   html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs · #1 seed bye in Round 1 · Championship rings for winners</div>';
@@ -4630,6 +4645,7 @@ function renderSettings(){
   renderPOTWAdmin();
   renderStreamAdmin();
   renderLeagueNameAdmin();
+  renderSeasonNameAdmin();
   // Populate POTW team dropdown
   var tSel=document.getElementById('potw-team-select');
   tSel.innerHTML='<option value="">Select team…</option>';
@@ -4761,6 +4777,26 @@ function renderLeagueNameAdmin(){
     el.innerHTML='<span style="color:var(--green);font-weight:700;">✓ Set:</span> <span style="color:var(--white);">'+appSettings.leagueName+'</span>';
   } else {
     el.innerHTML='<span style="font-style:italic;">Not set — defaults to "COURTTRACK LEAGUE".</span>';
+  }
+}
+
+// ── SEASON NAME ADMIN ──
+function saveSeasonName(){
+  var name=(document.getElementById('season-name-input').value||'').trim();
+  appSettings.season=name;
+  saveSettings();
+  renderSeasonNameAdmin();
+}
+
+function renderSeasonNameAdmin(){
+  var el=document.getElementById('season-name-current');
+  if(!el) return;
+  var inp=document.getElementById('season-name-input');
+  if(appSettings.season){
+    if(inp) inp.value=appSettings.season;
+    el.innerHTML='<span style="color:var(--green);font-weight:700;">✓ Set:</span> <span style="color:var(--white);">'+appSettings.season+'</span>';
+  } else {
+    el.innerHTML='<span style="font-style:italic;">Not set — Game History currently defaults to showing "Season 1" as the heading.</span>';
   }
 }
 
