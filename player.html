@@ -1332,11 +1332,30 @@ function renderFilm(){
     if((g.home==='SB HOOPS'&&g.away==='OHANA')||(g.home==='OHANA'&&g.away==='SB HOOPS')){
       return 2;
     }
+    // Hardcoded fix: Aug 19 Round 1 playoff games — their schedule
+    // entries weren't reliably tagged with round 9, the same underlying
+    // issue that briefly let them leak into the regular-season standings.
+    var playoffPairs=[['Fly High','Treez'],['Fleetwork','United'],['Moneyball','SB Hoops']];
+    var isPlayoffPair=playoffPairs.some(function(pair){
+      return (pair[0]===g.home&&pair[1]===g.away)||(pair[0]===g.away&&pair[1]===g.home);
+    });
+    if(isPlayoffPair) return 9;
     var match=schedule.find(function(s){
       return s.status==='final' &&
         ((s.home===g.home&&s.away===g.away)||(s.home===g.away&&s.away===g.home));
     });
     return match?match.round:null;
+  }
+  // Playoff weeks get a proper label instead of a generic "Week 9".
+  // wk comes from Object.keys() so it's always a string here, even for
+  // numeric weeks — convert before comparing.
+  function weekLabel(wk){
+    if(wk==='?') return 'Week TBD';
+    var n=Number(wk);
+    if(n===9) return 'Playoff Round 1';
+    if(n===10) return 'Playoff Round 2';
+    if(n===11) return 'Championship Weekend';
+    return 'Week '+wk;
   }
 
   var seasons={}; // seasonName -> { weekNum -> [games] }
@@ -1359,7 +1378,7 @@ function renderFilm(){
     });
     html+='<h3 style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);margin:1.5rem 0 0.75rem;">'+seasonName+'</h3>';
     weekKeys.forEach(function(wk){
-      html+='<div class="schedule-week"><div class="schedule-week-header">'+(wk==='?'?'Week TBD':'Week '+wk)+'</div>'
+      html+='<div class="schedule-week"><div class="schedule-week-header">'+weekLabel(wk)+'</div>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">';
       weeks[wk].forEach(function(g){ html+=gameCardHtml(g); });
       html+='</div></div>';
