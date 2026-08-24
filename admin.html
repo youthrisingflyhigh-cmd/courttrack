@@ -198,7 +198,7 @@ tr.totals-row td.pts-cell{color:var(--orange);}
 .schedule-game-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--dark3);border:1px solid #2a2a2a;border-radius:8px;margin-bottom:6px;flex-wrap:wrap;}
 .sgr-date{font-size:12px;color:var(--muted);min-width:100px;}
 .sgr-time{font-size:12px;color:var(--muted);min-width:60px;}
-.sgr-teams{flex:1;font-size:14px;font-weight:600;}
+.sgr-teams{flex:1;font-size:14px;font-weight:600;text-transform:uppercase;}
 .sgr-location{font-size:12px;color:var(--muted);}
 .sgr-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:1px;}
 .sgr-status.upcoming{background:rgba(59,130,246,0.15);color:#7ab8f5;}
@@ -4259,7 +4259,7 @@ function findPlayoffWinner(nameA,nameB,week){
 // regardless of final standings, per the league's own bracket rule.
 function renderThursdayLeagueBracket(container){
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
-  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:760px;">';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
@@ -4269,33 +4269,24 @@ function renderThursdayLeagueBracket(container){
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
   }
 
-  // Quarterfinals — Oct 22, Pioneer High
+  // Top 4 seeds only — no Quarterfinal round.
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">QUARTERFINALS · OCT 22</div>';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 29</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#8',name:'Seed 8'}],'6:30–7:15 PM');
-  html+=card([{seed:'#4',name:'Seed 4',border:true},{seed:'#5',name:'Seed 5'}],'7:20–8:00 PM');
-  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#7',name:'Seed 7'}],'8:00–8:55 PM');
-  html+=card([{seed:'',name:'Diskarte',seedColor:'#C9A84C',border:true},{seed:'',name:'Wolfpack',seedColor:'#C9A84C'}],'9:00–10:00 PM');
+  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'6:30 PM');
+  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'7:25 PM');
   html+='</div>';
 
-  html+='<div style="position:relative;width:40px;height:420px;flex-shrink:0;">';
+  html+='<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
   html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:170px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:200px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:116px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
-  html+='<div style="position:absolute;top:245px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:245px;right:0;width:2px;height:170px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:412px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:328px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:118px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:150px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:90px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
   html+='</div>';
 
-  // Semifinals + Final — Oct 29, Pioneer High
-  html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS + FINAL · OCT 29</div>';
+  html+='<div style="display:flex;flex-direction:column;justify-content:center;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">FINAL · OCT 29</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-  html+=card([{seed:'W',name:'Winner: QF1',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'6:30 PM');
-  html+=card([{seed:'W',name:'Winner: QF2',dim:true,border:true},{seed:'W',name:'Winner: QF3',dim:true}],'7:25 PM');
   html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
     +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
     +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">FINAL — 8:25 PM</div>'
@@ -4303,7 +4294,7 @@ function renderThursdayLeagueBracket(container){
   html+='</div>';
 
   html+='</div></div>';
-  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings, except QF4 (Diskarte vs Wolfpack, fixed)</div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
 
   container.innerHTML=html;
 }
