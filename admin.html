@@ -3152,8 +3152,14 @@ function restoreSummer2026Standings(){
   };
   var restored={};
   Object.keys(snapshot).forEach(function(name){
-    var t=teams.find(function(tt){return tt.name===name;});
-    restored[name]=Object.assign({},snapshot[name],{color:(t&&t.color)||'#FF5C00'});
+    // Match case-insensitively, but key the standings entry with the
+    // team's REAL name/casing (e.g. "OHANA") — not this hardcoded
+    // mixed-case string. A casing mismatch here breaks head-to-head
+    // lookups silently, since those compare exact strings against
+    // gameHistory's g.home/g.away (which use the real team names).
+    var t=teams.find(function(tt){return tt.name.toLowerCase()===name.toLowerCase();});
+    var key=t?t.name:name;
+    restored[key]=Object.assign({},snapshot[name],{color:(t&&t.color)||'#FF5C00'});
   });
 
   standings=restored;
