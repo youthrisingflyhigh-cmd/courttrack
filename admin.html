@@ -830,6 +830,12 @@ BYE: Ohana, AIM
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Restore Summer 2026 Final Standings</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">One-time recovery — sets Summer 2026's standings back to the confirmed-correct final regular-season numbers (Ohana 5-1, Fly High 5-1, United 3-3, Moneyball 3-3, Fleetwork 3-3, SB Hoops 2-4, Treez 0-6), independent of whatever the Schedule currently contains. Only works while Summer 2026 · 35+ Men's League is the active season/division.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="restoreSummer2026Standings()">🔧 Restore Summer 2026 Final Standings</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
@@ -2014,7 +2020,14 @@ function onAllLoaded(){
   try{
     if(_dataFullyLoaded && schedule && schedule.length){
       var corrected = computeStandingsFromSchedule();
-      if(JSON.stringify(corrected) !== JSON.stringify(standings)){
+      var correctedTeamCount = Object.keys(corrected).length;
+      var currentTeamCount = Object.keys(standings||{}).length;
+      // Never let this auto-correction silently shrink coverage — if the
+      // schedule currently has fewer/wrong teams in it (e.g. from an
+      // accidental import to the wrong division), that's a sign the
+      // Schedule itself isn't trustworthy right now, not that the real
+      // standings should be wiped down to match it.
+      if(correctedTeamCount >= currentTeamCount && JSON.stringify(corrected) !== JSON.stringify(standings)){
         standings = corrected;
         fbSet(ctPath('standings'), standings);
         if(typeof renderStandings==='function') renderStandings();
@@ -3106,6 +3119,44 @@ function recomputeStandingsFromSchedule(){
   }
   fbSet(ctPath('standings'), standings);
   alert('✅ Standings recomputed from '+finalCount+' regular-season game(s) — playoff games excluded.');
+  if(typeof renderStandings==='function') renderStandings();
+}
+
+// ── ONE-TIME RECOVERY: restore Summer 2026's confirmed-correct final
+// standings directly, independent of whatever the Schedule currently
+// holds. Added after an accidental schedule import/clear on the wrong
+// division risked this data — safer to restore from the last verified
+// numbers than to try to reconstruct anything from a Schedule that may
+// no longer reflect the real season.
+function restoreSummer2026Standings(){
+  if(CT_BASE!=='ct'){
+    alert('This only restores Summer 2026 · 35+ Men\'s League — switch to that season/division first.');
+    return;
+  }
+  if(!confirm('Overwrite the CURRENT Summer 2026 standings with the confirmed-correct final numbers (Ohana 5-1, Fly High 5-1, United 3-3, Moneyball 3-3, Fleetwork 3-3, SB Hoops 2-4, Treez 0-6)? This cannot be undone.')) return;
+
+  var snapshot={
+    'Ohana':{w:5,l:1,pf:361,pa:277},
+    'Fly High':{w:5,l:1,pf:393,pa:283},
+    'United':{w:3,l:3,pf:359,pa:353},
+    'Moneyball':{w:3,l:3,pf:367,pa:373},
+    'Fleetwork':{w:3,l:3,pf:326,pa:345},
+    'SB Hoops':{w:2,l:4,pf:307,pa:423},
+    'Treez':{w:0,l:6,pf:338,pa:397}
+  };
+  var restored={};
+  Object.keys(snapshot).forEach(function(name){
+    var t=teams.find(function(tt){return tt.name===name;});
+    restored[name]=Object.assign({},snapshot[name],{color:(t&&t.color)||'#FF5C00'});
+  });
+
+  standings=restored;
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('standings'), standings);
+  alert('✅ Summer 2026 standings restored.');
   if(typeof renderStandings==='function') renderStandings();
 }
 
