@@ -4263,7 +4263,7 @@ function renderThursdayLeagueBracket(container){
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
-      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';">'+r.name+'</span></div>';
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
     }).join('');
     return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
@@ -4316,7 +4316,8 @@ function renderPlayoffBracket(){
   // detected here by team names unique to each, since there's no shared
   // bracket-config data model across divisions yet.
   var teamNames=teams.map(function(t){return t.name;});
-  var isThursdayLeague=teamNames.indexOf('Wolfpack')!==-1 && teamNames.indexOf('Diskarte')!==-1;
+  var teamNamesLower=teamNames.map(function(n){return (n||'').toLowerCase();});
+  var isThursdayLeague=teamNamesLower.indexOf('wolfpack')!==-1 && teamNamesLower.indexOf('diskarte')!==-1;
   if(isThursdayLeague){ renderThursdayLeagueBracket(container); return; }
 
   // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
