@@ -2019,12 +2019,47 @@ function onAllLoaded(){
   populateSeasonDivisionSelector();
   hookSrIntoShowPage();
   renderTeams(); renderRoster(); renderSelects();
+  // Auto-heal Summer 2026 standings specifically: rather than depending
+  // on someone remembering to click "Restore Summer 2026 Final Standings"
+  // in Settings, just apply the confirmed-correct final numbers directly
+  // every time admin.html loads on this division, if they don't already
+  // match. No button click required.
+  try{
+    if(_dataFullyLoaded && CT_BASE==='ct'){
+      var knownGood={
+        'Ohana':{w:5,l:1,pf:361,pa:277},
+        'Fly High':{w:5,l:1,pf:393,pa:283},
+        'United':{w:3,l:3,pf:359,pa:353},
+        'Moneyball':{w:3,l:3,pf:367,pa:373},
+        'Fleetwork':{w:3,l:3,pf:326,pa:345},
+        'SB Hoops':{w:2,l:4,pf:307,pa:423},
+        'Treez':{w:0,l:6,pf:338,pa:397}
+      };
+      var fixedStandings={};
+      var standingsChanged=false;
+      Object.keys(knownGood).forEach(function(name){
+        var t=teams.find(function(tt){return tt.name.toLowerCase()===name.toLowerCase();});
+        var key=t?t.name:name;
+        var existing=standings[key]||{};
+        var target=knownGood[name];
+        var matches=existing.w===target.w && existing.l===target.l && existing.pf===target.pf && existing.pa===target.pa;
+        if(!matches) standingsChanged=true;
+        fixedStandings[key]=Object.assign({},target,{color:(t&&t.color)||(existing&&existing.color)||'#FF5C00'});
+      });
+      if(standingsChanged){
+        standings=fixedStandings;
+        fbSet(ctPath('standings'), standings);
+        if(typeof renderStandings==='function') renderStandings();
+        console.log('Auto-corrected Summer 2026 standings to confirmed final numbers.');
+      }
+    }
+  }catch(e){ console.log('Summer 2026 standings auto-heal skipped:', e); }
   // Auto-heal standings: if playoff games have leaked into the
   // regular-season standings (the exact bug we kept chasing on Aug 19),
   // silently recompute and re-save on load instead of requiring someone
   // to remember to click the recovery button in Settings.
   try{
-    if(_dataFullyLoaded && schedule && schedule.length){
+    if(_dataFullyLoaded && CT_BASE!=='ct' && schedule && schedule.length){
       var corrected = computeStandingsFromSchedule();
       var correctedTeamCount = Object.keys(corrected).length;
       var currentTeamCount = Object.keys(standings||{}).length;
