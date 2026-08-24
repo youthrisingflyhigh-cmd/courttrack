@@ -349,6 +349,32 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
   </div>
 </div>
 
+<div id="bulk-import-schedule-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:640px;max-height:85vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Schedule</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">
+      One block per week. First line: <code style="color:var(--orange);">WEEK n | date | location</code>. Optional second line: <code style="color:var(--orange);">BYE: Team A, Team B</code>. Then one game per line: <code style="color:var(--orange);">time | Home vs Away</code>. This <strong style="color:#fca5a5;">replaces the entire current schedule</strong> for whichever season/division is active — make sure you're on the right one first.
+    </div>
+    <textarea id="bulk-import-schedule-text" placeholder="WEEK 1 | 8/27/2026 | Piedmont Hills Aux Gym
+BYE: United, Fly High
+6:30 PM | AIM vs SJ Eagles
+7:25 PM | Ohana vs Short Kings
+8:25 PM | Wolfpack vs Diskarte
+
+WEEK 2 | 9/3/2026 | Pioneer High Main Gym
+BYE: Ohana, AIM
+7:00 PM | Wolfpack vs Fly High
+7:50 PM | Short Kings vs United
+8:40 PM | Diskarte vs SJ Eagles" style="width:100%;height:280px;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;font-family:monospace;margin-bottom:8px;resize:vertical;"></textarea>
+    <div id="bulk-import-schedule-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--dark3);border-radius:6px;padding:10px;display:none;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeBulkImportScheduleModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="previewBulkImportSchedule()" style="flex:1;padding:10px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Preview</button>
+      <button onclick="runBulkImportSchedule()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Import (replaces schedule)</button>
+    </div>
+  </div>
+</div>
+
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-tab" onclick="showPage('setup');closeMenu()">⚙ Setup</button>
   <button class="mobile-tab" onclick="showPage('schedule');closeMenu()">📅 Schedule</button>
@@ -457,6 +483,7 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
       <p style="font-size:13px;color:var(--muted);margin-top:4px;">Set games per team. Odd teams get an auto BYE each round.</p>
     </div>
     <button class="btn-red" id="clear-schedule-btn" style="display:none;border:1px solid var(--red);padding:6px 14px;border-radius:7px;" onclick="clearSchedule()">Clear Schedule</button>
+    <button class="btn-orange" style="padding:6px 14px;border-radius:7px;font-size:13px;" onclick="openBulkImportScheduleModal()">📋 Bulk Import Schedule</button>
   </div>
   <div class="card" id="schedule-generator-card">
     <div class="card-header"><h3>Generate Schedule</h3></div>
@@ -2131,6 +2158,85 @@ function runBulkImport(){
   renderTeams(); renderRoster(); renderSelects();
   closeBulkImportModal();
   alert('Created '+createdCount+' new team(s), merged players into '+mergedCount+' existing team(s). ✓');
+}
+
+// ── BULK IMPORT SCHEDULE ──
+// Parses "WEEK n | date | location" blocks, each followed by an optional
+// "BYE: Team A, Team B" line and then one game per line as
+// "time | Home vs Away". Produces the same flat schedule-array shape the
+// rest of the app already reads/writes (home, away, date, time, location,
+// round, isBye, status).
+function parseBulkImportScheduleText(text){
+  var lines=text.split('\n');
+  var games=[];
+  var current=null; // {round, date, location}
+  lines.forEach(function(raw){
+    var line=raw.trim();
+    if(!line) return;
+    var weekMatch=line.match(/^WEEK\s+(\d+)\s*\|\s*([^|]+)\|\s*(.+)$/i);
+    if(weekMatch){
+      current={round:parseInt(weekMatch[1]),date:weekMatch[2].trim(),location:weekMatch[3].trim()};
+      return;
+    }
+    if(!current) return; // line before any WEEK header — skip
+    var byeMatch=line.match(/^BYE:\s*(.+)$/i);
+    if(byeMatch){
+      byeMatch[1].split(',').forEach(function(name){
+        name=name.trim();
+        if(!name) return;
+        games.push({home:name,away:'',date:current.date,time:'',location:current.location,round:current.round,isBye:true,status:'upcoming'});
+      });
+      return;
+    }
+    var gameMatch=line.match(/^([^|]+)\|\s*(.+?)\s+vs\s+(.+)$/i);
+    if(gameMatch){
+      games.push({
+        home:gameMatch[2].trim(),away:gameMatch[3].trim(),
+        date:current.date,time:gameMatch[1].trim(),location:current.location,
+        round:current.round,isBye:false,status:'upcoming'
+      });
+    }
+  });
+  return games;
+}
+
+function scheduleImportSummary(games){
+  if(!games.length) return 'Nothing parsed — check the format (each week needs a "WEEK n | date | location" line).';
+  var byWeek={};
+  games.forEach(function(g){ if(!byWeek[g.round]) byWeek[g.round]=[]; byWeek[g.round].push(g); });
+  return Object.keys(byWeek).sort(function(a,b){return a-b;}).map(function(wk){
+    var lines=byWeek[wk].map(function(g){
+      return g.isBye ? '  BYE: '+g.home : '  '+g.time+' — '+g.home+' vs '+g.away;
+    }).join('\n');
+    return 'Week '+wk+' ('+byWeek[wk][0].date+', '+byWeek[wk][0].location+')\n'+lines;
+  }).join('\n\n');
+}
+
+function openBulkImportScheduleModal(){
+  document.getElementById('bulk-import-schedule-text').value='';
+  document.getElementById('bulk-import-schedule-preview').style.display='none';
+  document.getElementById('bulk-import-schedule-modal').style.display='flex';
+}
+function closeBulkImportScheduleModal(){
+  document.getElementById('bulk-import-schedule-modal').style.display='none';
+}
+function previewBulkImportSchedule(){
+  var text=document.getElementById('bulk-import-schedule-text').value;
+  var games=parseBulkImportScheduleText(text);
+  var el=document.getElementById('bulk-import-schedule-preview');
+  el.textContent=scheduleImportSummary(games);
+  el.style.display='block';
+}
+function runBulkImportSchedule(){
+  var text=document.getElementById('bulk-import-schedule-text').value;
+  var games=parseBulkImportScheduleText(text);
+  if(!games.length){ alert('Nothing parsed — check the format (each week needs a "WEEK n | date | location" line).'); return; }
+  if(!confirm('This replaces the ENTIRE current schedule for the active season/division ('+CT_ACTIVE_LABEL+') with '+games.length+' parsed game/bye entries. Continue?')) return;
+  schedule=games;
+  fbSet(ctPath('schedule'),schedule);
+  if(typeof renderSchedule==='function') renderSchedule();
+  closeBulkImportScheduleModal();
+  alert('✅ Imported '+games.length+' schedule entries.');
 }
 
 function resetTeams(){
@@ -4010,9 +4116,73 @@ function findPlayoffWinner(nameA,nameB,week){
   return null;
 }
 
+// Thursday League playoffs: 8 teams, straight single-elimination — no bye.
+// Seeding isn't known yet (season hasn't started), so this shows
+// placeholders (Seed 1, Seed 8, etc.) rather than guessing. QF4 is
+// deliberately NOT seed-based — Diskarte and Wolfpack always meet there
+// regardless of final standings, per the league's own bracket rule.
+function renderThursdayLeagueBracket(container){
+  var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:760px;">';
+
+  function card(rows,timeLabel){
+    var body=rows.map(function(r){
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';">'+r.name+'</span></div>';
+    }).join('');
+    return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
+      +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
+  }
+
+  // Quarterfinals — Oct 22, Pioneer High
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">QUARTERFINALS · OCT 22</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
+  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#8',name:'Seed 8'}],'6:30–7:15 PM');
+  html+=card([{seed:'#4',name:'Seed 4',border:true},{seed:'#5',name:'Seed 5'}],'7:20–8:00 PM');
+  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#7',name:'Seed 7'}],'8:00–8:55 PM');
+  html+=card([{seed:'',name:'Diskarte',seedColor:'#C9A84C',border:true},{seed:'',name:'Wolfpack',seedColor:'#C9A84C'}],'9:00–10:00 PM');
+  html+='</div>';
+
+  html+='<div style="position:relative;width:40px;height:420px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:170px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:200px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:116px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='<div style="position:absolute;top:245px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:245px;right:0;width:2px;height:170px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:412px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:328px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='</div>';
+
+  // Semifinals + Final — Oct 29, Pioneer High
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS + FINAL · OCT 29</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
+  html+=card([{seed:'W',name:'Winner: QF1',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'6:30 PM');
+  html+=card([{seed:'W',name:'Winner: QF2',dim:true,border:true},{seed:'W',name:'Winner: QF3',dim:true}],'7:25 PM');
+  html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
+    +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">FINAL — 8:25 PM</div>'
+    +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WINNER: SEMI 1 vs SEMI 2</div></div>';
+  html+='</div>';
+
+  html+='</div></div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings, except QF4 (Diskarte vs Wolfpack, fixed)</div>';
+
+  container.innerHTML=html;
+}
+
 function renderPlayoffBracket(){
   var container=document.getElementById('playoff-bracket-section');
   if(!container)return;
+  // Different divisions can have entirely different bracket shapes (this
+  // one's 7-team-with-bye vs the Thursday League's 8-team single elim) —
+  // detected here by team names unique to each, since there's no shared
+  // bracket-config data model across divisions yet.
+  var teamNames=teams.map(function(t){return t.name;});
+  var isThursdayLeague=teamNames.indexOf('Wolfpack')!==-1 && teamNames.indexOf('Diskarte')!==-1;
+  if(isThursdayLeague){ renderThursdayLeagueBracket(container); return; }
+
   // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
   // recomputed live from getSeededStandings(). Locking it here means it
   // can't shift if regular-season standings data ever gets touched again
