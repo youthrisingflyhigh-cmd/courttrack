@@ -349,6 +349,32 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
   </div>
 </div>
 
+<div id="bulk-import-schedule-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:640px;max-height:85vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Schedule</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">
+      One block per week. First line: <code style="color:var(--orange);">WEEK n | date | location</code>. Optional second line: <code style="color:var(--orange);">BYE: Team A, Team B</code>. Then one game per line: <code style="color:var(--orange);">time | Home vs Away</code>. This <strong style="color:#fca5a5;">replaces the entire current schedule</strong> for whichever season/division is active — make sure you're on the right one first.
+    </div>
+    <textarea id="bulk-import-schedule-text" placeholder="WEEK 1 | 8/27/2026 | Piedmont Hills Aux Gym
+BYE: United, Fly High
+6:30 PM | AIM vs SJ Eagles
+7:25 PM | Ohana vs Short Kings
+8:25 PM | Wolfpack vs Diskarte
+
+WEEK 2 | 9/3/2026 | Pioneer High Main Gym
+BYE: Ohana, AIM
+7:00 PM | Wolfpack vs Fly High
+7:50 PM | Short Kings vs United
+8:40 PM | Diskarte vs SJ Eagles" style="width:100%;height:280px;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;font-family:monospace;margin-bottom:8px;resize:vertical;"></textarea>
+    <div id="bulk-import-schedule-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--dark3);border-radius:6px;padding:10px;display:none;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeBulkImportScheduleModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="previewBulkImportSchedule()" style="flex:1;padding:10px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Preview</button>
+      <button onclick="runBulkImportSchedule()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Import (replaces schedule)</button>
+    </div>
+  </div>
+</div>
+
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-tab" onclick="showPage('setup');closeMenu()">⚙ Setup</button>
   <button class="mobile-tab" onclick="showPage('schedule');closeMenu()">📅 Schedule</button>
@@ -457,6 +483,7 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
       <p style="font-size:13px;color:var(--muted);margin-top:4px;">Set games per team. Odd teams get an auto BYE each round.</p>
     </div>
     <button class="btn-red" id="clear-schedule-btn" style="display:none;border:1px solid var(--red);padding:6px 14px;border-radius:7px;" onclick="clearSchedule()">Clear Schedule</button>
+    <button class="btn-orange" style="padding:6px 14px;border-radius:7px;font-size:13px;" onclick="openBulkImportScheduleModal()">📋 Bulk Import Schedule</button>
   </div>
   <div class="card" id="schedule-generator-card">
     <div class="card-header"><h3>Generate Schedule</h3></div>
@@ -488,44 +515,8 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
   </div>
   <div id="schedule-list"></div>
 
-<!-- ── PLAYOFF BRACKET ── -->
-<div id="playoff-bracket-section" style="margin-top:2rem;">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>
-  <div style="overflow-x:auto;padding-bottom:12px;">
-  <div style="display:flex;align-items:center;gap:0;min-width:520px;">
-    <div style="display:flex;flex-direction:column;gap:0;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">SEMIFINALS &middot; AUG 19</div>
-      <div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:20px;">
-        <div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#1</span><span>TBD</span></div>
-        <div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#888;">TBD</span></div>
-        <div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">WED &middot; AUG 19 &middot; 6:30 PM</div>
-      </div>
-      <div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;">
-        <div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#888;">TBD</span></div>
-        <div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#888;">TBD</span></div>
-        <div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">WED &middot; AUG 19 &middot; 7:30 PM</div>
-      </div>
-    </div>
-    <div style="position:relative;width:40px;height:200px;flex-shrink:0;">
-      <div style="position:absolute;top:42px;left:0;right:0;height:2px;background:#333;"></div>
-      <div style="position:absolute;top:42px;right:0;width:2px;height:118px;background:#333;"></div>
-      <div style="position:absolute;top:158px;left:0;right:0;height:2px;background:#333;"></div>
-      <div style="position:absolute;top:100px;left:0;width:20px;height:2px;background:#FF4500;"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;">CHAMPIONSHIP &middot; AUG 26</div>
-      <div style="height:60px;"></div>
-      <div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:20px 16px;text-align:center;width:180px;">
-        <div style="font-size:32px;margin-bottom:6px;">&#127942;</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>
-        <div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WED &middot; AUG 26 &middot; 6:30 PM</div>
-        <div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS &middot; SEASON 1</div>
-      </div>
-    </div>
-  </div>
-  </div>
-  <div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 teams advance &middot; Championship rings for winners &middot; Based on regular season win %</div>
-</div>
+<!-- ── PLAYOFF BRACKET ── (rendered dynamically by renderPlayoffBracket(), pulling live seeds from getSeededStandings() — see renderStandings() for the same tiebreak logic) -->
+<div id="playoff-bracket-section" style="margin-top:2rem;"></div>
 
 </div>
 
@@ -833,6 +824,24 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Recompute Standings from Schedule</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Rebuilds every team's W/L/PF/PA from scratch using only completed regular-season games (week 1–8) in the Schedule — playoff games (week 9+) are always excluded, no matter how they were entered or tagged. Use this if a playoff or exhibition game's result ever leaks into the regular-season standings.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="recomputeStandingsFromSchedule()">🔧 Recompute Standings from Schedule</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Restore Summer 2026 Final Standings</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">One-time recovery — sets Summer 2026's standings back to the confirmed-correct final regular-season numbers (Ohana 5-1, Fly High 5-1, United 3-3, Moneyball 3-3, Fleetwork 3-3, SB Hoops 2-4, Treez 0-6), independent of whatever the Schedule currently contains. Only works while Summer 2026 · 35+ Men's League is the active season/division.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="restoreSummer2026Standings()">🔧 Restore Summer 2026 Final Standings</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Schedule from Game History</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Rebuilds the Schedule (final games with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared/overwritten.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Rebuild Schedule from Game History</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
@@ -974,6 +983,16 @@ Justin" style="width:100%;height:260px;padding:10px;background:var(--dark3);bord
         <button class="btn btn-orange" onclick="saveLeagueName()">💾 Save</button>
       </div>
       <div id="league-name-current" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong>Season Name</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Saved onto every finished game's record, and used as the section heading in Game History. If this is left blank, games default to showing under a generic "Season 1" heading instead of the real season name.</p>
+      <div class="input-row">
+        <input type="text" id="season-name-input" placeholder="e.g. Summer 2026" style="flex:1;"/>
+        <button class="btn btn-orange" onclick="saveSeasonName()">💾 Save</button>
+      </div>
+      <div id="season-name-current" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
     </div>
   </div>
 </div>
@@ -1721,6 +1740,11 @@ function saveRenameSeasonDivision(){
 
 // ── State ──
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
+// Playoffs started Aug 19, 2026 — anything on or after this date is a
+// playoff game and must never count toward regular-season standings.
+// Used as the primary signal (not just schedule round/isPlayoff tags,
+// which turned out to be unreliable on at least one entry in practice).
+var PLAYOFF_START_DATE = new Date('2026-08-19T00:00:00');
 var selTeam=null,selPlayer=null,trackSide='home',logStack=[];
 
 // ── Connection status ──
@@ -1995,6 +2019,28 @@ function onAllLoaded(){
   populateSeasonDivisionSelector();
   hookSrIntoShowPage();
   renderTeams(); renderRoster(); renderSelects();
+  // Auto-heal standings: if playoff games have leaked into the
+  // regular-season standings (the exact bug we kept chasing on Aug 19),
+  // silently recompute and re-save on load instead of requiring someone
+  // to remember to click the recovery button in Settings.
+  try{
+    if(_dataFullyLoaded && schedule && schedule.length){
+      var corrected = computeStandingsFromSchedule();
+      var correctedTeamCount = Object.keys(corrected).length;
+      var currentTeamCount = Object.keys(standings||{}).length;
+      // Never let this auto-correction silently shrink coverage — if the
+      // schedule currently has fewer/wrong teams in it (e.g. from an
+      // accidental import to the wrong division), that's a sign the
+      // Schedule itself isn't trustworthy right now, not that the real
+      // standings should be wiped down to match it.
+      if(correctedTeamCount >= currentTeamCount && JSON.stringify(corrected) !== JSON.stringify(standings)){
+        standings = corrected;
+        fbSet(ctPath('standings'), standings);
+        if(typeof renderStandings==='function') renderStandings();
+        console.log('Auto-corrected standings on load — playoff/excluded games were leaking in.');
+      }
+    }
+  }catch(e){ console.log('Standings auto-heal skipped:', e); }
   if(game && teams.length){
     var b=document.getElementById('game-banner');
     b.style.display='block';
@@ -2105,19 +2151,111 @@ function runBulkImport(){
   var parsed=parseBulkImportText(text);
   if(!parsed.length){ alert('Nothing parsed — check the format (each team needs a "TEAM: Name" line).'); return; }
   var league=document.getElementById('team-league-select')?document.getElementById('team-league-select').value:'';
+  var createdCount=0, mergedCount=0;
   parsed.forEach(function(t,i){
-    var color=TEAM_COLOR_PALETTE[(teams.length+i)%TEAM_COLOR_PALETTE.length];
-    teams.push({
-      name:t.name,
-      color:color,
-      league:league,
-      players:t.players.map(function(p){return {name:p.name,num:p.num,pos:''};})
-    });
+    // If a team with this name already exists (e.g. an empty placeholder
+    // team created earlier), merge the new players into it instead of
+    // creating a duplicate team with the same name.
+    var existing=teams.find(function(et){return et.name.trim().toLowerCase()===t.name.trim().toLowerCase();});
+    var newPlayers=t.players.map(function(p){return {name:p.name,num:p.num,pos:''};});
+    if(existing){
+      var usedNums={};
+      existing.players.forEach(function(p){ if(p.num!==null&&p.num!==undefined) usedNums[p.num]=true; });
+      newPlayers.forEach(function(p){
+        while(usedNums[p.num]) p.num++;
+        usedNums[p.num]=true;
+        existing.players.push(p);
+      });
+      mergedCount++;
+    } else {
+      var color=TEAM_COLOR_PALETTE[(teams.length+i)%TEAM_COLOR_PALETTE.length];
+      teams.push({name:t.name,color:color,league:league,players:newPlayers});
+      createdCount++;
+    }
   });
   fbSet(ctPath('teams'),teams);
   renderTeams(); renderRoster(); renderSelects();
   closeBulkImportModal();
-  alert('Imported '+parsed.length+' team(s)! ✓');
+  alert('Created '+createdCount+' new team(s), merged players into '+mergedCount+' existing team(s). ✓');
+}
+
+// ── BULK IMPORT SCHEDULE ──
+// Parses "WEEK n | date | location" blocks, each followed by an optional
+// "BYE: Team A, Team B" line and then one game per line as
+// "time | Home vs Away". Produces the same flat schedule-array shape the
+// rest of the app already reads/writes (home, away, date, time, location,
+// round, isBye, status).
+function parseBulkImportScheduleText(text){
+  var lines=text.split('\n');
+  var games=[];
+  var current=null; // {round, date, location}
+  lines.forEach(function(raw){
+    var line=raw.trim();
+    if(!line) return;
+    var weekMatch=line.match(/^WEEK\s+(\d+)\s*\|\s*([^|]+)\|\s*(.+)$/i);
+    if(weekMatch){
+      current={round:parseInt(weekMatch[1]),date:weekMatch[2].trim(),location:weekMatch[3].trim()};
+      return;
+    }
+    if(!current) return; // line before any WEEK header — skip
+    var byeMatch=line.match(/^BYE:\s*(.+)$/i);
+    if(byeMatch){
+      byeMatch[1].split(',').forEach(function(name){
+        name=name.trim();
+        if(!name) return;
+        games.push({home:name,away:'',date:current.date,time:'',location:current.location,round:current.round,isBye:true,status:'upcoming'});
+      });
+      return;
+    }
+    var gameMatch=line.match(/^([^|]+)\|\s*(.+?)\s+vs\s+(.+)$/i);
+    if(gameMatch){
+      games.push({
+        home:gameMatch[2].trim(),away:gameMatch[3].trim(),
+        date:current.date,time:gameMatch[1].trim(),location:current.location,
+        round:current.round,isBye:false,status:'upcoming'
+      });
+    }
+  });
+  return games;
+}
+
+function scheduleImportSummary(games){
+  if(!games.length) return 'Nothing parsed — check the format (each week needs a "WEEK n | date | location" line).';
+  var byWeek={};
+  games.forEach(function(g){ if(!byWeek[g.round]) byWeek[g.round]=[]; byWeek[g.round].push(g); });
+  return Object.keys(byWeek).sort(function(a,b){return a-b;}).map(function(wk){
+    var lines=byWeek[wk].map(function(g){
+      return g.isBye ? '  BYE: '+g.home : '  '+g.time+' — '+g.home+' vs '+g.away;
+    }).join('\n');
+    return 'Week '+wk+' ('+byWeek[wk][0].date+', '+byWeek[wk][0].location+')\n'+lines;
+  }).join('\n\n');
+}
+
+function openBulkImportScheduleModal(){
+  document.getElementById('bulk-import-schedule-text').value='';
+  document.getElementById('bulk-import-schedule-preview').style.display='none';
+  document.getElementById('bulk-import-schedule-modal').style.display='flex';
+}
+function closeBulkImportScheduleModal(){
+  document.getElementById('bulk-import-schedule-modal').style.display='none';
+}
+function previewBulkImportSchedule(){
+  var text=document.getElementById('bulk-import-schedule-text').value;
+  var games=parseBulkImportScheduleText(text);
+  var el=document.getElementById('bulk-import-schedule-preview');
+  el.textContent=scheduleImportSummary(games);
+  el.style.display='block';
+}
+function runBulkImportSchedule(){
+  var text=document.getElementById('bulk-import-schedule-text').value;
+  var games=parseBulkImportScheduleText(text);
+  if(!games.length){ alert('Nothing parsed — check the format (each week needs a "WEEK n | date | location" line).'); return; }
+  if(!confirm('This replaces the ENTIRE current schedule for the active season/division ('+CT_ACTIVE_LABEL+') with '+games.length+' parsed game/bye entries. Continue?')) return;
+  schedule=games;
+  fbSet(ctPath('schedule'),schedule);
+  if(typeof renderSchedule==='function') renderSchedule();
+  closeBulkImportScheduleModal();
+  alert('✅ Imported '+games.length+' schedule entries.');
 }
 
 function resetTeams(){
@@ -2486,7 +2624,7 @@ function generateSchedule(){
   renderSchedule();
   if(db){
     db.ref(ctPath('schedule')).set(games).then(function(){
-      alert('✅ Season 1 schedule loaded! 7 game days + 2 playoff days.');
+      alert('✅ Schedule loaded! 7 game days + 2 playoff days.');
     }).catch(function(err){
       alert('⚠️ Schedule saved locally but Firebase error: '+err.message);
     });
@@ -2661,43 +2799,73 @@ function finishGame(){
     var hn=teams[game.hi].name, an=teams[game.ai].name;
     var hc=teams[game.hi].color, ac=teams[game.ai].color;
     var hs=game.homeScore, as_=game.awayScore;
+    // Determine which week/round this game belongs to BEFORE touching
+    // standings — playoff games (week 9+, i.e. Round 1 on Aug 19 onward)
+    // must NOT feed back into the regular-season standings, or the
+    // playoff bracket's seeding keeps reshuffling every time a playoff
+    // game is saved instead of staying locked to the final regular
+    // season record.
+    var matchedWeek=null;
+    for(var sw=0;sw<schedule.length;sw++){
+      if(schedule[sw].status!=='upcoming') continue;
+      if((schedule[sw].home===hn&&schedule[sw].away===an)||(schedule[sw].home===an&&schedule[sw].away===hn)){
+        matchedWeek=schedule[sw].round||null;
+        break;
+      }
+    }
+    // Date is checked in addition to the schedule match — relying only on
+    // finding an "upcoming" schedule entry with the right round number
+    // missed at least one real playoff game (its entry either didn't
+    // match or wasn't tagged round 9+), which let that game's result leak
+    // into the regular-season standings.
+    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (new Date() >= PLAYOFF_START_DATE);
     if(!standings[hn])standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
     if(!standings[an])standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
     standings[hn].color=hc; standings[an].color=ac;
-    standings[hn].pf=(standings[hn].pf||0)+hs; standings[hn].pa=(standings[hn].pa||0)+as_;
-    standings[an].pf=(standings[an].pf||0)+as_; standings[an].pa=(standings[an].pa||0)+hs;
-    if(hs>as_){standings[hn].w++;standings[an].l++;}
-    else if(as_>hs){standings[an].w++;standings[hn].l++;}
+    if(!isPlayoffGame){
+      standings[hn].pf=(standings[hn].pf||0)+hs; standings[hn].pa=(standings[hn].pa||0)+as_;
+      standings[an].pf=(standings[an].pf||0)+as_; standings[an].pa=(standings[an].pa||0)+hs;
+      if(hs>as_){standings[hn].w++;standings[an].l++;}
+      else if(as_>hs){standings[an].w++;standings[hn].l++;}
+    }
     // Mark schedule game final — check both home/away orderings, since the
     // live game may have been started with sides swapped from however the
     // auto-generated schedule listed them.
-    var matchedWeek=null;
     for(var s=0;s<schedule.length;s++){
       if(schedule[s].status!=='upcoming') continue;
       if(schedule[s].home===hn&&schedule[s].away===an){
         schedule[s].status='final'; schedule[s].homeScore=hs; schedule[s].awayScore=as_;
-        matchedWeek=schedule[s].round||null;
         break;
       }
       if(schedule[s].home===an&&schedule[s].away===hn){
         schedule[s].status='final'; schedule[s].homeScore=as_; schedule[s].awayScore=hs;
-        matchedWeek=schedule[s].round||null;
         break;
       }
     }
     // Accumulate player stats
-    function accum(teamName,players,statsObj){
+    // A player only counts as having played this game if they were in the
+    // starting lineup, or logged any stat at all (points, rebounds, a foul,
+    // etc.) — a zero-stat entry gets created for the whole roster at game
+    // start regardless of participation, so without this check, everyone
+    // on the roster silently got credited with a game played even if they
+    // never suited up or sat the whole game on the bench.
+    function didPlay(num,gs,lineupArr){
+      if(lineupArr && lineupArr.indexOf(num)!==-1) return true;
+      return ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','foul','tech'].some(function(k){return (gs[k]||0)>0;});
+    }
+    function accum(teamName,players,statsObj,lineupArr){
       if(!playerStats[teamName])playerStats[teamName]={};
       players.forEach(function(p){
         var gs=statsObj[p.num]||{};
+        if(!didPlay(p.num,gs,lineupArr)) return;
         if(!playerStats[teamName][p.num])playerStats[teamName][p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0};
         var ps=playerStats[teamName][p.num];
         ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){ps[k]=(ps[k]||0)+(gs[k]||0);});
         ps.gp++;
       });
     }
-    accum(hn,teams[game.hi].players,game.hStats);
-    accum(an,teams[game.ai].players,game.aStats);
+    accum(hn,teams[game.hi].players,game.hStats,game.hLineup);
+    accum(an,teams[game.ai].players,game.aStats,game.aLineup);
     // Save box score + play-by-play to history
     var gameId='game_'+Date.now();
     var gameRecord={
@@ -2712,9 +2880,10 @@ function finishGame(){
       hLineup:game.hLineup||[],aLineup:game.aLineup||[]
     };
     // Save per-player game logs
-    function savePlayerGameLogs(teamName,players,statsObj){
+    function savePlayerGameLogs(teamName,players,statsObj,lineupArr){
       players.forEach(function(p){
         var s=statsObj[p.num]||{};
+        if(!didPlay(p.num,s,lineupArr)) return;
         if(!playerStats[teamName])playerStats[teamName]={};
         if(!playerStats[teamName][p.num])playerStats[teamName][p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
         if(!playerStats[teamName][p.num].games)playerStats[teamName][p.num].games=[];
@@ -2726,8 +2895,8 @@ function finishGame(){
         });
       });
     }
-    savePlayerGameLogs(hn,teams[game.hi].players,game.hStats);
-    savePlayerGameLogs(an,teams[game.ai].players,game.aStats);
+    savePlayerGameLogs(hn,teams[game.hi].players,game.hStats,game.hLineup);
+    savePlayerGameLogs(an,teams[game.ai].players,game.aStats,game.aLineup);
     gameHistory.unshift(gameRecord);
 
     // Snapshot the full payload locally BEFORE attempting the network save.
@@ -2819,11 +2988,20 @@ function backfillGameWeeks(){
 function computeRebuiltPlayerStats(histInput){
   var hist = toArr(histInput);
   var rebuilt={};
-  function accumRebuild(teamName,players,statsObj,gameMeta){
+  // Same participation rule as finishGame(): a player only counts as
+  // having played if they were in that game's starting lineup, or logged
+  // any stat at all. Without this, every player on the roster snapshot
+  // gets credited with a game played even if they never suited up.
+  function didPlayRebuild(gs,lineupArr,num){
+    if(lineupArr && lineupArr.indexOf(num)!==-1) return true;
+    return ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){return (gs[k]||0)>0;});
+  }
+  function accumRebuild(teamName,players,statsObj,gameMeta,lineupArr){
     if(!teamName || !players) return;
     if(!rebuilt[teamName]) rebuilt[teamName]={};
     players.forEach(function(p){
       var gs=(statsObj&&statsObj[p.num])||{};
+      if(!didPlayRebuild(gs,lineupArr,p.num)) return;
       if(!rebuilt[teamName][p.num]) rebuilt[teamName][p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
       var ps=rebuilt[teamName][p.num];
       ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){ ps[k]=(ps[k]||0)+(gs[k]||0); });
@@ -2843,8 +3021,8 @@ function computeRebuiltPlayerStats(histInput){
   chronological.forEach(function(g){
     if(!g || !g.home || !g.away) return;
     var hWin = (g.homeScore||0) > (g.awayScore||0);
-    accumRebuild(g.home, g.homePlayers, g.hStats, {id:g.id, date:g.date, opp:g.away, result:hWin?'W':'L'});
-    accumRebuild(g.away, g.awayPlayers, g.aStats, {id:g.id, date:g.date, opp:g.home, result:hWin?'L':'W'});
+    accumRebuild(g.home, g.homePlayers, g.hStats, {id:g.id, date:g.date, opp:g.away, result:hWin?'W':'L'}, g.hLineup);
+    accumRebuild(g.away, g.awayPlayers, g.aStats, {id:g.id, date:g.date, opp:g.home, result:hWin?'L':'W'}, g.aLineup);
   });
   return rebuilt;
 }
@@ -2865,6 +3043,165 @@ function rebuildPlayerStatsFromHistory(){
   fbSet(ctPath('playerStats'), playerStats);
   alert('✅ Player Stats rebuilt from '+hist.length+' saved game(s) and re-synced.');
   if(typeof renderPlayerStats==='function') renderPlayerStats();
+}
+
+// ── RECOVERY: recompute standings from scratch using the Schedule ──
+// Standings get built incrementally, game by game, as each one is
+// finished — which means a playoff/exhibition game whose schedule entry
+// wasn't correctly tagged with a week 9+ round number can slip through
+// and get counted into the regular-season standings. Rather than trying
+// to manually subtract a specific game's stats back out (error-prone),
+// this recomputes every team's W/L/PF/PA from zero using ONLY completed
+// (status==='final') games in the Schedule with round < 9 — playoff
+// games are excluded categorically here, regardless of how any single
+// game got entered or mistagged.
+// Anything on or after this date is a playoff game and must never count
+// toward regular-season standings, regardless of whether its schedule
+// entry happens to have the right round number or isPlayoff flag set.
+// Tagging a couple of entries correctly turned out to be unreliable in
+// practice, so date is now the primary, authoritative signal instead of
+// a secondary check. See PLAYOFF_START_DATE near the top of the file.
+function parseScheduleDate(dateStr){
+  if(!dateStr) return null;
+  var d = new Date(dateStr);
+  if(!isNaN(d.getTime())) return d;
+  // Fallback: strip a leading "Wed, " style weekday prefix and retry
+  var stripped = dateStr.replace(/^[A-Za-z]+,\s*/,'');
+  d = new Date(stripped);
+  return isNaN(d.getTime()) ? null : d;
+}
+// Tonight's (Aug 19) three Round 1 matchups, excluded by exact team-name
+// pair as an absolute guarantee — independent of the round/isPlayoff tag
+// and independent of whether g.date happens to parse correctly. Belt and
+// suspenders: the date-cutoff check above should already catch these,
+// but this makes sure they're excluded no matter what.
+var KNOWN_PLAYOFF_PAIRS = [
+  ['Fly High','Treez'], ['Fleetwork','United'], ['Moneyball','SB Hoops']
+];
+function isKnownPlayoffPair(home,away){
+  return KNOWN_PLAYOFF_PAIRS.some(function(pair){
+    return (pair[0]===home && pair[1]===away) || (pair[0]===away && pair[1]===home);
+  });
+}
+function computeStandingsFromSchedule(){
+  var rebuilt={};
+  schedule.forEach(function(g){
+    if(!g || g.status!=='final') return;
+    if(g.isPlayoff) return;
+    if(g.round!=null && g.round>=9) return;
+    var gd = parseScheduleDate(g.date);
+    if(gd && gd.getTime() >= PLAYOFF_START_DATE.getTime()) return;
+    if(g.home && g.away && isKnownPlayoffPair(g.home,g.away)) return;
+    if(!g.home || !g.away) return;
+    var hs=g.homeScore, as_=g.awayScore;
+    if(hs==null || as_==null) return;
+    var homeTeam=teams.find(function(t){return t.name===g.home;});
+    var awayTeam=teams.find(function(t){return t.name===g.away;});
+    var hc=(homeTeam&&homeTeam.color)||'#FF5C00';
+    var ac=(awayTeam&&awayTeam.color)||'#FF5C00';
+    if(!rebuilt[g.home]) rebuilt[g.home]={w:0,l:0,pf:0,pa:0,color:hc};
+    if(!rebuilt[g.away]) rebuilt[g.away]={w:0,l:0,pf:0,pa:0,color:ac};
+    rebuilt[g.home].color=hc; rebuilt[g.away].color=ac;
+    rebuilt[g.home].pf+=hs; rebuilt[g.home].pa+=as_;
+    rebuilt[g.away].pf+=as_; rebuilt[g.away].pa+=hs;
+    if(hs>as_){ rebuilt[g.home].w++; rebuilt[g.away].l++; }
+    else if(as_>hs){ rebuilt[g.away].w++; rebuilt[g.home].l++; }
+  });
+  return rebuilt;
+}
+
+function recomputeStandingsFromSchedule(){
+  var finalCount=schedule.filter(function(g){return g && g.status==='final' && !g.isPlayoff && (g.round==null||g.round<9);}).length;
+  if(!finalCount){
+    alert('No completed regular-season games found in the Schedule to recompute from.');
+    return;
+  }
+  if(!confirm('This will recompute every team\'s standings from scratch using the '+finalCount+' completed regular-season game(s) in the Schedule, and replace the current Standings with the result. Playoff games (week 9+) are always excluded.\n\nUse this if a playoff or exhibition game\'s result ever leaks into the standings. Continue?')) return;
+
+  standings = computeStandingsFromSchedule();
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('standings'), standings);
+  alert('✅ Standings recomputed from '+finalCount+' regular-season game(s) — playoff games excluded.');
+  if(typeof renderStandings==='function') renderStandings();
+}
+
+// ── ONE-TIME RECOVERY: restore Summer 2026's confirmed-correct final
+// standings directly, independent of whatever the Schedule currently
+// holds. Added after an accidental schedule import/clear on the wrong
+// division risked this data — safer to restore from the last verified
+// numbers than to try to reconstruct anything from a Schedule that may
+// no longer reflect the real season.
+function restoreSummer2026Standings(){
+  if(CT_BASE!=='ct'){
+    alert('This only restores Summer 2026 · 35+ Men\'s League — switch to that season/division first.');
+    return;
+  }
+  if(!confirm('Overwrite the CURRENT Summer 2026 standings with the confirmed-correct final numbers (Ohana 5-1, Fly High 5-1, United 3-3, Moneyball 3-3, Fleetwork 3-3, SB Hoops 2-4, Treez 0-6)? This cannot be undone.')) return;
+
+  var snapshot={
+    'Ohana':{w:5,l:1,pf:361,pa:277},
+    'Fly High':{w:5,l:1,pf:393,pa:283},
+    'United':{w:3,l:3,pf:359,pa:353},
+    'Moneyball':{w:3,l:3,pf:367,pa:373},
+    'Fleetwork':{w:3,l:3,pf:326,pa:345},
+    'SB Hoops':{w:2,l:4,pf:307,pa:423},
+    'Treez':{w:0,l:6,pf:338,pa:397}
+  };
+  var restored={};
+  Object.keys(snapshot).forEach(function(name){
+    var t=teams.find(function(tt){return tt.name===name;});
+    restored[name]=Object.assign({},snapshot[name],{color:(t&&t.color)||'#FF5C00'});
+  });
+
+  standings=restored;
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('standings'), standings);
+  alert('✅ Summer 2026 standings restored.');
+  if(typeof renderStandings==='function') renderStandings();
+}
+
+// ── RECOVERY: rebuild the Schedule from Game History ──
+// Some features (MVP of the Week, the recompute-standings tool) key off
+// the Schedule array specifically — status:'final' entries with a round
+// number — not Game History. If the Schedule ever gets cleared or
+// overwritten (e.g. an accidental import to the wrong division), those
+// features break even though the real game records in Game History are
+// completely intact. This rebuilds minimal "final" Schedule entries
+// directly from Game History, which is the more reliable source since
+// it's written once per finished game and not touched by schedule edits.
+function rebuildScheduleFromGameHistory(){
+  var hist=toArr(gameHistory);
+  if(!hist.length){
+    alert('No games found in Game History to rebuild the schedule from.');
+    return;
+  }
+  if(!confirm('This rebuilds the Schedule from the '+hist.length+' game(s) saved in Game History, marking each as final with its real score. Any existing Schedule entries (e.g. upcoming/unplayed games) will be replaced. Continue?')) return;
+
+  var rebuilt=hist.slice().reverse().map(function(g){
+    return {
+      home:g.home, away:g.away,
+      homeScore:g.homeScore, awayScore:g.awayScore,
+      date:g.date||'', time:g.time||'', location:g.location||'',
+      round:(g.week||g.week===0)?g.week:1,
+      isBye:false, isPlayoff:!!((g.week||g.week===0)&&g.week>=9),
+      status:'final'
+    };
+  });
+
+  schedule=rebuilt;
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('schedule'), schedule);
+  alert('✅ Schedule rebuilt from '+rebuilt.length+' game(s) in Game History.');
+  if(typeof renderSchedule==='function') renderSchedule();
 }
 
 // ── MERGE: fold an old/former jersey-number entry into a current player ──
@@ -3826,23 +4163,223 @@ function headToHeadRecord(nameA,nameB){
   return {aw:aw,bw:bw};
 }
 
-function renderStandings(){
-  var tbody=document.getElementById('standings-body');
-  var entries=Object.keys(standings).map(function(name){
+// Shared seeding logic — used by both the standings table and the
+// playoff bracket, so seeds always match. Same tiebreak order as
+// player.html: win % desc, head-to-head, point diff desc, PPG desc.
+function getSeededStandings(){
+  return Object.keys(standings).map(function(name){
     var s=standings[name]; var gp=s.w+s.l, diff=s.pf-s.pa;
     return {name:name,w:s.w,l:s.l,gp:gp,pf:s.pf,pa:s.pa,diff:diff,
       pctNum:gp>0?s.w/gp:0,
       pct:gp>0?(s.w/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?(s.pf/gp).toFixed(1):'0.0',papg:gp>0?(s.pa/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
   }).sort(function(a,b){
-    // 1. Win % desc (not raw wins — games played can differ across teams),
-    // 2. Head-to-head vs the tied team, 3. Point diff desc, 4. PPG desc
+    // Win % is primary again — checking head-to-head unconditionally for
+    // every pair (regardless of how different the records were) produced
+    // a genuinely broken, non-transitive order (a team with a far better
+    // record could rank below two teams with worse ones). Head-to-head is
+    // back to being a tiebreaker for teams tied on win %, which is also
+    // exactly what correctly separates two teams with an identical
+    // record but a season-series result between them.
     if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
     var h2h=headToHeadRecord(a.name,b.name);
     if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
     if(b.diff!==a.diff) return b.diff-a.diff;
     return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
+}
+
+// Playoff Bracket — mirrors the exact same dynamic bracket in player.html
+// (same getSeededStandings(), same Round 1/2/Sep 2 structure and times).
+// Kept in sync manually across both files since admin.html doesn't share
+// a JS module with player.html; if the schedule/seeding logic changes in
+// one, it needs to change in the other too.
+// Looks up whether a specific playoff matchup has already been played,
+// and if so, returns the winning team's name. Matched by team names AND
+// week number (9=Round 1 Aug 19, 10=Round 2 Aug 26) so an earlier
+// regular-season game between the same two teams is never mistaken for
+// the playoff result.
+function findPlayoffWinner(nameA,nameB,week){
+  for(var i=0;i<gameHistory.length;i++){
+    var g=gameHistory[i];
+    if(g.week!==week) continue;
+    if((g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA)){
+      if(g.homeScore>g.awayScore) return g.home;
+      if(g.awayScore>g.homeScore) return g.away;
+    }
+  }
+  return null;
+}
+
+// Thursday League playoffs: 8 teams, straight single-elimination — no bye.
+// Seeding isn't known yet (season hasn't started), so this shows
+// placeholders (Seed 1, Seed 8, etc.) rather than guessing. QF4 is
+// deliberately NOT seed-based — Diskarte and Wolfpack always meet there
+// regardless of final standings, per the league's own bracket rule.
+function renderThursdayLeagueBracket(container){
+  var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:760px;">';
+
+  function card(rows,timeLabel){
+    var body=rows.map(function(r){
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';">'+r.name+'</span></div>';
+    }).join('');
+    return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
+      +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
+  }
+
+  // Quarterfinals — Oct 22, Pioneer High
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">QUARTERFINALS · OCT 22</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
+  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#8',name:'Seed 8'}],'6:30–7:15 PM');
+  html+=card([{seed:'#4',name:'Seed 4',border:true},{seed:'#5',name:'Seed 5'}],'7:20–8:00 PM');
+  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#7',name:'Seed 7'}],'8:00–8:55 PM');
+  html+=card([{seed:'',name:'Diskarte',seedColor:'#C9A84C',border:true},{seed:'',name:'Wolfpack',seedColor:'#C9A84C'}],'9:00–10:00 PM');
+  html+='</div>';
+
+  html+='<div style="position:relative;width:40px;height:420px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:170px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:200px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:116px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='<div style="position:absolute;top:245px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:245px;right:0;width:2px;height:170px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:412px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:328px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='</div>';
+
+  // Semifinals + Final — Oct 29, Pioneer High
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS + FINAL · OCT 29</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
+  html+=card([{seed:'W',name:'Winner: QF1',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'6:30 PM');
+  html+=card([{seed:'W',name:'Winner: QF2',dim:true,border:true},{seed:'W',name:'Winner: QF3',dim:true}],'7:25 PM');
+  html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
+    +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">FINAL — 8:25 PM</div>'
+    +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WINNER: SEMI 1 vs SEMI 2</div></div>';
+  html+='</div>';
+
+  html+='</div></div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings, except QF4 (Diskarte vs Wolfpack, fixed)</div>';
+
+  container.innerHTML=html;
+}
+
+function renderPlayoffBracket(){
+  var container=document.getElementById('playoff-bracket-section');
+  if(!container)return;
+  // Different divisions can have entirely different bracket shapes (this
+  // one's 7-team-with-bye vs the Thursday League's 8-team single elim) —
+  // detected here by team names unique to each, since there's no shared
+  // bracket-config data model across divisions yet.
+  var teamNames=teams.map(function(t){return t.name;});
+  var isThursdayLeague=teamNames.indexOf('Wolfpack')!==-1 && teamNames.indexOf('Diskarte')!==-1;
+  if(isThursdayLeague){ renderThursdayLeagueBracket(container); return; }
+
+  // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
+  // recomputed live from getSeededStandings(). Locking it here means it
+  // can't shift if regular-season standings data ever gets touched again
+  // (e.g. a correction, a rebuild) after the bracket's already real.
+  // Seed groups matter here: #4/#5 play at 7:30 (Fleetwork/United), #3/#6
+  // play at 8:30 (Moneyball/SB Hoops) — this specific grouping is what
+  // makes the standard "winner of 4v5 faces the #1 bye" advancement land
+  // on United vs Ohana, and "winner of 2v7 faces winner of 3v6" land on
+  // Fly High vs Moneyball, matching how Round 1 actually played out.
+  var s1='Ohana',s2='Fly High',s3='Moneyball',s4='Fleetwork',s5='United',s6='SB Hoops',s7='Treez';
+
+  // Round 1 results (Aug 19): Fly High beat Treez, United beat Fleetwork,
+  // Moneyball beat SB Hoops. Hardcoded here so they show immediately;
+  // findPlayoffWinner still checks gameHistory first, so once these games
+  // are actually finished in Live Tracking the same names come from real
+  // data instead — no conflict either way.
+  var w27=findPlayoffWinner(s2,s7,9)||'Fly High';
+  var w36=findPlayoffWinner(s3,s6,9)||'Moneyball';
+  var w45=findPlayoffWinner(s4,s5,9)||'United';
+  var r2aLabel=w27?w27:('Winner: '+s2+'/'+s7);
+  var r2bLabel=w36?w36:('Winner: '+s3+'/'+s6);
+  var r2cLabel=w45?w45:('Winner: '+s4+'/'+s5);
+  var r2aColor=w27?'#ddd':'#888', r2aSize=w27?'13px':'11px';
+  var r2bColor=w36?'#ddd':'#888', r2bSize=w36?'13px':'11px';
+  var r2cColor=w45?'#ddd':'#888', r2cSize=w45?'13px':'11px';
+
+  // Round 2 winners (week 10) feed the Championship — only resolvable
+  // once we actually know who won both Round 2 games (i.e. w27/w36 AND
+  // w45 are real names, not placeholders).
+  var semi1Winner=(w27&&w36)?findPlayoffWinner(w27,w36,10):null;
+  var semi2Winner=(w45)?findPlayoffWinner(s1,w45,10):null;
+  var champion=(semi1Winner&&semi2Winner)?findPlayoffWinner(semi1Winner,semi2Winner,11):null;
+
+  var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:800px;">';
+
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 1 · AUG 19</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#ddd;text-transform:uppercase;">'+s2+'</span></div>';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#ddd;text-transform:uppercase;">'+s7+'</span></div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#ddd;text-transform:uppercase;">'+s4+'</span></div>';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#ddd;text-transform:uppercase;">'+s5+'</span></div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#ddd;text-transform:uppercase;">'+s3+'</span></div>';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#ddd;text-transform:uppercase;">'+s6+'</span></div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">8:30 PM</div></div></div>';
+
+  html+='<div style="position:relative;width:40px;height:340px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:306px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
+
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 2 · AUG 26</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w27?'✓':'W')+'</span><span style="color:'+r2aColor+';font-size:'+r2aSize+';text-transform:uppercase;">'+r2aLabel+'</span></div>';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w36?'✓':'W')+'</span><span style="color:'+r2bColor+';font-size:'+r2bSize+';text-transform:uppercase;">'+r2bLabel+'</span></div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;text-transform:uppercase;">'+s1+'</span></div>';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w45?'✓':'W')+'</span><span style="color:'+r2cColor+';font-size:'+r2cSize+';text-transform:uppercase;">'+r2cLabel+'</span></div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div></div>';
+
+  html+='<div style="position:relative;width:40px;height:340px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:306px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:338px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:120px;left:0;width:20px;height:2px;background:#FF4500;"></div></div>';
+
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEP 2</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Main Gym</div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30–7:30 PM</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">⭐ All-Star Game</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30–8:30 PM</div></div>';
+  html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:180px;">';
+  html+='<div style="font-size:28px;margin-bottom:4px;">🏆</div>';
+  html+=champion
+    ? '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;">'+champion+'</div>'
+    : '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
+  html+='<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:30–9:30 PM</div>';
+  html+='<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SUMMER 2026</div></div></div>';
+
+  html+='</div></div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs · #1 seed bye in Round 1 · Championship rings for winners</div>';
+
+  container.innerHTML=html;
+}
+
+function renderStandings(){
+  var tbody=document.getElementById('standings-body');
+  var entries=getSeededStandings();
   if(!entries.length){
     tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No completed games yet.</td></tr>';
   } else {
@@ -3858,6 +4395,7 @@ function renderStandings(){
         +'<td>'+e.pf+'</td><td>'+e.pa+'</td><td class="'+dc+'">'+diff+'</td><td>'+e.ppg+'</td><td>'+e.papg+'</td></tr>';
     }).join('');
   }
+  renderPlayoffBracket();
   // Game history with box score
   var ghEl=document.getElementById('game-history');
   if(!gameHistory.length){ghEl.innerHTML='<p style="color:var(--muted);font-size:13px;font-style:italic;">No game history yet.</p>';return;}
@@ -4148,13 +4686,14 @@ function renderPlayersTab(){
       +'<div class="player-game-log">'
       +'<div class="player-game-log-header">Game-by-Game Log — '+r.p.name+'</div>'
       +'<div style="overflow-x:auto;"><table>'
-      +'<thead><tr><th style="text-align:left;">Date</th><th style="text-align:left;">Opp</th><th style="text-align:left;">Result</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead>'
+      +'<thead><tr><th style="text-align:left;">Date</th><th style="text-align:left;">Opp</th><th style="text-align:left;">Result</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th></th></tr></thead>'
       +'<tbody>'+games.map(function(g){
         return '<tr><td style="text-align:left;font-size:12px;color:var(--muted);">'+(g.date||'')+'</td>'
           +'<td style="text-align:left;font-size:13px;font-weight:600;color:var(--white);">vs '+(g.opp||'')+'</td>'
           +'<td style="text-align:left;font-weight:700;color:'+(g.result==='W'?'var(--green)':'var(--red)')+';">'+(g.result||'')+'</td>'
           +'<td class="pts-cell">'+(g.pts||0)+'</td><td>'+(g.reb||0)+'</td><td>'+(g.ast||0)+'</td>'
-          +'<td>'+(g.stl||0)+'</td><td>'+(g.blk||0)+'</td><td>'+(g.to||0)+'</td></tr>';
+          +'<td>'+(g.stl||0)+'</td><td>'+(g.blk||0)+'</td><td>'+(g.to||0)+'</td>'
+          +'<td><button onclick="event.stopPropagation();removeGameFromPlayerLog(\''+r.teamName.replace(/'/g,"\\'")+'\','+r.p.num+',\''+(g.gameId||'').replace(/'/g,"\\'")+'\')" title="Remove this game from '+r.p.name+'\'s profile" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 6px;">🗑</button></td></tr>';
       }).join('')+'</tbody></table></div></div>'
       +'</td></tr>':'';
     return '<tr onclick="togglePlayerLog('+ri+')" style="cursor:pointer;" title="Click to see game-by-game stats">'
@@ -4170,6 +4709,34 @@ function renderPlayersTab(){
 function togglePlayerLog(ri){
   var el=document.getElementById('pglog-'+ri);
   if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+// Removes one specific game from a player's profile — pulls it out of
+// their per-game log AND subtracts its stats (points, rebounds, etc.)
+// and one game-played from their season totals, so the two always stay
+// in sync. Does not touch the team's W/L or the game's box score in
+// Game History — this only affects this one player's individual profile.
+function removeGameFromPlayerLog(teamName,num,gameId){
+  var ps=playerStats[teamName] && playerStats[teamName][num];
+  if(!ps || !ps.games){ alert('Could not find that game on this player\'s profile.'); return; }
+  var idx=ps.games.findIndex(function(g){return g.gameId===gameId;});
+  if(idx<0){ alert('Could not find that specific game — it may have already been removed.'); return; }
+  var g=ps.games[idx];
+  if(!confirm('Remove the game vs '+(g.opp||'?')+' on '+(g.date||'?')+' ('+(g.pts||0)+' pts) from this player\'s profile? This cannot be undone.')) return;
+
+  ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].forEach(function(k){
+    ps[k]=Math.max(0,(ps[k]||0)-(g[k]||0));
+  });
+  ps.gp=Math.max(0,(ps.gp||0)-1);
+  ps.games.splice(idx,1);
+
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('playerStats'), playerStats);
+  if(typeof renderPlayersTab==='function') renderPlayersTab();
+  alert('✅ Removed.');
 }
 
 // ── EXPORT ALL DATA ──
@@ -4374,6 +4941,7 @@ function renderSettings(){
   renderPOTWAdmin();
   renderStreamAdmin();
   renderLeagueNameAdmin();
+  renderSeasonNameAdmin();
   // Populate POTW team dropdown
   var tSel=document.getElementById('potw-team-select');
   tSel.innerHTML='<option value="">Select team…</option>';
@@ -4505,6 +5073,26 @@ function renderLeagueNameAdmin(){
     el.innerHTML='<span style="color:var(--green);font-weight:700;">✓ Set:</span> <span style="color:var(--white);">'+appSettings.leagueName+'</span>';
   } else {
     el.innerHTML='<span style="font-style:italic;">Not set — defaults to "COURTTRACK LEAGUE".</span>';
+  }
+}
+
+// ── SEASON NAME ADMIN ──
+function saveSeasonName(){
+  var name=(document.getElementById('season-name-input').value||'').trim();
+  appSettings.season=name;
+  saveSettings();
+  renderSeasonNameAdmin();
+}
+
+function renderSeasonNameAdmin(){
+  var el=document.getElementById('season-name-current');
+  if(!el) return;
+  var inp=document.getElementById('season-name-input');
+  if(appSettings.season){
+    if(inp) inp.value=appSettings.season;
+    el.innerHTML='<span style="color:var(--green);font-weight:700;">✓ Set:</span> <span style="color:var(--white);">'+appSettings.season+'</span>';
+  } else {
+    el.innerHTML='<span style="font-style:italic;">Not set — Game History currently defaults to showing "Season 1" as the heading.</span>';
   }
 }
 
