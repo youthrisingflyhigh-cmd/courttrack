@@ -1332,36 +1332,17 @@ function renderFilm(){
     if((g.home==='SB HOOPS'&&g.away==='OHANA')||(g.home==='OHANA'&&g.away==='SB HOOPS')){
       return 2;
     }
-    // Hardcoded fix: Aug 19 Round 1 playoff games — their schedule
-    // entries weren't reliably tagged with round 9, the same underlying
-    // issue that briefly let them leak into the regular-season standings.
-    var playoffPairs=[['Fly High','Treez'],['Fleetwork','United'],['Moneyball','SB Hoops']];
-    var isPlayoffPair=playoffPairs.some(function(pair){
-      return (pair[0]===g.home&&pair[1]===g.away)||(pair[0]===g.away&&pair[1]===g.home);
-    });
-    if(isPlayoffPair) return 9;
     var match=schedule.find(function(s){
       return s.status==='final' &&
         ((s.home===g.home&&s.away===g.away)||(s.home===g.away&&s.away===g.home));
     });
     return match?match.round:null;
   }
-  // Playoff weeks get a proper label instead of a generic "Week 9".
-  // wk comes from Object.keys() so it's always a string here, even for
-  // numeric weeks — convert before comparing.
-  function weekLabel(wk){
-    if(wk==='?') return 'Week TBD';
-    var n=Number(wk);
-    if(n===9) return 'Playoff Round 1';
-    if(n===10) return 'Playoff Round 2';
-    if(n===11) return 'Championship Weekend';
-    return 'Week '+wk;
-  }
 
   var seasons={}; // seasonName -> { weekNum -> [games] }
   var seasonOrder=[];
   hist.slice().reverse().forEach(function(g){
-    var seasonName=g.season||appSeasonName||'Summer 2026';
+    var seasonName=g.season||appSeasonName||'Season 1';
     var wk=resolveWeek(g);
     var weekKey=(wk||wk===0)?wk:'?';
     if(!seasons[seasonName]){ seasons[seasonName]={}; seasonOrder.push(seasonName); }
@@ -1378,7 +1359,7 @@ function renderFilm(){
     });
     html+='<h3 style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);margin:1.5rem 0 0.75rem;">'+seasonName+'</h3>';
     weekKeys.forEach(function(wk){
-      html+='<div class="schedule-week"><div class="schedule-week-header">'+weekLabel(wk)+'</div>'
+      html+='<div class="schedule-week"><div class="schedule-week-header">'+(wk==='?'?'Week TBD':'Week '+wk)+'</div>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">';
       weeks[wk].forEach(function(g){ html+=gameCardHtml(g); });
       html+='</div></div>';
@@ -1421,108 +1402,14 @@ function renderSchedule(){
     });
     weeksHtml+='</div>';
   });
-  // Looks up whether a specific playoff matchup has already been played,
-  // and if so, returns the winning team's name (matched by team names AND
-  // week number so an earlier regular-season game between the same two
-  // teams is never mistaken for the playoff result).
-  function findPlayoffWinner(nameA,nameB,week){
-    for(var pi=0;pi<gameHistory.length;pi++){
-      var g=gameHistory[pi];
-      if(g.week!==week) continue;
-      if((g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA)){
-        if(g.homeScore>g.awayScore) return g.home;
-        if(g.awayScore>g.homeScore) return g.away;
-      }
-    }
-    return null;
-  }
-
-  // Different divisions can have entirely different bracket shapes (this
-  // one's 7-team-with-bye vs the Thursday League's 8-team single elim) —
-  // detected here by team names unique to each, since there's no shared
-  // bracket-config data model across divisions yet.
-  var teamNames=teams.map(function(t){return t.name;});
-  var isThursdayLeague=teamNames.indexOf('Wolfpack')!==-1 && teamNames.indexOf('Diskarte')!==-1;
-
-  if(isThursdayLeague){
-    // Thursday League playoffs: 8 teams, straight single-elimination — no
-    // bye. Seeding isn't known yet (season hasn't started), so this shows
-    // placeholders rather than guessing. QF4 is deliberately NOT
-    // seed-based — Diskarte and Wolfpack always meet there regardless of
-    // final standings, per the league's own bracket rule.
-    function tlCard(rows,timeLabel){
-      var body=rows.map(function(r){
-        return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';">'+r.name+'</span></div>';
-      }).join('');
-      return '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
-        +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
-    }
-    html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:760px;">';
-    html += '<div style="display:flex;flex-direction:column;gap:0;">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">QUARTERFINALS · OCT 22</div>';
-    html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-    html += tlCard([{seed:'#1',name:'Seed 1',border:true},{seed:'#8',name:'Seed 8'}],'6:30–7:15 PM');
-    html += tlCard([{seed:'#4',name:'Seed 4',border:true},{seed:'#5',name:'Seed 5'}],'7:20–8:00 PM');
-    html += tlCard([{seed:'#2',name:'Seed 2',border:true},{seed:'#7',name:'Seed 7'}],'8:00–8:55 PM');
-    html += tlCard([{seed:'',name:'Diskarte',seedColor:'#C9A84C',border:true},{seed:'',name:'Wolfpack',seedColor:'#C9A84C'}],'9:00–10:00 PM');
-    html += '</div>';
-    html += '<div style="position:relative;width:40px;height:420px;flex-shrink:0;">';
-    html += '<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:32px;right:0;width:2px;height:170px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:200px;left:0;right:0;height:2px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:116px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
-    html += '<div style="position:absolute;top:245px;left:0;right:0;height:2px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:245px;right:0;width:2px;height:170px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:412px;left:0;right:0;height:2px;background:#333;"></div>';
-    html += '<div style="position:absolute;top:328px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
-    html += '</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:0;">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS + FINAL · OCT 29</div>';
-    html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-    html += tlCard([{seed:'W',name:'Winner: QF1',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'6:30 PM');
-    html += tlCard([{seed:'W',name:'Winner: QF2',dim:true,border:true},{seed:'W',name:'Winner: QF3',dim:true}],'7:25 PM');
-    html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
-      +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
-      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">FINAL — 8:25 PM</div>'
-      +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WINNER: SEMI 1 vs SEMI 2</div></div>';
-    html += '</div>';
-    html += '</div></div>';
-    html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings, except QF4 (Diskarte vs Wolfpack, fixed)</div>';
-  } else {
-
-  // Playoff Bracket — same tiebreak logic as the standings table above.
-  // #1 seed gets a bye into Round 2.
-  // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
-  // recomputed live from getSeededStandings(). Locking it here means it
-  // can't shift if regular-season standings data ever gets touched again
-  // (e.g. a correction, a rebuild) after the bracket's already real.
-  // Seed groups matter here: #4/#5 play at 7:30 (Fleetwork/United), #3/#6
-  // play at 8:30 (Moneyball/SB Hoops) — this specific grouping is what
-  // makes the standard "winner of 4v5 faces the #1 bye" advancement land
-  // on United vs Ohana, and "winner of 2v7 faces winner of 3v6" land on
-  // Fly High vs Moneyball, matching how Round 1 actually played out.
-  var s1='Ohana',s2='Fly High',s3='Moneyball',s4='Fleetwork',s5='United',s6='SB Hoops',s7='Treez';
-
-  // Round 1 results (Aug 19): Fly High beat Treez, United beat Fleetwork,
-  // Moneyball beat SB Hoops. Hardcoded here so they show immediately;
-  // findPlayoffWinner still checks gameHistory first, so once these games
-  // are actually finished in Live Tracking the same names come from real
-  // data instead — no conflict either way.
-  var w27=findPlayoffWinner(s2,s7,9)||'Fly High';
-  var w36=findPlayoffWinner(s3,s6,9)||'Moneyball';
-  var w45=findPlayoffWinner(s4,s5,9)||'United';
-  var r2aLabel=w27?w27:('Winner: '+s2+'/'+s7);
-  var r2bLabel=w36?w36:('Winner: '+s3+'/'+s6);
-  var r2cLabel=w45?w45:('Winner: '+s4+'/'+s5);
-  var r2aColor=w27?'#ddd':'#888', r2aSize=w27?'13px':'11px';
-  var r2bColor=w36?'#ddd':'#888', r2bSize=w36?'13px':'11px';
-  var r2cColor=w45?'#ddd':'#888', r2cSize=w45?'13px':'11px';
-
-  // Round 2 winners (week 10) feed the Championship — only resolvable
-  // once we actually know who won both Round 2 games.
-  var semi1Winner=(w27&&w36)?findPlayoffWinner(w27,w36,10):null;
-  var semi2Winner=(w45)?findPlayoffWinner(s1,w45,10):null;
-  var champion=(semi1Winner&&semi2Winner)?findPlayoffWinner(semi1Winner,semi2Winner,11):null;
+  // Playoff Bracket — seeds pulled live from getSeededStandings(), same
+  // tiebreak logic as the standings table above. #1 seed gets a bye into
+  // Round 2. Round 1 order below is chronological (6:30/7:30/8:30 PM),
+  // with the #4-vs-#5 game deliberately placed in the 7:30 PM slot.
+  var seeds=[];
+  try{ seeds=getSeededStandings(); }catch(e){ seeds=[]; }
+  function seedName(i){ return (seeds[i]&&seeds[i].name)?seeds[i].name:'TBD'; }
+  var s1=seedName(0),s2=seedName(1),s3=seedName(2),s4=seedName(3),s5=seedName(4),s6=seedName(5),s7=seedName(6);
 
   html += '<div style="margin-top:2rem;">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
@@ -1533,16 +1420,16 @@ function renderSchedule(){
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 1 · AUG 19</div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#ddd;text-transform:uppercase;">'+s2+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#ddd;text-transform:uppercase;">'+s7+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#2</span><span style="color:#ddd;">'+s2+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#7</span><span style="color:#ddd;">'+s7+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#ddd;text-transform:uppercase;">'+s4+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#ddd;text-transform:uppercase;">'+s5+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#4</span><span style="color:#ddd;">'+s4+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#5</span><span style="color:#ddd;">'+s5+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#ddd;text-transform:uppercase;">'+s3+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#ddd;text-transform:uppercase;">'+s6+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#3</span><span style="color:#ddd;">'+s3+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">#6</span><span style="color:#ddd;">'+s6+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">8:30 PM</div></div></div>';
 
   // Connector 1
@@ -1558,12 +1445,12 @@ function renderSchedule(){
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 2 · AUG 26</div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w27?'✓':'W')+'</span><span style="color:'+r2aColor+';font-size:'+r2aSize+';text-transform:uppercase;">'+r2aLabel+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w36?'✓':'W')+'</span><span style="color:'+r2bColor+';font-size:'+r2bSize+';text-transform:uppercase;">'+r2bLabel+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s2+'/'+s7+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s3+'/'+s6+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;">';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;text-transform:uppercase;">'+s1+'</span></div>';
-  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w45?'✓':'W')+'</span><span style="color:'+r2cColor+';font-size:'+r2cSize+';text-transform:uppercase;">'+r2cLabel+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#C9A84C;min-width:20px;">#1</span><span style="color:#ddd;">'+s1+'</span></div>';
+  html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">W</span><span style="color:#888;font-size:11px;">Winner: '+s4+'/'+s5+'</span></div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30 PM</div></div></div>';
 
   // Connector 2
@@ -1585,16 +1472,13 @@ function renderSchedule(){
   html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:30–8:30 PM</div></div>';
   html += '<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:180px;">';
   html += '<div style="font-size:28px;margin-bottom:4px;">🏆</div>';
-  html += champion
-    ? '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;">'+champion+'</div>'
-    : '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPION</div>';
   html += '<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:30–9:30 PM</div>';
-  html += '<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SUMMER 2026</div></div></div>';
+  html += '<div style="font-size:10px;color:#333;margin-top:4px;letter-spacing:1px;">SOUTHBAY HOOPS<br>SEASON 1</div></div></div>';
 
   html += '</div></div>';
   html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 7 teams make playoffs · #1 seed bye in Round 1 · Championship rings for winners</div>';
   html += '</div>';
-  }
 
   // Bracket first (season's done, playoffs are what matters now), then the
   // full regular-season week-by-week list below it.
@@ -1629,13 +1513,6 @@ function getSeededStandings(){
       pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
   }).sort(function(a,b){
-    // Win % is primary again — checking head-to-head unconditionally for
-    // every pair (regardless of how different the records were) produced
-    // a genuinely broken, non-transitive order (a team with a far better
-    // record could rank below two teams with worse ones). Head-to-head is
-    // back to being a tiebreaker for teams tied on win %, which is also
-    // exactly what correctly separates two teams with an identical
-    // record but a season-series result between them.
     if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
     var h2h=headToHeadRecord(a.name,b.name);
     if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
