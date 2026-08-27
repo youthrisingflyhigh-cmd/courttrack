@@ -1327,6 +1327,25 @@ function gameClockCountdownCheck(sec){
   }
 }
 
+// Close-game rule: the moment the game clock crosses the 2:00 mark, if
+// the score margin is 10 points or less, switch to a 20-second shot
+// clock to keep late possessions moving. Fires once per half (reset in
+// setQ() when switching halves) rather than on every tick under 2:00 —
+// previously this fired immediately on switching to H2 instead, which
+// meant it could trigger with 20 minutes still on the clock and (since
+// shotClockSet also starts the shot clock running) looked like the shot
+// clock was randomly turning itself on for no reason.
+var _closeGameShotClockAppliedThisHalf=false;
+function checkCloseGameShotClockRule(sec){
+  if(_closeGameShotClockAppliedThisHalf) return;
+  if(sec!==120) return; // exactly the 2:00 mark
+  var margin=Math.abs((game.homeScore||0)-(game.awayScore||0));
+  if(margin<=10){
+    shotClockSet(20);
+  }
+  _closeGameShotClockAppliedThisHalf=true;
+}
+
 function timerFmt(s){
   var m = Math.floor(s/60);
   var sec = s%60;
@@ -1355,6 +1374,7 @@ function timerStart(){
       timerSeconds--;
       timerUpdate();
       gameClockCountdownCheck(timerSeconds);
+      checkCloseGameShotClockRule(timerSeconds);
       if(timerSeconds === 0){
         timerStop();
         playHorn();
@@ -3495,13 +3515,16 @@ function setQ(q){
   if(q===2){
     game.hHalfTeamFouls=0;
     game.aHalfTeamFouls=0;
-    // Close-game rule: if the margin is 10 points or less heading into the
-    // second half, switch the shot clock to a 20-second clock (instead of
-    // whatever it was set to) to keep late-game possessions moving.
-    var margin=Math.abs((game.homeScore||0)-(game.awayScore||0));
-    if(margin<=10){
-      shotClockSet(20);
-    }
+    // Reset the game clock to a fresh 20:00 for the new half — doesn't
+    // auto-start, matches every other "set the clock" action here, since
+    // the ref still needs to actually blow the whistle to begin play.
+    timerSetDuration(1200);
+    // Allow the close-game 20-second shot clock rule (2:00 mark, margin
+    // ≤10) to fire again for this new half — it was previously applied
+    // immediately on switching to H2 regardless of time remaining, which
+    // is what made it look like the shot clock was randomly turning
+    // itself on. Now it only fires at the actual 2:00 mark of the half.
+    _closeGameShotClockAppliedThisHalf=false;
   }
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
@@ -4928,6 +4951,11 @@ function showPage(p){
       document.getElementById('away-pts').style.color=teams[game.ai].color;
       document.getElementById('home-pts').textContent=game.homeScore;
       document.getElementById('away-pts').textContent=game.awayScore;
+      // Sync the H1/H2 buttons to the real current half — these are
+      // hardcoded to show H1 active in the page's base HTML, so without
+      // this they'd keep showing H1 even mid-second-half after a reload
+      // or after navigating away from and back to this tab.
+      document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===(game.q||1));});
       document.getElementById('mini-home-lbl').textContent=teams[game.hi].name.toUpperCase();
       document.getElementById('mini-away-lbl').textContent=teams[game.ai].name.toUpperCase();
       document.getElementById('mini-home-pts').textContent=game.homeScore;

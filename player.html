@@ -1404,10 +1404,17 @@ function renderFilm(){
 function renderSchedule(){
   var el=document.getElementById('tab-schedule');
   if(!schedule.length){el.innerHTML='<div style="padding:2rem;"><h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Schedule</h2><p style="color:var(--muted);font-style:italic;">No schedule generated yet.</p></div>';return;}
+  // Only the 35+ league stores its playoff games as round 9+ schedule
+  // entries that get covered by a separate bracket instead. Other
+  // divisions (like the Thursday League) don't have that redundancy, so
+  // hiding round 9+ there would silently drop real, legitimate games —
+  // checked here so this only applies to the 35+ league specifically.
+  var _teamNamesForFilter=teams.map(function(t){return (t.name||'').toLowerCase();});
+  var _isThursdayLeagueForFilter=_teamNamesForFilter.indexOf('wolfpack')!==-1 && _teamNamesForFilter.indexOf('diskarte')!==-1;
   var rounds={};
   // Playoff weeks (round 9+) are covered by the bracket below now — drop
   // the placeholder TBD-vs-TBD rows for them out of this weekly list.
-  schedule.forEach(function(g,i){var r=g.round||1;if(g.isPlayoff||r>=9)return;if(!rounds[r])rounds[r]=[];rounds[r].push({g:g,i:i});});
+  schedule.forEach(function(g,i){var r=g.round||1;if(!_isThursdayLeagueForFilter&&(g.isPlayoff||r>=9))return;if(!rounds[r])rounds[r]=[];rounds[r].push({g:g,i:i});});
   var html='';
   var weeksHtml='';
   Object.keys(rounds).sort(function(a,b){return a-b;}).forEach(function(r){
