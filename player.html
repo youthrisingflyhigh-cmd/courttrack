@@ -1327,26 +1327,31 @@ function renderFilm(){
   // backfill week by matching the final schedule entry for that matchup,
   // and fall back to the active season name.
   function resolveWeek(g){
-    // Hardcoded fix: Aug 19 Round 1 playoff games — checked BEFORE
-    // trusting any stored g.week, since these specific games' records
-    // were saved with a stale/wrong week number that would otherwise
-    // silently override this and land them in the wrong bucket (Week 1/2
-    // instead of Playoff Round 1). Matched case-insensitively since real
-    // team names are stored in ALL CAPS ("FLY HIGH"), not the mixed case
-    // used elsewhere in this file for readability. Also requires the
-    // actual Aug 19 date — these same pairs played each other more than
-    // once this season (regular season AND playoffs), so matching on
-    // team names alone incorrectly caught the earlier regular-season
-    // meetings too.
-    var playoffPairs=[['Fly High','Treez'],['Fleetwork','United'],['Moneyball','SB Hoops']];
+    // Hardcoded fix: Aug 19 Round 1 and Aug 26 Round 2 playoff games —
+    // checked BEFORE trusting any stored g.week, since these specific
+    // games' records were saved with a stale/wrong week number that
+    // would otherwise silently override this and land them in the wrong
+    // bucket (e.g. Week 1 instead of Playoff Round 2). Matched
+    // case-insensitively since real team names are stored in ALL CAPS
+    // ("FLY HIGH"), not the mixed case used elsewhere in this file for
+    // readability. Also requires the actual playoff date — these same
+    // pairs played each other more than once this season (regular season
+    // AND playoffs), so matching on team names alone incorrectly caught
+    // the earlier regular-season meetings too.
+    var round1Pairs=[['Fly High','Treez'],['Fleetwork','United'],['Moneyball','SB Hoops']];
+    var round2Pairs=[['Fly High','Moneyball'],['Ohana','United']];
     var gHome=(g.home||'').toLowerCase(), gAway=(g.away||'').toLowerCase();
-    var isPlayoffPair=playoffPairs.some(function(pair){
-      var a=pair[0].toLowerCase(), b=pair[1].toLowerCase();
-      return (a===gHome&&b===gAway)||(a===gAway&&b===gHome);
-    });
+    function matchesAnyPair(pairs){
+      return pairs.some(function(pair){
+        var a=pair[0].toLowerCase(), b=pair[1].toLowerCase();
+        return (a===gHome&&b===gAway)||(a===gAway&&b===gHome);
+      });
+    }
     var dateStr=(g.date||'').toLowerCase();
     var isAug19=dateStr.indexOf('august 19')>=0||dateStr.indexOf('aug 19')>=0;
-    if(isPlayoffPair&&isAug19) return 9;
+    var isAug26=dateStr.indexOf('august 26')>=0||dateStr.indexOf('aug 26')>=0;
+    if(isAug19&&matchesAnyPair(round1Pairs)) return 9;
+    if(isAug26&&matchesAnyPair(round2Pairs)) return 10;
     if(g.week||g.week===0) return g.week;
     // Hardcoded fix: SB HOOPS vs OHANA (33-63) should be Week 2
     if((g.home==='SB HOOPS'&&g.away==='OHANA')||(g.home==='OHANA'&&g.away==='SB HOOPS')){
@@ -1365,7 +1370,7 @@ function renderFilm(){
     if(wk==='?') return 'Week TBD';
     var n=Number(wk);
     if(n===9) return 'Playoff Round 1';
-    if(n===10) return 'Playoff Round 2';
+    if(n===10) return 'Semifinals';
     if(n===11) return 'Championship Weekend';
     return 'Week '+wk;
   }
@@ -1555,7 +1560,7 @@ function renderSchedule(){
   // Round 2 - Aug 26 — Semi 1: winner of #2/#7 vs winner of #3/#6 (6:30 PM);
   // Semi 2: #1 (bye) vs winner of #4/#5 (7:30 PM, per Ohana's requested time)
   html += '<div style="display:flex;flex-direction:column;gap:0;">';
-  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">ROUND 2 · AUG 26</div>';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · AUG 26</div>';
   html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Piedmont Aux Gym</div>';
   html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:180px;margin-bottom:12px;">';
   html += '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1a1a1a;"><span style="font-size:11px;font-weight:700;color:#FF4500;min-width:20px;">'+(w27?'✓':'W')+'</span><span style="color:'+r2aColor+';font-size:'+r2aSize+';text-transform:uppercase;">'+r2aLabel+'</span></div>';
