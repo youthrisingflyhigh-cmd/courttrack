@@ -253,6 +253,7 @@ body{
 <div class="top-bar">
   <div class="brand">COURT<span>TRACK</span></div>
   <div class="league-name" id="league-label">Southbay Hoops</div>
+  <div id="division-label" style="font-size:11px;color:#888;letter-spacing:1px;margin-top:2px;"></div>
   <div class="live-dot" id="live-indicator" style="display:none;"><div class="dot"></div>LIVE</div>
 </div>
 
@@ -652,6 +653,22 @@ db.ref(ctPath('settings')).once('value').then(function(s){
   var v = s.val();
   if(v && v.leagueName) document.getElementById('league-label').textContent = v.leagueName;
 });
+
+// Division indicator — shows which season/division this screen is
+// actually pointed at, since there's no dropdown here to switch it (this
+// screen is meant to sit courtside for one specific division's game).
+// Without this, opening the plain scoreboard.html URL with no ?ct= param
+// silently falls back to the legacy Summer 2026 35+ League with zero
+// visible indication anything's wrong.
+db.ref('ctIndex/seasons').once('value').then(function(snap){
+  var list=[];
+  var val=snap.val();
+  if(Array.isArray(val)) list=val.filter(Boolean);
+  else if(val&&typeof val==='object') list=Object.values(val).filter(Boolean);
+  var entry=list.find(function(e){return e.base===CT_BASE;});
+  var el=document.getElementById('division-label');
+  if(el) el.textContent = entry ? ('Viewing: '+entry.label) : ('Viewing: '+CT_BASE);
+}).catch(function(){});
 </script>
 </body>
 </html>
