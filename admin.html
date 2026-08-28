@@ -372,6 +372,22 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="move-game-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:480px;max-height:85vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Move a Specific Game to Another Division</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:16px;">Moving FROM: <strong style="color:#fff;" id="move-game-source-label"></strong></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Which game?</label>
+    <select id="move-game-select" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;"><option value="">Loading…</option></select>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Move TO which division?</label>
+    <select id="move-game-target-select" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;"><option value="">Loading…</option></select>
+    <div id="move-game-status" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;display:none;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeMoveGameModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="runMoveGame()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Move</button>
+    </div>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -897,6 +913,12 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Recover a Roster from Game History</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Every finished game stores a full snapshot of both teams' rosters (names + numbers) at that moment — even if the team itself gets deleted later. Pick a game and a side below to pull that roster back out as text ready to paste into Bulk Import Teams.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openRecoverRosterModal()">🔧 Recover a Roster from Game History</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Move a Specific Game to Another Division</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Moves ONE game (its history record, standings contribution, and player stats) from the CURRENTLY ACTIVE division into a target division — and correctly reverses that game's contribution to standings/player stats here first, so it doesn't stay double-counted in the wrong place. Use this after a game ended up merged into the wrong division and its team has since been recreated correctly elsewhere.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openMoveGameModal()">🔧 Move a Specific Game to Another Division</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -2023,6 +2045,159 @@ function copyRecoverText(textareaId){
   el.select();
   document.execCommand('copy');
   alert('Copied — paste this into Bulk Import Teams (after switching to the right division).');
+}
+
+// ── MOVE A SPECIFIC GAME TO ANOTHER DIVISION ──
+// Unlike the bulk migration tool, this moves exactly ONE game record and
+// correctly reverses its contribution to standings/player stats in the
+// current division first (rather than leaving it double-counted there),
+// then applies that same contribution fresh in the target division. Use
+// this once a team's roster has been recovered/recreated in the right
+// division, to bring its actual game results back to match.
+function computeGameStandingsDelta(g){
+  var hs=g.homeScore||0, as_=g.awayScore||0;
+  var delta={};
+  delta[g.home]={w:hs>as_?1:0,l:as_>hs?1:0,pf:hs,pa:as_};
+  delta[g.away]={w:as_>hs?1:0,l:hs>as_?1:0,pf:as_,pa:hs};
+  return delta;
+}
+function openMoveGameModal(){
+  document.getElementById('move-game-source-label').textContent=CT_ACTIVE_LABEL;
+  document.getElementById('move-game-status').style.display='none';
+  var sel=document.getElementById('move-game-select');
+  var hist=toArr(gameHistory);
+  if(!hist.length){
+    sel.innerHTML='<option value="">No games in this division\'s history</option>';
+  } else {
+    sel.innerHTML=hist.map(function(g,i){
+      return '<option value="'+i+'">'+(g.date||'?')+' — '+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'</option>';
+    }).join('');
+  }
+  var targetSel=document.getElementById('move-game-target-select');
+  targetSel.innerHTML='<option value="">Loading…</option>';
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var others=list.filter(function(e){return e.base!==CT_BASE;});
+    if(!others.length){
+      targetSel.innerHTML='<option value="">No other divisions exist yet</option>';
+    } else {
+      targetSel.innerHTML=others.map(function(e){return '<option value="'+e.base+'">'+e.label+'</option>';}).join('');
+    }
+  });
+  document.getElementById('move-game-modal').style.display='flex';
+}
+function closeMoveGameModal(){
+  document.getElementById('move-game-modal').style.display='none';
+}
+function runMoveGame(){
+  var idx=document.getElementById('move-game-select').value;
+  var targetBase=document.getElementById('move-game-target-select').value;
+  if(idx===''||idx===undefined){ alert('Pick a game first.'); return; }
+  if(!targetBase){ alert('Pick a target division first.'); return; }
+
+  var hist=toArr(gameHistory);
+  var g=hist[parseInt(idx)];
+  if(!g){ alert('Could not find that game.'); return; }
+  if(!confirm('Move "'+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'" ('+(g.date||'?')+') to the target division?\n\nThis reverses its contribution to standings and player stats here, and applies it fresh in the target. Cannot be undone.')) return;
+
+  var statusEl=document.getElementById('move-game-status');
+  statusEl.style.display='block';
+  statusEl.textContent='Moving…';
+  var results=[];
+
+  // 1. Reverse this game's standings contribution HERE (subtract), so it
+  // stops being double-counted in the division it's leaving.
+  var delta=computeGameStandingsDelta(g);
+  Object.keys(delta).forEach(function(teamName){
+    var s=standings[teamName];
+    if(!s) return;
+    var d=delta[teamName];
+    s.w=Math.max(0,(s.w||0)-d.w);
+    s.l=Math.max(0,(s.l||0)-d.l);
+    s.pf=Math.max(0,(s.pf||0)-d.pf);
+    s.pa=Math.max(0,(s.pa||0)-d.pa);
+  });
+  fbSet(ctPath('standings'),standings);
+  results.push('Standings here: reversed this game\'s contribution.');
+
+  // 2. Reverse this game's player-stat contribution HERE (subtract, per
+  // player, matched by jersey number — these are the WRONG players if
+  // this game was previously misattributed to a same-named team).
+  function reverseStatsSide(teamName,statsObj){
+    if(!playerStats[teamName]||!statsObj) return;
+    Object.keys(statsObj).forEach(function(num){
+      var gs=statsObj[num], ps=playerStats[teamName][num];
+      if(!ps) return;
+      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){
+        ps[k]=Math.max(0,(ps[k]||0)-(gs[k]||0));
+      });
+      ps.gp=Math.max(0,(ps.gp||0)-1);
+    });
+  }
+  reverseStatsSide(g.home,g.hStats);
+  reverseStatsSide(g.away,g.aStats);
+  fbSet(ctPath('playerStats'),playerStats);
+  results.push('Player stats here: reversed this game\'s contribution.');
+
+  // 3. Remove the game record itself from history HERE.
+  gameHistory=hist.filter(function(x,i){return i!==parseInt(idx);});
+  fbSet(ctPath('history'),gameHistory);
+  results.push('Removed the game record from here.');
+
+  renderTeams(); renderRoster(); renderSelects();
+  if(typeof renderStandings==='function') renderStandings();
+
+  // 4. Apply everything fresh in the TARGET division.
+  db.ref(targetBase+'/history').once('value',function(histSnap){
+    var targetHist=toArr(histSnap.val());
+    targetHist.push(g);
+    db.ref(targetBase+'/history').set(targetHist,function(){
+      results.push('Game record added to target division.');
+
+      db.ref(targetBase+'/standings').once('value',function(standSnap){
+        var targetStandings=standSnap.val()||{};
+        Object.keys(delta).forEach(function(teamName){
+          if(!targetStandings[teamName]){
+            var t=teams.find(function(tt){return tt.name===teamName;});
+            targetStandings[teamName]={w:0,l:0,pf:0,pa:0,color:(t&&t.color)||'#FF5C00'};
+          }
+          var d=delta[teamName];
+          targetStandings[teamName].w=(targetStandings[teamName].w||0)+d.w;
+          targetStandings[teamName].l=(targetStandings[teamName].l||0)+d.l;
+          targetStandings[teamName].pf=(targetStandings[teamName].pf||0)+d.pf;
+          targetStandings[teamName].pa=(targetStandings[teamName].pa||0)+d.pa;
+        });
+        db.ref(targetBase+'/standings').set(targetStandings,function(){
+          results.push('Standings applied in target division.');
+
+          db.ref(targetBase+'/playerStats').once('value',function(statsSnap){
+            var targetStats=statsSnap.val()||{};
+            function applyStatsSide(teamName,statsObj){
+              if(!statsObj) return;
+              if(!targetStats[teamName]) targetStats[teamName]={};
+              Object.keys(statsObj).forEach(function(num){
+                var gs=statsObj[num];
+                if(!targetStats[teamName][num]) targetStats[teamName][num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0};
+                var ps=targetStats[teamName][num];
+                ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){
+                  ps[k]=(ps[k]||0)+(gs[k]||0);
+                });
+                ps.gp=(ps.gp||0)+1;
+              });
+            }
+            applyStatsSide(g.home,g.hStats);
+            applyStatsSide(g.away,g.aStats);
+            db.ref(targetBase+'/playerStats').set(targetStats,function(){
+              results.push('Player stats applied in target division.');
+              statusEl.textContent=results.join('\n');
+              alert('✅ Game moved.\n\n'+results.join('\n'));
+              closeMoveGameModal();
+            });
+          });
+        });
+      });
+    });
+  });
 }
 
 // ── State ──
