@@ -719,35 +719,57 @@ function buildTicker(){
   // Recent results
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  function getGameTopScorer(g){
+    var best=null;
+    function scan(statsObj,rosterArr,teamName){
+      if(!statsObj) return;
+      Object.keys(statsObj).forEach(function(num){
+        var s=statsObj[num];
+        if(!s||!(s.pts>0)) return;
+        var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
+        var name=player?player.name:('#'+num);
+        if(!best||s.pts>best.pts) best={name:name,teamName:teamName,pts:s.pts};
+      });
+    }
+    scan(g.hStats,g.homePlayers,g.home);
+    scan(g.aStats,g.awayPlayers,g.away);
+    return best;
+  }
   hist.slice(-5).forEach(function(g){
     if(!g)return;
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
-    items.push('<span>FINAL</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner);
+    var topLine='';
+    var top=getGameTopScorer(g);
+    if(top) topLine='  ·  🏀 '+top.name+' ('+top.teamName+') '+top.pts+' PTS';
+    items.push('<span>FINAL</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner+topLine);
   });
-  // Top scorer (from recent games only)
+  // Top scorer (from recent games only) — was reading game.playerStats,
+  // a field that's never actually set (games are saved with hStats/
+  // aStats, keyed by jersey number, plus homePlayers/awayPlayers roster
+  // snapshots for names). Reusing the same scan logic as getGameTopScorer
+  // above, but summing across games instead of taking one game's max.
   var recentGames=[];
   try{if(Array.isArray(gameHistory))recentGames=gameHistory;else if(gameHistory&&typeof gameHistory==='object')recentGames=Object.values(gameHistory);}catch(e){}
   recentGames=recentGames.filter(Boolean).slice(-5);
-  
+
   var recentPlayerStats={};
-  recentGames.forEach(function(game){
-    if(game.playerStats){
-      Object.keys(game.playerStats).forEach(function(teamName){
-        var teamStats=game.playerStats[teamName];
-        Object.keys(teamStats).forEach(function(playerNum){
-          var ps=teamStats[playerNum];
-          if(ps&&typeof ps==='object'){
-            var pKey=ps.name||playerNum;
-            if(!recentPlayerStats[pKey]){
-              recentPlayerStats[pKey]={name:ps.name||pKey,pts:0,teamName:teamName};
-            }
-            recentPlayerStats[pKey].pts+=(ps.pts||0);
-          }
-        });
-      });
-    }
+  function addToRecentTotals(statsObj,rosterArr,teamName){
+    if(!statsObj) return;
+    Object.keys(statsObj).forEach(function(num){
+      var s=statsObj[num];
+      if(!s) return;
+      var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
+      var name=player?player.name:('#'+num);
+      var pKey=teamName+'|'+name;
+      if(!recentPlayerStats[pKey]) recentPlayerStats[pKey]={name:name,pts:0,teamName:teamName};
+      recentPlayerStats[pKey].pts+=(s.pts||0);
+    });
+  }
+  recentGames.forEach(function(g){
+    addToRecentTotals(g.hStats,g.homePlayers,g.home);
+    addToRecentTotals(g.aStats,g.awayPlayers,g.away);
   });
-  
+
   var topRecentScorer=Object.values(recentPlayerStats).sort(function(a,b){return b.pts-a.pts;})[0];
   if(topRecentScorer&&topRecentScorer.pts>0) items.push('<span>🏅 TOP SCORER</span>'+topRecentScorer.name+' ('+topRecentScorer.teamName+') — '+topRecentScorer.pts+' PTS (recent games)');
 
