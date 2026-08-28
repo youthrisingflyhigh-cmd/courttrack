@@ -326,6 +326,30 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="migrate-data-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:440px;">
+    <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Migrate Data to Another Division</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:16px;">Moving FROM: <strong style="color:#fff;" id="migrate-source-label"></strong></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Move TO which season/division?</label>
+    <select id="migrate-target-select" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;"><option value="">Loading…</option></select>
+
+    <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">WHAT TO MOVE</div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-teams" checked> Teams &amp; rosters</label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-history" checked> Game history (scores, box scores)</label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-standings" checked> Standings (W/L/PF/PA)</label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-stats" checked> Player stats</label>
+
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:#fca5a5;"><input type="checkbox" id="migrate-cb-clear-source"> Also clear this data out of the CURRENT division once moved</label>
+
+    <div id="migrate-status" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;display:none;"></div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeMigrateDataModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="runMigrateData()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Migrate</button>
+    </div>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -839,6 +863,12 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Schedule from Game History</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Rebuilds the Schedule (final games with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared/overwritten.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Rebuild Schedule from Game History</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Migrate Data to Another Season/Division</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Moves teams, game history, player stats, and standings from the CURRENTLY ACTIVE season/division into a different one — e.g. if a team/game accidentally got created in the wrong division. Merges into whatever's already in the target (nothing there gets overwritten), then optionally clears it out of the current division once you confirm the move worked.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openMigrateDataModal()">🔀 Migrate Data to Another Division</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -1754,6 +1784,121 @@ function saveRenameSeasonDivision(){
       populateSeasonDivisionSelector();
       closeRenameSeasonDivisionModal();
       alert('Renamed! ✓');
+    });
+  });
+}
+
+// ── MIGRATE DATA TO ANOTHER DIVISION ──
+// For when a team/game accidentally gets created in the wrong
+// season/division (e.g. scoreboard.html didn't pick up a new division
+// correctly mid-game, forcing everything to happen in the wrong place).
+// Merges teams/history/standings/playerStats from the CURRENT division
+// into a target division without overwriting whatever's already there,
+// then optionally clears the source once confirmed.
+function openMigrateDataModal(){
+  document.getElementById('migrate-source-label').textContent=CT_ACTIVE_LABEL;
+  document.getElementById('migrate-status').style.display='none';
+  document.getElementById('migrate-cb-clear-source').checked=false;
+  var sel=document.getElementById('migrate-target-select');
+  sel.innerHTML='<option value="">Loading…</option>';
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var others=list.filter(function(e){return e.base!==CT_BASE;});
+    if(!others.length){
+      sel.innerHTML='<option value="">No other divisions exist yet</option>';
+    } else {
+      sel.innerHTML=others.map(function(e){return '<option value="'+e.base+'">'+e.label+'</option>';}).join('');
+    }
+  });
+  document.getElementById('migrate-data-modal').style.display='flex';
+}
+function closeMigrateDataModal(){
+  document.getElementById('migrate-data-modal').style.display='none';
+}
+
+function runMigrateData(){
+  var targetBase=document.getElementById('migrate-target-select').value;
+  if(!targetBase){ alert('Pick a target season/division first.'); return; }
+  var moveTeams=document.getElementById('migrate-cb-teams').checked;
+  var moveHistory=document.getElementById('migrate-cb-history').checked;
+  var moveStandings=document.getElementById('migrate-cb-standings').checked;
+  var moveStats=document.getElementById('migrate-cb-stats').checked;
+  var clearSource=document.getElementById('migrate-cb-clear-source').checked;
+  if(!moveTeams&&!moveHistory&&!moveStandings&&!moveStats){ alert('Pick at least one thing to move.'); return; }
+
+  var statusEl=document.getElementById('migrate-status');
+  statusEl.style.display='block';
+  statusEl.textContent='Migrating…';
+
+  var tasks=[];
+
+  if(moveTeams){
+    tasks.push(function(cb){
+      db.ref(targetBase+'/teams').once('value',function(snap){
+        var targetTeams=toArr(snap.val());
+        var existingNames=targetTeams.map(function(t){return (t.name||'').toLowerCase();});
+        var merged=targetTeams.slice();
+        teams.forEach(function(t){
+          if(existingNames.indexOf((t.name||'').toLowerCase())===-1) merged.push(t);
+        });
+        db.ref(targetBase+'/teams').set(merged,function(){ cb('Teams: merged '+teams.length+' team(s).'); });
+      });
+    });
+  }
+  if(moveHistory){
+    tasks.push(function(cb){
+      db.ref(targetBase+'/history').once('value',function(snap){
+        var targetHist=toArr(snap.val());
+        var merged=targetHist.concat(toArr(gameHistory));
+        db.ref(targetBase+'/history').set(merged,function(){ cb('Game history: merged '+toArr(gameHistory).length+' game(s).'); });
+      });
+    });
+  }
+  if(moveStandings){
+    tasks.push(function(cb){
+      db.ref(targetBase+'/standings').once('value',function(snap){
+        var targetStandings=snap.val()||{};
+        var merged=Object.assign({},targetStandings,standings);
+        db.ref(targetBase+'/standings').set(merged,function(){ cb('Standings: merged '+Object.keys(standings).length+' team(s).'); });
+      });
+    });
+  }
+  if(moveStats){
+    tasks.push(function(cb){
+      db.ref(targetBase+'/playerStats').once('value',function(snap){
+        var targetStats=snap.val()||{};
+        var merged=Object.assign({},targetStats);
+        Object.keys(playerStats).forEach(function(teamName){
+          merged[teamName]=Object.assign({},merged[teamName]||{},playerStats[teamName]);
+        });
+        db.ref(targetBase+'/playerStats').set(merged,function(){ cb('Player stats: merged.'); });
+      });
+    });
+  }
+
+  var results=[];
+  var completed=0;
+  tasks.forEach(function(task){
+    task(function(msg){
+      results.push(msg);
+      completed++;
+      statusEl.textContent=results.join('\n');
+      if(completed===tasks.length){
+        if(clearSource){
+          if(moveTeams){ teams=[]; fbSet(ctPath('teams'),teams); }
+          if(moveHistory){ gameHistory=[]; fbRemove(ctPath('history')); }
+          if(moveStandings){ standings={}; fbRemove(ctPath('standings')); }
+          if(moveStats){ playerStats={}; fbRemove(ctPath('playerStats')); }
+          results.push('Cleared from current division: ✓');
+          statusEl.textContent=results.join('\n');
+          renderTeams(); renderRoster(); renderSelects();
+          if(typeof renderStandings==='function') renderStandings();
+        }
+        setTimeout(function(){
+          alert('✅ Migration complete.\n\n'+results.join('\n'));
+          closeMigrateDataModal();
+        },300);
+      }
     });
   });
 }
