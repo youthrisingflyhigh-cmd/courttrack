@@ -333,13 +333,22 @@ th, td { padding: 10px 8px !important; }
     <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Move TO which season/division?</label>
     <select id="migrate-target-select" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;"><option value="">Loading…</option></select>
 
-    <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">WHAT TO MOVE</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:11px;color:#888;font-weight:700;">WHICH TEAMS?</span>
+      <span>
+        <button onclick="migrateSelectAllTeams(true)" style="background:none;border:none;color:var(--orange);font-size:11px;cursor:pointer;padding:0 4px;">All</button>
+        <button onclick="migrateSelectAllTeams(false)" style="background:none;border:none;color:var(--orange);font-size:11px;cursor:pointer;padding:0 4px;">None</button>
+      </span>
+    </div>
+    <div id="migrate-team-checklist" style="max-height:140px;overflow-y:auto;border:1px solid #333;border-radius:6px;padding:8px;margin-bottom:16px;background:var(--dark3);"></div>
+
+    <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">WHAT TO MOVE (for the teams selected above)</div>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-teams" checked> Teams &amp; rosters</label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-history" checked> Game history (scores, box scores)</label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-standings" checked> Standings (W/L/PF/PA)</label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:#ddd;"><input type="checkbox" id="migrate-cb-stats" checked> Player stats</label>
 
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:#fca5a5;"><input type="checkbox" id="migrate-cb-clear-source"> Also clear this data out of the CURRENT division once moved</label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:#fca5a5;"><input type="checkbox" id="migrate-cb-clear-source"> Also remove the selected teams' data from the CURRENT division once moved</label>
 
     <div id="migrate-status" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;display:none;"></div>
 
@@ -1799,6 +1808,14 @@ function openMigrateDataModal(){
   document.getElementById('migrate-source-label').textContent=CT_ACTIVE_LABEL;
   document.getElementById('migrate-status').style.display='none';
   document.getElementById('migrate-cb-clear-source').checked=false;
+  var checklist=document.getElementById('migrate-team-checklist');
+  if(!teams.length){
+    checklist.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;">No teams in this division.</div>';
+  } else {
+    checklist.innerHTML=teams.map(function(t,i){
+      return '<label style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px;color:#ddd;"><input type="checkbox" class="migrate-team-cb" value="'+t.name.replace(/"/g,'&quot;')+'" checked> '+t.name+'</label>';
+    }).join('');
+  }
   var sel=document.getElementById('migrate-target-select');
   sel.innerHTML='<option value="">Loading…</option>';
   db.ref('ctIndex/seasons').once('value',function(snap){
@@ -1812,6 +1829,9 @@ function openMigrateDataModal(){
   });
   document.getElementById('migrate-data-modal').style.display='flex';
 }
+function migrateSelectAllTeams(checked){
+  document.querySelectorAll('.migrate-team-cb').forEach(function(cb){ cb.checked=checked; });
+}
 function closeMigrateDataModal(){
   document.getElementById('migrate-data-modal').style.display='none';
 }
@@ -1819,6 +1839,11 @@ function closeMigrateDataModal(){
 function runMigrateData(){
   var targetBase=document.getElementById('migrate-target-select').value;
   if(!targetBase){ alert('Pick a target season/division first.'); return; }
+  var selectedNames=Array.from(document.querySelectorAll('.migrate-team-cb:checked')).map(function(cb){return cb.value;});
+  if(!selectedNames.length){ alert('Select at least one team to migrate.'); return; }
+  var selectedLower=selectedNames.map(function(n){return n.toLowerCase();});
+  function isSelectedTeam(name){ return selectedLower.indexOf((name||'').toLowerCase())!==-1; }
+
   var moveTeams=document.getElementById('migrate-cb-teams').checked;
   var moveHistory=document.getElementById('migrate-cb-history').checked;
   var moveStandings=document.getElementById('migrate-cb-standings').checked;
@@ -1830,6 +1855,12 @@ function runMigrateData(){
   statusEl.style.display='block';
   statusEl.textContent='Migrating…';
 
+  // Only the selected teams' own records — a game is included if EITHER
+  // side is a selected team, since the game record itself belongs to
+  // both teams jointly.
+  var teamsToMove=teams.filter(function(t){return isSelectedTeam(t.name);});
+  var historyToMove=toArr(gameHistory).filter(function(g){return isSelectedTeam(g.home)||isSelectedTeam(g.away);});
+
   var tasks=[];
 
   if(moveTeams){
@@ -1838,10 +1869,10 @@ function runMigrateData(){
         var targetTeams=toArr(snap.val());
         var existingNames=targetTeams.map(function(t){return (t.name||'').toLowerCase();});
         var merged=targetTeams.slice();
-        teams.forEach(function(t){
+        teamsToMove.forEach(function(t){
           if(existingNames.indexOf((t.name||'').toLowerCase())===-1) merged.push(t);
         });
-        db.ref(targetBase+'/teams').set(merged,function(){ cb('Teams: merged '+teams.length+' team(s).'); });
+        db.ref(targetBase+'/teams').set(merged,function(){ cb('Teams: merged '+teamsToMove.length+' team(s) — '+teamsToMove.map(function(t){return t.name;}).join(', ')); });
       });
     });
   }
@@ -1849,8 +1880,8 @@ function runMigrateData(){
     tasks.push(function(cb){
       db.ref(targetBase+'/history').once('value',function(snap){
         var targetHist=toArr(snap.val());
-        var merged=targetHist.concat(toArr(gameHistory));
-        db.ref(targetBase+'/history').set(merged,function(){ cb('Game history: merged '+toArr(gameHistory).length+' game(s).'); });
+        var merged=targetHist.concat(historyToMove);
+        db.ref(targetBase+'/history').set(merged,function(){ cb('Game history: merged '+historyToMove.length+' game(s) involving the selected team(s).'); });
       });
     });
   }
@@ -1858,8 +1889,11 @@ function runMigrateData(){
     tasks.push(function(cb){
       db.ref(targetBase+'/standings').once('value',function(snap){
         var targetStandings=snap.val()||{};
-        var merged=Object.assign({},targetStandings,standings);
-        db.ref(targetBase+'/standings').set(merged,function(){ cb('Standings: merged '+Object.keys(standings).length+' team(s).'); });
+        var merged=Object.assign({},targetStandings);
+        Object.keys(standings).forEach(function(name){
+          if(isSelectedTeam(name)) merged[name]=standings[name];
+        });
+        db.ref(targetBase+'/standings').set(merged,function(){ cb('Standings: merged the selected team(s).'); });
       });
     });
   }
@@ -1869,9 +1903,11 @@ function runMigrateData(){
         var targetStats=snap.val()||{};
         var merged=Object.assign({},targetStats);
         Object.keys(playerStats).forEach(function(teamName){
-          merged[teamName]=Object.assign({},merged[teamName]||{},playerStats[teamName]);
+          if(isSelectedTeam(teamName)){
+            merged[teamName]=Object.assign({},merged[teamName]||{},playerStats[teamName]);
+          }
         });
-        db.ref(targetBase+'/playerStats').set(merged,function(){ cb('Player stats: merged.'); });
+        db.ref(targetBase+'/playerStats').set(merged,function(){ cb('Player stats: merged for the selected team(s).'); });
       });
     });
   }
@@ -1885,11 +1921,23 @@ function runMigrateData(){
       statusEl.textContent=results.join('\n');
       if(completed===tasks.length){
         if(clearSource){
-          if(moveTeams){ teams=[]; fbSet(ctPath('teams'),teams); }
-          if(moveHistory){ gameHistory=[]; fbRemove(ctPath('history')); }
-          if(moveStandings){ standings={}; fbRemove(ctPath('standings')); }
-          if(moveStats){ playerStats={}; fbRemove(ctPath('playerStats')); }
-          results.push('Cleared from current division: ✓');
+          if(moveTeams){
+            teams=teams.filter(function(t){return !isSelectedTeam(t.name);});
+            fbSet(ctPath('teams'),teams);
+          }
+          if(moveHistory){
+            gameHistory=toArr(gameHistory).filter(function(g){return !(isSelectedTeam(g.home)||isSelectedTeam(g.away));});
+            fbSet(ctPath('history'),gameHistory);
+          }
+          if(moveStandings){
+            Object.keys(standings).forEach(function(name){ if(isSelectedTeam(name)) delete standings[name]; });
+            fbSet(ctPath('standings'),standings);
+          }
+          if(moveStats){
+            Object.keys(playerStats).forEach(function(teamName){ if(isSelectedTeam(teamName)) delete playerStats[teamName]; });
+            fbSet(ctPath('playerStats'),playerStats);
+          }
+          results.push('Removed the selected team(s)\' data from the current division: ✓');
           statusEl.textContent=results.join('\n');
           renderTeams(); renderRoster(); renderSelects();
           if(typeof renderStandings==='function') renderStandings();
