@@ -253,7 +253,7 @@ body{
 <div class="top-bar">
   <div class="brand">COURT<span>TRACK</span></div>
   <div class="league-name" id="league-label">Southbay Hoops</div>
-  <div id="division-label" style="font-size:11px;color:#888;letter-spacing:1px;margin-top:2px;"></div>
+  <select id="division-select" onchange="switchScoreboardDivision()" style="font-size:11px;color:#ddd;letter-spacing:1px;margin-top:2px;background:var(--dark3,#1a1a1a);border:1px solid #444;border-radius:4px;padding:2px 6px;cursor:pointer;max-width:260px;"><option value="">Loading…</option></select>
   <div class="live-dot" id="live-indicator" style="display:none;"><div class="dot"></div>LIVE</div>
 </div>
 
@@ -654,21 +654,34 @@ db.ref(ctPath('settings')).once('value').then(function(s){
   if(v && v.leagueName) document.getElementById('league-label').textContent = v.leagueName;
 });
 
-// Division indicator — shows which season/division this screen is
-// actually pointed at, since there's no dropdown here to switch it (this
-// screen is meant to sit courtside for one specific division's game).
-// Without this, opening the plain scoreboard.html URL with no ?ct= param
-// silently falls back to the legacy Summer 2026 35+ League with zero
-// visible indication anything's wrong.
+// Division switcher — since this screen sits courtside for one specific
+// division's game, and previously had no way to actually change it
+// (just a static label). Now a real dropdown: pick a division, it
+// updates the ?ct= URL param and reloads. Populated from the same
+// ctIndex/seasons list every other page uses, so it always matches
+// whatever divisions actually exist.
 db.ref('ctIndex/seasons').once('value').then(function(snap){
   var list=[];
   var val=snap.val();
   if(Array.isArray(val)) list=val.filter(Boolean);
   else if(val&&typeof val==='object') list=Object.values(val).filter(Boolean);
-  var entry=list.find(function(e){return e.base===CT_BASE;});
-  var el=document.getElementById('division-label');
-  if(el) el.textContent = entry ? ('Viewing: '+entry.label) : ('Viewing: '+CT_BASE);
+  var sel=document.getElementById('division-select');
+  if(!sel||!list.length) return;
+  sel.innerHTML=list.map(function(e){
+    var selected=(e.base===CT_BASE)?' selected':'';
+    return '<option value="'+e.base+'"'+selected+'>'+e.label+'</option>';
+  }).join('');
 }).catch(function(){});
+
+function switchScoreboardDivision(){
+  var sel=document.getElementById('division-select');
+  if(!sel) return;
+  var base=sel.value;
+  var url=new URL(window.location.href);
+  if(base===LEGACY_BASE) url.searchParams.delete('ct');
+  else url.searchParams.set('ct',base);
+  window.location.href=url.toString();
+}
 </script>
 </body>
 </html>
