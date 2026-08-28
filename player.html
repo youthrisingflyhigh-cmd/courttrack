@@ -631,7 +631,7 @@ function switchSeasonDivisionPublic(){
   window.location.href=url.toString();
 }
 
-var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
+var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[],h2hOverrides=[];
 var currentTab='home', _ready=false, currentStatTab='eff', currentStreamPlatform='youtube';
 var appSeasonName='';
 db.ref(ctPath('settings')).once('value').then(function(s){
@@ -698,6 +698,9 @@ db.ref(ctPath('standings')).on('value',function(s){standings=s.val()||{};if(_boo
 db.ref(ctPath('history')).on('value',function(s){gameHistory=toArr(s.val());if(_booted)renderAll();else _check();});
 db.ref(ctPath('playerStats')).on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
 db.ref(ctPath('schedule')).on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
+// Manual head-to-head overrides — not part of the boot gate since
+// they're optional (only needed when a real game record is missing).
+db.ref(ctPath('h2hOverrides')).on('value',function(s){h2hOverrides=toArr(s.val());if(_booted)renderAll();});
 
 db.ref(ctPath('game')).on('value',function(s){
   game=s.val()||null;
@@ -1610,6 +1613,15 @@ function renderSchedule(){
 // Head-to-head record between two teams this season, used as the standings
 // tiebreaker before point differential. Looks at completed games only.
 function headToHeadRecord(nameA,nameB){
+  // Manual overrides take priority — for when a real game happened but
+  // its record got lost/moved and can't be recovered. Checked first so
+  // it doesn't matter whether a matching game also exists in history.
+  var override=(h2hOverrides||[]).find(function(o){
+    return (o.teamA===nameA&&o.teamB===nameB)||(o.teamA===nameB&&o.teamB===nameA);
+  });
+  if(override){
+    return {aw:override.winner===nameA?1:0, bw:override.winner===nameB?1:0};
+  }
   var aw=0,bw=0;
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   hist.forEach(function(g){
