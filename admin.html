@@ -3286,7 +3286,9 @@ function finishGame(){
     var matchedWeek=null;
     for(var sw=0;sw<schedule.length;sw++){
       if(schedule[sw].status!=='upcoming') continue;
-      if((schedule[sw].home===hn&&schedule[sw].away===an)||(schedule[sw].home===an&&schedule[sw].away===hn)){
+      var swHome=(schedule[sw].home||'').toLowerCase(), swAway=(schedule[sw].away||'').toLowerCase();
+      var hnLower=(hn||'').toLowerCase(), anLower=(an||'').toLowerCase();
+      if((swHome===hnLower&&swAway===anLower)||(swHome===anLower&&swAway===hnLower)){
         matchedWeek=schedule[sw].round||null;
         break;
       }
@@ -3295,8 +3297,14 @@ function finishGame(){
     // finding an "upcoming" schedule entry with the right round number
     // missed at least one real playoff game (its entry either didn't
     // match or wasn't tagged round 9+), which let that game's result leak
-    // into the regular-season standings.
-    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (new Date() >= PLAYOFF_START_DATE);
+    // into the regular-season standings. This date check only applies to
+    // the legacy Summer 2026 35+ League specifically — PLAYOFF_START_DATE
+    // is that league's actual playoff date, not a universal cutoff, so it
+    // must never be applied to other divisions/seasons with their own
+    // separate calendars (a brand new division's regular season games
+    // played after Aug 19 are NOT playoff games just because that date
+    // has passed in real time).
+    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
     if(!standings[hn])standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
     if(!standings[an])standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
     standings[hn].color=hc; standings[an].color=ac;
@@ -3308,14 +3316,18 @@ function finishGame(){
     }
     // Mark schedule game final — check both home/away orderings, since the
     // live game may have been started with sides swapped from however the
-    // auto-generated schedule listed them.
+    // auto-generated schedule listed them. Matched case-insensitively —
+    // schedule entries can come from a bulk-import paste using different
+    // casing than the team's real (usually ALL CAPS) stored name.
     for(var s=0;s<schedule.length;s++){
       if(schedule[s].status!=='upcoming') continue;
-      if(schedule[s].home===hn&&schedule[s].away===an){
+      var sHome=(schedule[s].home||'').toLowerCase(), sAway=(schedule[s].away||'').toLowerCase();
+      var hnL=(hn||'').toLowerCase(), anL=(an||'').toLowerCase();
+      if(sHome===hnL&&sAway===anL){
         schedule[s].status='final'; schedule[s].homeScore=hs; schedule[s].awayScore=as_;
         break;
       }
-      if(schedule[s].home===an&&schedule[s].away===hn){
+      if(sHome===anL&&sAway===hnL){
         schedule[s].status='final'; schedule[s].homeScore=as_; schedule[s].awayScore=hs;
         break;
       }

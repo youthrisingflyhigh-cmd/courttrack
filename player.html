@@ -1361,8 +1361,9 @@ function renderFilm(){
       return 2;
     }
     var match=schedule.find(function(s){
+      var sHome=(s.home||'').toLowerCase(), sAway=(s.away||'').toLowerCase();
       return s.status==='final' &&
-        ((s.home===g.home&&s.away===g.away)||(s.home===g.away&&s.away===g.home));
+        ((sHome===gHome&&sAway===gAway)||(sHome===gAway&&sAway===gHome));
     });
     return match?match.round:null;
   }
@@ -1381,7 +1382,7 @@ function renderFilm(){
   var seasons={}; // seasonName -> { weekNum -> [games] }
   var seasonOrder=[];
   hist.slice().reverse().forEach(function(g){
-    var seasonName=g.season||appSeasonName||'Summer 2026';
+    var seasonName=g.season||appSeasonName||'Current Season';
     var wk=resolveWeek(g);
     var weekKey=(wk||wk===0)?wk:'?';
     if(!seasons[seasonName]){ seasons[seasonName]={}; seasonOrder.push(seasonName); }
