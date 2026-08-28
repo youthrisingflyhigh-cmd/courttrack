@@ -388,6 +388,18 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="delete-game-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:460px;">
+    <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Delete a Game</h3>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Which game?</label>
+    <select id="delete-game-select" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:16px;"><option value="">Loading…</option></select>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeDeleteGameModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="runDeleteGame()" style="flex:1;padding:10px;background:#7c2d2d;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -892,6 +904,12 @@ BYE: Ohana, AIM
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Recompute Standings from Game History</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Same idea, but built from Game History instead of Schedule — use this one if Standings look wrong/empty even though real games have been played and finished (Game History tends to survive schedule edits/imports better).</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="recomputeStandingsFromGameHistory()">🔧 Recompute Standings from Game History</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Restore Summer 2026 Final Standings</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">One-time recovery — sets Summer 2026's standings back to the confirmed-correct final regular-season numbers (Ohana 5-1, Fly High 5-1, United 3-3, Moneyball 3-3, Fleetwork 3-3, SB Hoops 2-4, Treez 0-6), independent of whatever the Schedule currently contains. Only works while Summer 2026 · 35+ Men's League is the active season/division.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="restoreSummer2026Standings()">🔧 Restore Summer 2026 Final Standings</button>
@@ -919,6 +937,26 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Move a Specific Game to Another Division</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Moves ONE game (its history record, standings contribution, and player stats) from the CURRENTLY ACTIVE division into a target division — and correctly reverses that game's contribution to standings/player stats here first, so it doesn't stay double-counted in the wrong place. Use this after a game ended up merged into the wrong division and its team has since been recreated correctly elsewhere.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openMoveGameModal()">🔧 Move a Specific Game to Another Division</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Delete a Game</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Permanently removes one game from this division — its history record, its standings contribution, and its player stats. Use this for a phantom/duplicate game (e.g. an accidental 0-0 entry) that should never have been saved.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openDeleteGameModal()">🗑 Delete a Game</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Head-to-Head Overrides</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For when a real game happened between two teams but its record got lost and can't be recovered — tells the standings tiebreaker who actually won, without needing a full game record. Takes priority over anything found in Game History.</p>
+      <div class="input-row" style="margin-bottom:8px;">
+        <select id="h2h-override-team-a" style="flex:1;"><option value="">Team A</option></select>
+        <select id="h2h-override-team-b" style="flex:1;"><option value="">Team B</option></select>
+      </div>
+      <div class="input-row" style="margin-bottom:12px;">
+        <select id="h2h-override-winner" style="flex:1;"><option value="">Who won?</option></select>
+        <button class="btn btn-orange" onclick="addH2HOverride()">+ Add</button>
+      </div>
+      <div id="h2h-override-list" style="font-size:13px;color:var(--muted);"></div>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -2201,7 +2239,7 @@ function runMoveGame(){
 }
 
 // ── State ──
-var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[];
+var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[],h2hOverrides=[];
 // Playoffs started Aug 19, 2026 — anything on or after this date is a
 // playoff game and must never count toward regular-season standings.
 // Used as the primary signal (not just schedule round/isPlayoff tags,
@@ -2392,6 +2430,11 @@ fbOnce(ctPath('standings'),  function(v){standings=v||{};     _check();});
 fbOnce(ctPath('history'),    function(v){gameHistory=toArr(v);    _check();});
 fbOnce(ctPath('playerStats'),function(v){playerStats=v||{};   _check();});
 fbOnce(ctPath('schedule'),   function(v){schedule=toArr(v);   _check();});
+// Manual head-to-head overrides — not part of the 6-source boot gate
+// since they're optional (only needed when a real game record is
+// missing/lost), loaded independently so they don't hold up the rest of
+// the app.
+fbOnce(ctPath('h2hOverrides'), function(v){ h2hOverrides=toArr(v); });
 fbListen(ctPath('game'), function(v){
   game=v||null;
   // If already on track tab, refresh it
@@ -2475,6 +2518,115 @@ fbListen(ctPath('game/shotClock'), function(v){
   }
 });
 
+// Same idea as computeStandingsFromSchedule(), but built from Game
+// History instead — proven more reliable tonight (schedule entries can
+// end up missing/mistagged after edits/imports/migrations, but a
+// finished game's history record survives all of that). Used as the
+// auto-heal source for any division other than the legacy Summer 2026
+// league, which has its own dedicated hardcoded correction, and also
+// available as its own manual recovery button in Settings.
+function computeStandingsFromGameHistory(){
+  var rebuilt={};
+  toArr(gameHistory).forEach(function(g){
+    if(!g||!g.home||!g.away) return;
+    var hs=g.homeScore, as_=g.awayScore;
+    if(hs==null||as_==null) return;
+    var homeTeam=teams.find(function(t){return t.name===g.home;});
+    var awayTeam=teams.find(function(t){return t.name===g.away;});
+    var hc=(homeTeam&&homeTeam.color)||'#FF5C00';
+    var ac=(awayTeam&&awayTeam.color)||'#FF5C00';
+    if(!rebuilt[g.home]) rebuilt[g.home]={w:0,l:0,pf:0,pa:0,color:hc};
+    if(!rebuilt[g.away]) rebuilt[g.away]={w:0,l:0,pf:0,pa:0,color:ac};
+    rebuilt[g.home].color=hc; rebuilt[g.away].color=ac;
+    rebuilt[g.home].pf+=hs; rebuilt[g.home].pa+=as_;
+    rebuilt[g.away].pf+=as_; rebuilt[g.away].pa+=hs;
+    if(hs>as_){ rebuilt[g.home].w++; rebuilt[g.away].l++; }
+    else if(as_>hs){ rebuilt[g.away].w++; rebuilt[g.home].l++; }
+  });
+  return rebuilt;
+}
+function recomputeStandingsFromGameHistory(){
+  var hist=toArr(gameHistory);
+  if(!hist.length){
+    alert('No games found in Game History to recompute from.');
+    return;
+  }
+  if(!confirm('This will recompute every team\'s standings from scratch using all '+hist.length+' game(s) in this division\'s Game History, and replace the current Standings with the result. Continue?')) return;
+  standings=computeStandingsFromGameHistory();
+  if(!_dataFullyLoaded){
+    alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
+    return;
+  }
+  fbSet(ctPath('standings'), standings);
+  alert('✅ Standings recomputed from '+hist.length+' game(s) in Game History.');
+  if(typeof renderStandings==='function') renderStandings();
+}
+
+// ── DELETE A GAME ──
+// Permanently removes one game — its history record, standings
+// contribution, and player stats — from the current division. Use for a
+// phantom/duplicate game that should never have been saved (e.g. an
+// accidental 0-0 entry from a game that got started but never actually
+// played).
+function openDeleteGameModal(){
+  var sel=document.getElementById('delete-game-select');
+  var hist=toArr(gameHistory);
+  if(!hist.length){
+    sel.innerHTML='<option value="">No games in this division\'s history</option>';
+  } else {
+    sel.innerHTML=hist.map(function(g,i){
+      return '<option value="'+i+'">'+(g.date||'?')+' — '+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'</option>';
+    }).join('');
+  }
+  document.getElementById('delete-game-modal').style.display='flex';
+}
+function closeDeleteGameModal(){
+  document.getElementById('delete-game-modal').style.display='none';
+}
+function runDeleteGame(){
+  var idx=document.getElementById('delete-game-select').value;
+  if(idx===''||idx===undefined){ alert('Pick a game first.'); return; }
+  var hist=toArr(gameHistory);
+  var g=hist[parseInt(idx)];
+  if(!g){ alert('Could not find that game.'); return; }
+  if(!confirm('Permanently delete "'+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'" ('+(g.date||'?')+')? This removes its standings and player-stat contribution too. Cannot be undone.')) return;
+
+  var delta=computeGameStandingsDelta(g);
+  Object.keys(delta).forEach(function(teamName){
+    var s=standings[teamName];
+    if(!s) return;
+    var d=delta[teamName];
+    s.w=Math.max(0,(s.w||0)-d.w);
+    s.l=Math.max(0,(s.l||0)-d.l);
+    s.pf=Math.max(0,(s.pf||0)-d.pf);
+    s.pa=Math.max(0,(s.pa||0)-d.pa);
+  });
+  fbSet(ctPath('standings'),standings);
+
+  function reverseStatsSide(teamName,statsObj){
+    if(!playerStats[teamName]||!statsObj) return;
+    Object.keys(statsObj).forEach(function(num){
+      var gs=statsObj[num], ps=playerStats[teamName][num];
+      if(!ps) return;
+      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){
+        ps[k]=Math.max(0,(ps[k]||0)-(gs[k]||0));
+      });
+      ps.gp=Math.max(0,(ps.gp||0)-1);
+    });
+  }
+  reverseStatsSide(g.home,g.hStats);
+  reverseStatsSide(g.away,g.aStats);
+  fbSet(ctPath('playerStats'),playerStats);
+
+  gameHistory=hist.filter(function(x,i){return i!==parseInt(idx);});
+  fbSet(ctPath('history'),gameHistory);
+
+  renderTeams(); renderRoster(); renderSelects();
+  if(typeof renderStandings==='function') renderStandings();
+  alert('✅ Game deleted.');
+  closeDeleteGameModal();
+}
+
 function onAllLoaded(){
   var overlay=document.getElementById('loading-overlay');
   if(overlay) overlay.style.display='none';
@@ -2516,25 +2668,27 @@ function onAllLoaded(){
       }
     }
   }catch(e){ console.log('Summer 2026 standings auto-heal skipped:', e); }
-  // Auto-heal standings: if playoff games have leaked into the
-  // regular-season standings (the exact bug we kept chasing on Aug 19),
-  // silently recompute and re-save on load instead of requiring someone
-  // to remember to click the recovery button in Settings.
+  // Auto-heal standings: if a division's Standings ever drift from what
+  // Game History actually shows (e.g. from a Schedule that's missing/
+  // mistagged entries after edits/imports/migrations), silently
+  // recompute from Game History and re-save on load — Game History has
+  // proven the most reliable source, surviving things that have
+  // corrupted Schedule/Standings directly.
   try{
-    if(_dataFullyLoaded && CT_BASE!=='ct' && schedule && schedule.length){
-      var corrected = computeStandingsFromSchedule();
+    if(_dataFullyLoaded && CT_BASE!=='ct' && gameHistory && toArr(gameHistory).length){
+      var corrected = computeStandingsFromGameHistory();
       var correctedTeamCount = Object.keys(corrected).length;
       var currentTeamCount = Object.keys(standings||{}).length;
-      // Never let this auto-correction silently shrink coverage — if the
-      // schedule currently has fewer/wrong teams in it (e.g. from an
-      // accidental import to the wrong division), that's a sign the
-      // Schedule itself isn't trustworthy right now, not that the real
-      // standings should be wiped down to match it.
+      // Never let this auto-correction silently shrink coverage — if
+      // Game History currently has fewer/wrong teams in it (e.g. from an
+      // accidental import to the wrong division), that's a sign the data
+      // itself isn't trustworthy right now, not that real standings
+      // should be wiped down to match it.
       if(correctedTeamCount >= currentTeamCount && JSON.stringify(corrected) !== JSON.stringify(standings)){
         standings = corrected;
         fbSet(ctPath('standings'), standings);
         if(typeof renderStandings==='function') renderStandings();
-        console.log('Auto-corrected standings on load — playoff/excluded games were leaking in.');
+        console.log('Auto-corrected standings on load from Game History.');
       }
     }
   }catch(e){ console.log('Standings auto-heal skipped:', e); }
@@ -4656,6 +4810,15 @@ function renderBox(){
 // Head-to-head record between two teams this season, used as the standings
 // tiebreaker before point differential. Looks at completed games only.
 function headToHeadRecord(nameA,nameB){
+  // Manual overrides take priority — for when a real game happened but
+  // its record got lost/moved and can't be recovered. Checked first so
+  // it doesn't matter whether a matching game also exists in history.
+  var override=(h2hOverrides||[]).find(function(o){
+    return (o.teamA===nameA&&o.teamB===nameB)||(o.teamA===nameB&&o.teamB===nameA);
+  });
+  if(override){
+    return {aw:override.winner===nameA?1:0, bw:override.winner===nameB?1:0};
+  }
   var aw=0,bw=0;
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   hist.forEach(function(g){
@@ -5442,6 +5605,7 @@ function renderSettings(){
   renderStreamAdmin();
   renderLeagueNameAdmin();
   renderSeasonNameAdmin();
+  renderH2HOverrideAdmin();
   // Populate POTW team dropdown
   var tSel=document.getElementById('potw-team-select');
   tSel.innerHTML='<option value="">Select team…</option>';
@@ -5594,6 +5758,52 @@ function renderSeasonNameAdmin(){
   } else {
     el.innerHTML='<span style="font-style:italic;">Not set — Game History currently defaults to showing "Season 1" as the heading.</span>';
   }
+}
+
+// ── HEAD-TO-HEAD OVERRIDES ──
+function renderH2HOverrideAdmin(){
+  var aSel=document.getElementById('h2h-override-team-a');
+  var bSel=document.getElementById('h2h-override-team-b');
+  var wSel=document.getElementById('h2h-override-winner');
+  if(!aSel) return;
+  var opts='<option value="">Select…</option>'+teams.map(function(t){return '<option value="'+t.name.replace(/"/g,'&quot;')+'">'+t.name+'</option>';}).join('');
+  aSel.innerHTML=opts.replace('Select…','Team A');
+  bSel.innerHTML=opts.replace('Select…','Team B');
+  wSel.innerHTML='<option value="">Who won?</option>'+teams.map(function(t){return '<option value="'+t.name.replace(/"/g,'&quot;')+'">'+t.name+'</option>';}).join('');
+
+  var listEl=document.getElementById('h2h-override-list');
+  if(!h2hOverrides.length){
+    listEl.innerHTML='<div style="font-style:italic;">No overrides set.</div>';
+  } else {
+    listEl.innerHTML=h2hOverrides.map(function(o,i){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #333;">'
+        +'<span><strong style="color:var(--white);">'+o.winner+'</strong> beat '+(o.teamA===o.winner?o.teamB:o.teamA)+'</span>'
+        +'<button onclick="removeH2HOverride('+i+')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;">🗑</button>'
+        +'</div>';
+    }).join('');
+  }
+}
+function addH2HOverride(){
+  var teamA=document.getElementById('h2h-override-team-a').value;
+  var teamB=document.getElementById('h2h-override-team-b').value;
+  var winner=document.getElementById('h2h-override-winner').value;
+  if(!teamA||!teamB||!winner){ alert('Pick both teams and who won.'); return; }
+  if(teamA===teamB){ alert('Pick two different teams.'); return; }
+  if(winner!==teamA&&winner!==teamB){ alert('The winner has to be one of the two teams selected.'); return; }
+  // Replace any existing override for this same pair rather than stacking duplicates
+  h2hOverrides=h2hOverrides.filter(function(o){
+    return !((o.teamA===teamA&&o.teamB===teamB)||(o.teamA===teamB&&o.teamB===teamA));
+  });
+  h2hOverrides.push({teamA:teamA,teamB:teamB,winner:winner});
+  fbSet(ctPath('h2hOverrides'),h2hOverrides);
+  renderH2HOverrideAdmin();
+  if(typeof renderStandings==='function') renderStandings();
+}
+function removeH2HOverride(i){
+  h2hOverrides.splice(i,1);
+  fbSet(ctPath('h2hOverrides'),h2hOverrides);
+  renderH2HOverrideAdmin();
+  if(typeof renderStandings==='function') renderStandings();
 }
 
 // ── REGISTRATIONS ──
