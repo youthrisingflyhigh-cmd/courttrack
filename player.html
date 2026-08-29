@@ -905,8 +905,13 @@ function probeImage(src){
   });
 }
 function probePotwSlot(n,v){
-  var jpg='potw-'+n+'.jpg?v='+v;
-  var png='potw-'+n+'.png?v='+v;
+  // Scoped to a per-division folder (potw/<division-slug>/...) — without
+  // this, an uploaded poster would show up on every division's page
+  // instead of just the one it's actually for, since there was no
+  // division awareness here at all before.
+  var folder='potw/'+(CT_BASE.split('/').pop()||'ct');
+  var jpg=folder+'/potw-'+n+'.jpg?v='+v;
+  var png=folder+'/potw-'+n+'.png?v='+v;
   return probeImage(jpg).then(function(ok){
     if(ok) return jpg;
     return probeImage(png).then(function(ok2){ return ok2?png:null; });
