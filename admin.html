@@ -878,6 +878,14 @@ BYE: Ohana, AIM
     <div class="stats-card">
       <table><thead><tr><th style="text-align:left;">#</th><th style="text-align:left;">Player</th><th style="text-align:left;">Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>GP</th></tr></thead><tbody id="players-tab-body"></tbody></table>
     </div>
+
+    <div id="former-players-admin-section" style="display:none;margin-top:1.5rem;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Former Players</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Have stats but no matching current roster entry (removed, or their number was reused) — usually means they're actually still on the team and just need adding back to the roster.</div>
+      <div class="stats-card">
+        <table><thead><tr><th style="text-align:left;">#</th><th style="text-align:left;">Player</th><th style="text-align:left;">Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>GP</th><th></th></tr></thead><tbody id="former-players-admin-body"></tbody></table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5158,6 +5166,74 @@ function renderTeamsTab(){
   }).join('');
 }
 
+// ── FORMER PLAYERS (ported from player.html's read-only version) ──
+// Stats are stored per team + jersey number, but a person can end up
+// under a different number-key than what's currently on the roster (a
+// number gets edited/reused, a roster gets rebuilt, etc). This finds
+// those orphaned stat entries and — since this is admin.html, unlike
+// player.html — offers a real fix: add them back to the roster with one
+// click, rather than needing a separate Bulk Import each time.
+function resolveNameForNum(t,numKey){
+  var cur=t.players.find(function(p){ return String(p.num)===String(numKey); });
+  if(cur) return cur.name;
+  var hist=[];
+  try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
+  for(var i=hist.length-1; i>=0; i--){
+    var g=hist[i];
+    if(!g) continue;
+    var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
+    if(!roster) continue;
+    var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
+    if(match) return match.name;
+  }
+  return null;
+}
+function getFormerPlayersAdmin(){
+  var rows=[];
+  teams.forEach(function(t){
+    var ps=playerStats[t.name]||{};
+    Object.keys(ps).forEach(function(numKey){
+      var s=ps[numKey]||{};
+      var hasStats=(s.gp||0)>0||(s.pts||0)>0||(s.reb||0)>0||(s.ast||0)>0;
+      if(!hasStats) return;
+      var isCurrentNum=t.players.some(function(p){ return String(p.num)===String(numKey); });
+      if(isCurrentNum) return;
+      var nm=resolveNameForNum(t,numKey)||('Former Player #'+numKey);
+      rows.push({p:{num:numKey,name:nm},teamName:t.name,teamColor:t.color,s:s});
+    });
+  });
+  rows.sort(function(a,b){return (b.s.pts||0)-(a.s.pts||0);});
+  return rows;
+}
+function renderFormerPlayersAdmin(){
+  var rows=getFormerPlayersAdmin();
+  var section=document.getElementById('former-players-admin-section');
+  if(!rows.length){ section.style.display='none'; return; }
+  section.style.display='block';
+  document.getElementById('former-players-admin-body').innerHTML=rows.map(function(r){
+    return '<tr>'
+      +'<td><span style="color:'+r.teamColor+';font-weight:700;">#'+r.p.num+'</span></td>'
+      +'<td>'+r.p.name+'</td>'
+      +'<td style="text-align:left;"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:'+r.teamColor+';display:inline-block;"></span>'+r.teamName+'</span></td>'
+      +'<td class="pts-cell">'+(r.s.pts||0)+'</td><td>'+(r.s.reb||0)+'</td><td>'+(r.s.ast||0)+'</td>'
+      +'<td>'+(r.s.stl||0)+'</td><td>'+(r.s.blk||0)+'</td><td>'+(r.s.to||0)+'</td><td>'+(r.s.gp||0)+'</td>'
+      +'<td><button onclick="addFormerPlayerToRoster(\''+r.teamName.replace(/'/g,"\\'")+'\','+r.p.num+',\''+r.p.name.replace(/'/g,"\\'")+'\')" style="background:var(--orange);color:#000;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ Add to Roster</button></td>'
+      +'</tr>';
+  }).join('');
+}
+function addFormerPlayerToRoster(teamName,num,name){
+  var t=teams.find(function(tt){return tt.name===teamName;});
+  if(!t){ alert('Could not find that team.'); return; }
+  var collision=t.players.some(function(p){return String(p.num)===String(num);});
+  if(collision){ alert('Jersey #'+num+' is already taken by a current player on this roster — check for a conflict before adding.'); return; }
+  if(!confirm('Add "'+name+'" (#'+num+') to '+teamName+'\'s current roster? Their existing stats stay exactly as they are — this just adds the missing roster entry so they show up as a current player.')) return;
+  t.players.push({num:parseInt(num)||num,name:name,pos:''});
+  fbSet(ctPath('teams'),teams);
+  renderTeams(); renderRoster(); renderSelects();
+  renderPlayersTab();
+  alert('✅ Added.');
+}
+
 function renderPlayersTab(){
   var q=(document.getElementById('player-search-input').value||'').toLowerCase();
   var rows=[];
@@ -5195,6 +5271,7 @@ function renderPlayersTab(){
       +'<td>'+(r.s.stl||0)+'</td><td>'+(r.s.blk||0)+'</td><td>'+(r.s.to||0)+'</td><td>'+(r.s.gp||0)+'</td></tr>'
       +gameLogHtml;
   }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
+  renderFormerPlayersAdmin();
 }
 
 function togglePlayerLog(ri){
