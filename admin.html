@@ -4744,9 +4744,11 @@ function renderThursdayLeagueBracket(container){
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
   }
 
-  // Top 4 seeds only — no Quarterfinal round.
+  // Top 4 seeds only — no Quarterfinal round. Semifinals now on Oct 22,
+  // with Oct 29 as a full event day (3-Point Shootout → All-Star →
+  // Championship), matching the same format used for the 35+ league.
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 29</div>';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 22</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
   html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'6:30 PM');
   html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'7:25 PM');
@@ -4759,13 +4761,19 @@ function renderThursdayLeagueBracket(container){
   html+='<div style="position:absolute;top:90px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
   html+='</div>';
 
-  html+='<div style="display:flex;flex-direction:column;justify-content:center;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">FINAL · OCT 29</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">OCT 29</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">6:30 PM</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">⭐ All-Star Game</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">7:25 PM</div></div>';
   html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
     +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
-    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">FINAL — 8:25 PM</div>'
-    +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">WINNER: SEMI 1 vs SEMI 2</div></div>';
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPIONSHIP</div>'
+    +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:25 PM · WINNER: SEMI 1 vs SEMI 2</div></div>';
   html+='</div>';
 
   html+='</div></div>';
@@ -4876,6 +4884,27 @@ function renderPlayoffBracket(){
   container.innerHTML=html;
 }
 
+// Finds the single highest-point performer across both teams in one
+// finished game — same logic added to player.html's ticker, mirrored
+// here so admin.html's own game lists show the same quick top-scorer
+// callout instead of needing to expand the box score to see it.
+function computeGameTopScorer(g){
+  var best=null;
+  function scan(statsObj,rosterArr,teamName){
+    if(!statsObj) return;
+    Object.keys(statsObj).forEach(function(num){
+      var s=statsObj[num];
+      if(!s||!(s.pts>0)) return;
+      var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
+      var name=player?player.name:('#'+num);
+      if(!best||s.pts>best.pts) best={name:name,teamName:teamName,pts:s.pts};
+    });
+  }
+  scan(g.hStats,g.homePlayers,g.home);
+  scan(g.aStats,g.awayPlayers,g.away);
+  return best;
+}
+
 function renderStandings(){
   var tbody=document.getElementById('standings-body');
   var entries=getSeededStandings();
@@ -4901,6 +4930,8 @@ function renderStandings(){
   ghEl.innerHTML=gameHistory.map(function(g,gi){
     var winner=g.homeScore>g.awayScore?g.home:g.away;
     var ws=Math.max(g.homeScore,g.awayScore), ls=Math.min(g.homeScore,g.awayScore);
+    var topScorer=computeGameTopScorer(g);
+    var topScorerHtml=topScorer?'<div style="font-size:11px;color:var(--muted);">🏀 '+topScorer.name+' ('+topScorer.teamName+') '+topScorer.pts+' PTS</div>':'';
     var boxHtml='';
     if(g.homePlayers&&g.hStats){
       function makeBoxRows(pl,st,color){
@@ -4932,6 +4963,7 @@ function renderStandings(){
       +'<div style="flex:1;font-size:14px;font-weight:600;"><span style="color:'+g.homeColor+'">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+g.awayColor+'">'+g.away+'</span></div>'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;">'+g.homeScore+' — '+g.awayScore+'</div>'
       +'<div style="font-size:12px;font-weight:700;color:var(--green);">W: '+winner+' ('+ws+'-'+ls+')</div>'
+      +topScorerHtml
       +'<span style="font-size:11px;color:var(--muted);">▼ Box Score</span></div>'
       +'<div id="hist-box-'+gi+'" style="display:none;padding:0 16px 16px;">'+boxHtml+'</div>'
       +'</div>';
@@ -5024,6 +5056,8 @@ function renderGames(){
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
     var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
+    var topScorer=computeGameTopScorer(g);
+    var topScorerHtml=topScorer?'<div style="font-size:11px;color:var(--muted);">🏀 '+topScorer.name+' ('+topScorer.teamName+') '+topScorer.pts+' PTS</div>':'';
     // Box score rows
     function makeRows(pl,st,color){
       if(!pl||!st)return '';
@@ -5067,6 +5101,7 @@ function renderGames(){
       +'</div>'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div>'
       +'<div style="font-size:12px;font-weight:700;color:'+wc+';">W: '+winner+' ('+ws+'-'+ls+')</div>'
+      +topScorerHtml
       +'<span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span>'
       +'</div>'
       +'<div class="game-record-body" id="grbody-'+gi+'">'
