@@ -264,6 +264,21 @@ body{
   <div style="font-size:14px;color:#333;letter-spacing:1px;margin-top:20px;">southbayhoops.org</div>
 </div>
 
+<div id="tpc-display" style="display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#888;letter-spacing:4px;margin-bottom:8px;">🎯 3-POINT CONTEST</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:#fff;margin-bottom:24px;" id="tpc-sb-name">—</div>
+  <div style="display:flex;gap:60px;align-items:center;">
+    <div>
+      <div style="font-size:14px;color:#888;letter-spacing:2px;margin-bottom:4px;">TIME</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:110px;font-weight:900;color:#FF4500;line-height:1;" id="tpc-sb-timer">0:45</div>
+    </div>
+    <div>
+      <div style="font-size:14px;color:#888;letter-spacing:2px;margin-bottom:4px;">SCORE</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:110px;font-weight:900;color:#fff;line-height:1;" id="tpc-sb-score">0</div>
+    </div>
+  </div>
+</div>
+
 <div id="game-display" class="board-wrap" style="display:none;">
   <div class="clock" id="sb-clock">20:00</div>
 
@@ -563,8 +578,14 @@ db.ref(ctPath('teams')).on('value', function(s){
 });
 
 // Watch game
+// Cached so the 3PT Contest listener (below) can correctly restore
+// whichever of no-game/game-display was showing before the contest
+// started, without needing the game listener itself to refire.
+var _lastGameVal=null;
+
 db.ref(ctPath('game')).on('value', function(s){
   var game = s.val();
+  _lastGameVal = game;
   if(!game || (game.homeScore == null && game.awayScore == null)){
     document.getElementById('no-game').style.display = 'flex';
     document.getElementById('game-display').style.display = 'none';
@@ -638,6 +659,39 @@ db.ref(ctPath('game')).on('value', function(s){
   document.getElementById('bottom-ticker').textContent =
     (ht.name||'Home') + ' ' + (game.homeScore||0) + '  —  ' + (game.awayScore||0) + '  ' + (at.name||'Away') +
     '  ·  ' + (game.date||'') + '  ·  San Jose High School';
+});
+
+// 3-Point Contest — takes over the whole screen while a shooter is
+// active, since it's its own event rather than part of the regular game
+// scoreboard. Falls back to whichever of no-game/game-display was
+// correct (using the cached game state above) once the contest isn't
+// actively running, since the game listener itself won't necessarily
+// refire on its own at that moment.
+db.ref(ctPath('threePointContest')).on('value', function(s){
+  var tpc = s.val();
+  var participants = tpc && tpc.participants ? (Array.isArray(tpc.participants) ? tpc.participants : Object.values(tpc.participants)) : [];
+  var current = (tpc && tpc.currentId) ? participants.find(function(p){ return p && p.id === tpc.currentId; }) : null;
+
+  if(current){
+    document.getElementById('no-game').style.display = 'none';
+    document.getElementById('game-display').style.display = 'none';
+    document.getElementById('tpc-display').style.display = 'flex';
+    document.getElementById('tpc-sb-name').textContent = current.name + (current.teamName ? ' · ' + current.teamName : '');
+    document.getElementById('tpc-sb-score').textContent = current.score || 0;
+    var secs = (tpc.timerSeconds != null) ? tpc.timerSeconds : 45;
+    var m = Math.floor(secs / 60), sec = secs % 60;
+    document.getElementById('tpc-sb-timer').textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+  } else {
+    document.getElementById('tpc-display').style.display = 'none';
+    var game = _lastGameVal;
+    if(!game || (game.homeScore == null && game.awayScore == null)){
+      document.getElementById('no-game').style.display = 'flex';
+      document.getElementById('game-display').style.display = 'none';
+    } else {
+      document.getElementById('no-game').style.display = 'none';
+      document.getElementById('game-display').style.display = 'flex';
+    }
+  }
 });
 
 // Fast score listener — updates instantly without waiting for full game sync

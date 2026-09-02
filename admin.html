@@ -280,6 +280,7 @@ th, td { padding: 10px 8px !important; }
     <button class="nav-tab active" onclick="showPage('setup')">⚙ Setup</button>
     <button class="nav-tab" onclick="showPage('schedule')">📅 Schedule</button>
     <button class="nav-tab" onclick="showPage('track')">🏀 Live Tracking</button>
+    <button class="nav-tab" onclick="showPage('threept')">🎯 3PT Contest</button>
     <button class="nav-tab" onclick="showPage('standings')">🏆 Standings</button>
     <button class="nav-tab" onclick="showPage('games')">🗂 Games</button>
     <button class="nav-tab" onclick="showPage('teams')">👥 Teams &amp; Players</button>
@@ -453,6 +454,7 @@ BYE: Ohana, AIM
   <button class="mobile-tab" onclick="showPage('setup');closeMenu()">⚙ Setup</button>
   <button class="mobile-tab" onclick="showPage('schedule');closeMenu()">📅 Schedule</button>
   <button class="mobile-tab" onclick="showPage('track');closeMenu()">🏀 Live Tracking</button>
+  <button class="mobile-tab" onclick="showPage('threept');closeMenu()">🎯 3PT Contest</button>
   <button class="mobile-tab" onclick="showPage('standings');closeMenu()">🏆 Standings</button>
   <button class="mobile-tab" onclick="showPage('games');closeMenu()">🗂 Games</button>
   <button class="mobile-tab" onclick="showPage('teams');closeMenu()">👥 Teams &amp; Players</button>
@@ -834,6 +836,67 @@ BYE: Ohana, AIM
         <div class="stats-card-header" id="away-box-lbl">Away</div>
         <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody id="away-box"></tbody></table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3PT CONTEST -->
+<div class="page" id="page-threept">
+  <div style="margin-bottom:1.5rem;">
+    <h2 style="font-size:28px;font-weight:900;color:var(--white);">🎯 3-Point Contest</h2>
+    <p style="color:var(--muted);font-size:13px;">Each rack basket = 1 pt · Moneyball = 2 pts · 45 sec per shooter. Time and score sync live to scoreboard.html.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3>Add Participant</h3></div>
+    <div class="card-body">
+      <div class="input-row">
+        <input type="text" id="tpc-name-input" placeholder="Participant name"/>
+        <select id="tpc-team-select" style="flex:1;"><option value="">Team (optional)</option></select>
+        <button class="btn btn-orange" onclick="tpcAddParticipant()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3>Current Shooter</h3></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <select id="tpc-shooter-select" onchange="tpcSetCurrentShooter()" style="flex:1;min-width:200px;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:14px;"><option value="">-- Select who's shooting --</option></select>
+      </div>
+
+      <div id="tpc-active-shooter" style="display:none;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:4px;" id="tpc-shooter-name">—</div>
+        <div style="display:flex;justify-content:center;gap:32px;align-items:center;margin:16px 0;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;">TIME</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--orange);" id="tpc-timer-display">0:45</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;">SCORE</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:#fff;" id="tpc-score-display">0</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn btn-orange" onclick="tpcTimerStart()" id="tpc-start-btn">▶ Start (45s)</button>
+          <button class="btn" style="background:var(--dark3);border:1px solid #555;" onclick="tpcTimerReset()">↺ Reset Timer</button>
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <button onclick="tpcAddPoint(1)" style="padding:20px 36px;font-size:20px;font-weight:900;background:var(--dark3);border:2px solid #555;color:#fff;border-radius:12px;cursor:pointer;">+1 Rack</button>
+          <button onclick="tpcAddPoint(2)" style="padding:20px 36px;font-size:20px;font-weight:900;background:linear-gradient(135deg,#FF5C00,#cc4a00);border:none;color:#fff;border-radius:12px;cursor:pointer;">+2 Moneyball</button>
+        </div>
+        <div style="display:flex;justify-content:center;gap:10px;">
+          <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="tpcUndoLast()">↩ Undo Last</button>
+          <button class="btn btn-orange" onclick="tpcFinishTurn()">✓ Finish Turn</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Leaderboard</h3></div>
+    <div class="card-body">
+      <table><thead><tr><th style="text-align:left;">Rank</th><th style="text-align:left;">Name</th><th style="text-align:left;">Team</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody id="tpc-leaderboard-body"></tbody></table>
     </div>
   </div>
 </div>
@@ -1394,6 +1457,171 @@ function playHorn(dur){
 function stopHorn(){
   clearTimeout(hornStopTimeout);
   if(hornEl){ try{ hornEl.pause(); hornEl.currentTime = 0; }catch(e){} }
+}
+
+// ── 3-POINT CONTEST ──
+// Fully separate from the main game clock — its own 45-second countdown,
+// its own participant list, synced to Firebase so scoreboard.html can
+// show the current shooter's name/score/time live, same as everything
+// else in the app.
+var tpcTimerInterval=null;
+
+function tpcSaveState(){
+  fbSet(ctPath('threePointContest'), threePointContest);
+}
+
+function tpcAddParticipant(){
+  var nameInput=document.getElementById('tpc-name-input');
+  var name=nameInput.value.trim();
+  if(!name){ alert('Enter a name first.'); return; }
+  var teamSel=document.getElementById('tpc-team-select');
+  var teamName=teamSel.value||'';
+  var id='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  threePointContest.participants.push({id:id,name:name,teamName:teamName,score:0,completed:false,log:[]});
+  nameInput.value='';
+  teamSel.value='';
+  tpcSaveState();
+  renderTpcUI();
+}
+
+function tpcRemoveParticipant(id){
+  if(!confirm('Remove this participant? Their score will be lost.')) return;
+  threePointContest.participants=threePointContest.participants.filter(function(p){return p.id!==id;});
+  if(threePointContest.currentId===id){
+    threePointContest.currentId=null;
+    tpcTimerStop();
+  }
+  tpcSaveState();
+  renderTpcUI();
+}
+
+function tpcSetCurrentShooter(){
+  var sel=document.getElementById('tpc-shooter-select');
+  var id=sel.value;
+  if(!id){ threePointContest.currentId=null; tpcSaveState(); renderTpcUI(); return; }
+  tpcTimerStop();
+  threePointContest.currentId=id;
+  threePointContest.timerSeconds=45;
+  threePointContest.timerRunning=false;
+  tpcSaveState();
+  renderTpcUI();
+}
+
+function tpcGetCurrent(){
+  return threePointContest.participants.find(function(p){return p.id===threePointContest.currentId;});
+}
+
+function tpcTimerStart(){
+  if(!threePointContest.currentId) return;
+  tpcTimerStop();
+  threePointContest.timerRunning=true;
+  tpcSaveState();
+  tpcResumeInterval();
+}
+// Starts the actual countdown interval without touching timerRunning/
+// timerSeconds — used both by a fresh Start click and by the auto-resume
+// check above (which restarts a countdown that Firebase says should
+// still be running, after a refresh dropped the local interval).
+function tpcResumeInterval(){
+  if(tpcTimerInterval) return;
+  tpcTimerInterval=setInterval(function(){
+    if(threePointContest.timerSeconds>0){
+      threePointContest.timerSeconds--;
+      tpcSaveState();
+      renderTpcUI();
+      if(threePointContest.timerSeconds===0){
+        tpcTimerStop();
+        playHorn(2);
+      }
+    }
+  },1000);
+  renderTpcUI();
+}
+function tpcTimerStop(){
+  if(tpcTimerInterval){ clearInterval(tpcTimerInterval); tpcTimerInterval=null; }
+  threePointContest.timerRunning=false;
+}
+function tpcTimerReset(){
+  tpcTimerStop();
+  threePointContest.timerSeconds=45;
+  tpcSaveState();
+  renderTpcUI();
+}
+
+function tpcAddPoint(pts){
+  var p=tpcGetCurrent();
+  if(!p){ alert('Select a shooter first.'); return; }
+  p.score=(p.score||0)+pts;
+  if(!p.log) p.log=[];
+  p.log.push(pts);
+  tpcSaveState();
+  renderTpcUI();
+}
+function tpcUndoLast(){
+  var p=tpcGetCurrent();
+  if(!p||!p.log||!p.log.length) return;
+  var last=p.log.pop();
+  p.score=Math.max(0,(p.score||0)-last);
+  tpcSaveState();
+  renderTpcUI();
+}
+function tpcFinishTurn(){
+  var p=tpcGetCurrent();
+  if(!p) return;
+  if(!confirm('Finish '+p.name+'\'s turn with a final score of '+(p.score||0)+'?')) return;
+  p.completed=true;
+  tpcTimerStop();
+  threePointContest.currentId=null;
+  threePointContest.timerSeconds=45;
+  tpcSaveState();
+  renderTpcUI();
+}
+
+function renderTpcUI(){
+  var teamSel=document.getElementById('tpc-team-select');
+  if(teamSel){
+    var curVal=teamSel.value;
+    teamSel.innerHTML='<option value="">Team (optional)</option>'+teams.map(function(t){return '<option value="'+t.name.replace(/"/g,'&quot;')+'">'+t.name+'</option>';}).join('');
+    teamSel.value=curVal;
+  }
+
+  var shooterSel=document.getElementById('tpc-shooter-select');
+  if(shooterSel){
+    var curShooter=threePointContest.currentId||'';
+    shooterSel.innerHTML='<option value="">-- Select who\'s shooting --</option>'+threePointContest.participants.map(function(p){
+      return '<option value="'+p.id+'"'+(p.completed?' disabled':'')+'>'+p.name+(p.completed?' (done — '+p.score+' pts)':'')+'</option>';
+    }).join('');
+    shooterSel.value=curShooter;
+  }
+
+  var activeEl=document.getElementById('tpc-active-shooter');
+  var current=tpcGetCurrent();
+  if(current && activeEl){
+    activeEl.style.display='block';
+    document.getElementById('tpc-shooter-name').textContent=current.name+(current.teamName?' · '+current.teamName:'');
+    document.getElementById('tpc-score-display').textContent=current.score||0;
+    var mins=Math.floor(threePointContest.timerSeconds/60), secs=threePointContest.timerSeconds%60;
+    document.getElementById('tpc-timer-display').textContent=mins+':'+(secs<10?'0':'')+secs;
+    document.getElementById('tpc-start-btn').textContent=threePointContest.timerRunning?'⏸ Running…':'▶ Start (45s)';
+    document.getElementById('tpc-start-btn').disabled=threePointContest.timerRunning;
+  } else if(activeEl){
+    activeEl.style.display='none';
+  }
+
+  var lbBody=document.getElementById('tpc-leaderboard-body');
+  if(lbBody){
+    var sorted=threePointContest.participants.slice().sort(function(a,b){return (b.score||0)-(a.score||0);});
+    lbBody.innerHTML=sorted.length?sorted.map(function(p,i){
+      return '<tr>'
+        +'<td style="text-align:left;">'+(i+1)+'</td>'
+        +'<td style="text-align:left;font-weight:700;">'+p.name+'</td>'
+        +'<td style="text-align:left;color:var(--muted);">'+(p.teamName||'—')+'</td>'
+        +'<td style="font-weight:900;color:var(--orange);">'+(p.score||0)+'</td>'
+        +'<td>'+(p.completed?'<span style="color:var(--green);">✓ Done</span>':(p.id===threePointContest.currentId?'<span style="color:var(--orange);">● Shooting</span>':'<span style="color:var(--muted);">Waiting</span>'))+'</td>'
+        +'<td><button onclick="tpcRemoveParticipant(\''+p.id+'\')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;">🗑</button></td>'
+        +'</tr>';
+    }).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;font-style:italic;">No participants yet.</td></tr>';
+  }
 }
 
 // Push a signal to Firebase so scoreboard.html (or any other open display)
@@ -2076,6 +2304,7 @@ function runMoveGame(){
 
 // ── State ──
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[],h2hOverrides=[];
+var threePointContest={participants:[],currentId:null,timerSeconds:45,timerRunning:false};
 // Playoffs started Aug 19, 2026 — anything on or after this date is a
 // playoff game and must never count toward regular-season standings.
 // Used as the primary signal (not just schedule round/isPlayoff tags,
@@ -2271,6 +2500,23 @@ fbOnce(ctPath('schedule'),   function(v){schedule=toArr(v);   _check();});
 // missing/lost), loaded independently so they don't hold up the rest of
 // the app.
 fbOnce(ctPath('h2hOverrides'), function(v){ h2hOverrides=toArr(v); });
+// 3-Point Contest — live listener (not part of the boot gate) so it
+// stays in sync if the contest is being run from a different device/tab
+// than the one showing the leaderboard.
+fbListen(ctPath('threePointContest'), function(v){
+  threePointContest = v || {participants:[],currentId:null,timerSeconds:45,timerRunning:false};
+  if(!Array.isArray(threePointContest.participants)) threePointContest.participants = toArr(threePointContest.participants);
+  // Auto-resume: if the saved state says the timer should be running but
+  // this device/tab has no local interval actually decrementing it (e.g.
+  // admin.html just got refreshed mid-countdown), restart the interval
+  // rather than leaving the countdown silently frozen everywhere.
+  if(threePointContest.timerRunning && threePointContest.currentId && !tpcTimerInterval){
+    tpcResumeInterval();
+  }
+  if(document.getElementById('page-threept') && document.getElementById('page-threept').classList.contains('active')){
+    renderTpcUI();
+  }
+});
 fbListen(ctPath('game'), function(v){
   game=v||null;
   // If already on track tab, refresh it
@@ -5532,12 +5778,15 @@ function showPage(p){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
-  var idx={setup:0,schedule:1,track:2,standings:3,games:4,teams:5,settings:6,registrations:7}[p];
+  var idx={setup:0,schedule:1,track:2,threept:3,standings:4,games:5,teams:6,settings:7,registrations:8}[p];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
   if(mtabs[idx]) mtabs[idx].classList.add('active');
   closeMenu();
+  if(p==='threept'){
+    renderTpcUI();
+  }
   if(p==='schedule'){
     // Independent of Standings rendering entirely — the bracket is fully
     // static now, so it should never depend on standings data being
