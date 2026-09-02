@@ -4727,11 +4727,63 @@ function findPlayoffWinner(nameA,nameB,week){
   return null;
 }
 
-// Thursday League playoffs: 8 teams, straight single-elimination — no bye.
-// Seeding isn't known yet (season hasn't started), so this shows
-// placeholders (Seed 1, Seed 8, etc.) rather than guessing. QF4 is
-// deliberately NOT seed-based — Diskarte and Wolfpack always meet there
-// regardless of final standings, per the league's own bracket rule.
+// Fall 2026 · 35+ Men's League — brand new division, no standings yet,
+// so this stays fully blank (Seed 1-4 placeholders, no team names
+// guessed). Semifinals on 11/25, then a full event day (3-Point
+// Shootout → All-Star → Championship) on 12/2, same format as the
+// Thursday League and the original Summer 2026 championship day.
+function renderFall2026Bracket(container){
+  var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
+
+  function card(rows,timeLabel){
+    var body=rows.map(function(r){
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
+    }).join('');
+    return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
+      +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
+  }
+
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · 11/25</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
+  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'TBD');
+  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'TBD');
+  html+='</div>';
+
+  html+='<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:118px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:150px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:90px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
+  html+='</div>';
+
+  html+='<div style="display:flex;flex-direction:column;gap:0;">';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">12/2</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">TBD</div></div>';
+  html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
+  html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">⭐ All-Star Game</div>';
+  html+='<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">TBD</div></div>';
+  html+='<div style="background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:16px 14px;text-align:center;width:190px;">'
+    +'<div style="font-size:28px;margin-bottom:4px;">🏆</div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPIONSHIP</div>'
+    +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">TBD · WINNER: SEMI 1 vs SEMI 2</div></div>';
+  html+='</div>';
+
+  html+='</div></div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
+
+  container.innerHTML=html;
+}
+
+// Thursday League playoffs: 8 teams, straight single-elimination — no
+// bye. Seeding isn't known yet (season hasn't started), so this shows
+// placeholders rather than guessing. QF4 is deliberately NOT seed-based
+// — Diskarte and Wolfpack always meet there regardless of final
+// standings, per the league's own bracket rule.
 function renderThursdayLeagueBracket(container){
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
   html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
@@ -4785,14 +4837,13 @@ function renderThursdayLeagueBracket(container){
 function renderPlayoffBracket(){
   var container=document.getElementById('playoff-bracket-section');
   if(!container)return;
-  // Different divisions can have entirely different bracket shapes (this
-  // one's 7-team-with-bye vs the Thursday League's 8-team single elim) —
-  // detected here by team names unique to each, since there's no shared
-  // bracket-config data model across divisions yet.
-  var teamNames=teams.map(function(t){return t.name;});
-  var teamNamesLower=teamNames.map(function(n){return (n||'').toLowerCase();});
-  var isThursdayLeague=teamNamesLower.indexOf('wolfpack')!==-1 && teamNamesLower.indexOf('diskarte')!==-1;
-  if(isThursdayLeague){ renderThursdayLeagueBracket(container); return; }
+  // Different divisions can have entirely different bracket shapes.
+  // Routed by CT_BASE (the actual division path) rather than team names —
+  // team-name sniffing broke down once two different divisions (Summer
+  // 2026 35+ and Fall 2026 35+) could plausibly share the same team
+  // names (Ohana, Fly High, etc. carrying over season to season).
+  if(CT_BASE.indexOf('6-2-under')!==-1){ renderThursdayLeagueBracket(container); return; }
+  if(CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1){ renderFall2026Bracket(container); return; }
 
   // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
   // recomputed live from getSeededStandings(). Locking it here means it
