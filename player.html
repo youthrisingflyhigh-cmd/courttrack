@@ -328,6 +328,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="nav-tab" onclick="showTab('scores')">🏆 Scores</button>
     <button class="nav-tab" onclick="showTab('film')">🎥 Game Film</button>
     <button class="nav-tab" onclick="showTab('schedule')">📅 Schedule</button>
+    <button class="nav-tab" onclick="showTab('allstar')">⭐ All-Star</button>
     <button class="nav-tab" onclick="showTab('standings')">📊 Standings</button>
     <button class="nav-tab" onclick="showTab('teams')">🏀 Teams</button>
     <button class="nav-tab" onclick="showTab('playerstats')">👤 Player Stats</button>
@@ -351,6 +352,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('scores');closeMenu()">🏆 Scores</button>
   <button class="mobile-tab" onclick="showTab('film');closeMenu()">🎥 Game Film</button>
   <button class="mobile-tab" onclick="showTab('schedule');closeMenu()">📅 Schedule</button>
+  <button class="mobile-tab" onclick="showTab('allstar');closeMenu()">⭐ All-Star</button>
   <button class="mobile-tab" onclick="showTab('standings');closeMenu()">📊 Standings</button>
   <button class="mobile-tab" onclick="showTab('teams');closeMenu()">🏀 Teams</button>
   <button class="mobile-tab" onclick="showTab('playerstats');closeMenu()">👤 Player Stats</button>
@@ -479,6 +481,9 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 
 <!-- SCHEDULE -->
 <div class="page" id="tab-schedule"><div class="loading">Loading schedule…</div></div>
+
+<!-- ALL-STAR -->
+<div class="page" id="tab-allstar"><div class="loading">Loading…</div></div>
 
 <!-- STANDINGS -->
 <div class="page" id="tab-standings"><div class="loading">Loading standings…</div></div>
@@ -632,6 +637,8 @@ function switchSeasonDivisionPublic(){
 }
 
 var teams=[],game=null,standings={},gameHistory=[],playerStats={},schedule=[],h2hOverrides=[];
+var threePointContest={participants:[],currentId:null,timerSeconds:45,timerRunning:false};
+var allStarGameId=null;
 var currentTab='home', _ready=false, currentStatTab='eff', currentStreamPlatform='youtube';
 var appSeasonName='';
 db.ref(ctPath('settings')).once('value').then(function(s){
@@ -701,6 +708,16 @@ db.ref(ctPath('schedule')).on('value',function(s){schedule=toArr(s.val());if(_bo
 // Manual head-to-head overrides — not part of the boot gate since
 // they're optional (only needed when a real game record is missing).
 db.ref(ctPath('h2hOverrides')).on('value',function(s){h2hOverrides=toArr(s.val());if(_booted)renderAll();});
+db.ref(ctPath('threePointContest')).on('value',function(s){
+  var v=s.val();
+  threePointContest=v||{participants:[],currentId:null,timerSeconds:45,timerRunning:false};
+  if(!Array.isArray(threePointContest.participants)) threePointContest.participants=toArr(threePointContest.participants);
+  if(currentTab==='allstar') renderAllStarTab();
+});
+db.ref(ctPath('allStarGameId')).on('value',function(s){
+  allStarGameId=s.val()||null;
+  if(currentTab==='allstar') renderAllStarTab();
+});
 
 db.ref(ctPath('game')).on('value',function(s){
   game=s.val()||null;
@@ -2231,7 +2248,7 @@ function showTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,film:3,schedule:4,standings:5,teams:6,playerstats:7,locations:8}[t];
+  var idx={home:0,live:1,scores:2,film:3,schedule:4,allstar:5,standings:6,teams:7,playerstats:8,locations:9}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
@@ -2241,6 +2258,7 @@ function showTab(t){
   if(t==='scores')      renderScores();
   if(t==='film')        renderFilm();
   if(t==='schedule')    renderSchedule();
+  if(t==='allstar')     renderAllStarTab();
   if(t==='standings')   renderStandings();
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();

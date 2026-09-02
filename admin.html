@@ -280,7 +280,7 @@ th, td { padding: 10px 8px !important; }
     <button class="nav-tab active" onclick="showPage('setup')">⚙ Setup</button>
     <button class="nav-tab" onclick="showPage('schedule')">📅 Schedule</button>
     <button class="nav-tab" onclick="showPage('track')">🏀 Live Tracking</button>
-    <button class="nav-tab" onclick="showPage('threept')">🎯 3PT Contest</button>
+    <button class="nav-tab" onclick="showPage('threept')">⭐ All-Star</button>
     <button class="nav-tab" onclick="showPage('standings')">🏆 Standings</button>
     <button class="nav-tab" onclick="showPage('games')">🗂 Games</button>
     <button class="nav-tab" onclick="showPage('teams')">👥 Teams &amp; Players</button>
@@ -454,7 +454,7 @@ BYE: Ohana, AIM
   <button class="mobile-tab" onclick="showPage('setup');closeMenu()">⚙ Setup</button>
   <button class="mobile-tab" onclick="showPage('schedule');closeMenu()">📅 Schedule</button>
   <button class="mobile-tab" onclick="showPage('track');closeMenu()">🏀 Live Tracking</button>
-  <button class="mobile-tab" onclick="showPage('threept');closeMenu()">🎯 3PT Contest</button>
+  <button class="mobile-tab" onclick="showPage('threept');closeMenu()">⭐ All-Star</button>
   <button class="mobile-tab" onclick="showPage('standings');closeMenu()">🏆 Standings</button>
   <button class="mobile-tab" onclick="showPage('games');closeMenu()">🗂 Games</button>
   <button class="mobile-tab" onclick="showPage('teams');closeMenu()">👥 Teams &amp; Players</button>
@@ -843,9 +843,12 @@ BYE: Ohana, AIM
 <!-- 3PT CONTEST -->
 <div class="page" id="page-threept">
   <div style="margin-bottom:1.5rem;">
-    <h2 style="font-size:28px;font-weight:900;color:var(--white);">🎯 3-Point Contest</h2>
-    <p style="color:var(--muted);font-size:13px;">Each rack basket = 1 pt · Moneyball = 2 pts · 45 sec per shooter. Time and score sync live to scoreboard.html.</p>
+    <h2 style="font-size:28px;font-weight:900;color:var(--white);">⭐ All-Star</h2>
+    <p style="color:var(--muted);font-size:13px;">3-Point Contest + All-Star Game — kept separate from the regular season bracket/standings.</p>
   </div>
+
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--orange);letter-spacing:1px;margin-bottom:0.75rem;">🎯 3-POINT CONTEST</div>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:1rem;">Each rack basket = 1 pt · Moneyball = 2 pts · 45 sec per shooter. Time and score sync live to scoreboard.html.</p>
 
   <div class="card" style="margin-bottom:1.5rem;">
     <div class="card-header"><h3>Add Participant</h3></div>
@@ -893,10 +896,38 @@ BYE: Ohana, AIM
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="margin-bottom:2.5rem;">
     <div class="card-header"><h3>Leaderboard</h3></div>
     <div class="card-body">
       <table><thead><tr><th style="text-align:left;">Rank</th><th style="text-align:left;">Name</th><th style="text-align:left;">Team</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody id="tpc-leaderboard-body"></tbody></table>
+    </div>
+  </div>
+
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--orange);letter-spacing:1px;margin-bottom:0.75rem;">🏀 ALL-STAR GAME</div>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:1rem;">Run the actual game normally in Live Tracking (with your two All-Star rosters), then pick it here — its box score shows below, separate from the regular season's Game History.</p>
+
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3>Select the All-Star Game</h3></div>
+    <div class="card-body">
+      <div class="input-row">
+        <select id="asg-game-select" onchange="asgSetSelectedGame()" style="flex:1;"><option value="">-- Pick from Game History --</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div id="asg-box-score-section" style="display:none;">
+    <div class="card">
+      <div class="card-header" id="asg-box-header"><h3>Box Score</h3></div>
+      <div class="card-body">
+        <div class="stats-card" style="margin-bottom:1rem;">
+          <div class="stats-card-header" id="asg-home-lbl">Home</div>
+          <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody id="asg-home-box"></tbody></table>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-header" id="asg-away-lbl">Away</div>
+          <table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody id="asg-away-box"></tbody></table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1622,6 +1653,53 @@ function renderTpcUI(){
         +'</tr>';
     }).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;font-style:italic;">No participants yet.</td></tr>';
   }
+
+  renderAsgUI();
+}
+
+// ── ALL-STAR GAME ──
+// Not a live-tracked event of its own — the actual game is run normally
+// through Live Tracking (two All-Star rosters, just like a real game),
+// which already produces a full box score in Game History. This just
+// lets that one game be pointed to and displayed here, separately from
+// the regular season's own Game History list, instead of building a
+// second parallel tracking system for the same thing.
+var asgSelectedGameId=null;
+fbOnce(ctPath('allStarGameId'), function(v){ asgSelectedGameId=v||null; renderAsgUI(); });
+
+function asgSetSelectedGame(){
+  var sel=document.getElementById('asg-game-select');
+  asgSelectedGameId=sel.value||null;
+  fbSet(ctPath('allStarGameId'), asgSelectedGameId);
+  renderAsgUI();
+}
+
+function renderAsgUI(){
+  var sel=document.getElementById('asg-game-select');
+  if(!sel) return;
+  var hist=toArr(gameHistory);
+  sel.innerHTML='<option value="">-- Pick from Game History --</option>'+hist.map(function(g){
+    return '<option value="'+g.id+'"'+(g.id===asgSelectedGameId?' selected':'')+'>'+(g.date||'?')+' — '+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'</option>';
+  }).join('');
+
+  var section=document.getElementById('asg-box-score-section');
+  var g=asgSelectedGameId?hist.find(function(x){return x.id===asgSelectedGameId;}):null;
+  if(!g){ if(section) section.style.display='none'; return; }
+  section.style.display='block';
+
+  document.getElementById('asg-box-header').innerHTML='<h3>'+g.home+' '+g.homeScore+' — '+g.awayScore+' '+g.away+'</h3>';
+  document.getElementById('asg-home-lbl').textContent=g.home;
+  document.getElementById('asg-away-lbl').textContent=g.away;
+
+  function buildRows(players,statsObj){
+    return (players||[]).map(function(p){
+      var s=(statsObj&&statsObj[p.num])||{};
+      if(!(s.pts>0||s.reb>0||s.ast>0||s.stl>0||s.blk>0||s.to>0)) return '';
+      return '<tr><td>#'+p.num+'</td><td style="text-align:left;">'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td></tr>';
+    }).join('');
+  }
+  document.getElementById('asg-home-box').innerHTML=buildRows(g.homePlayers,g.hStats)||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>';
+  document.getElementById('asg-away-box').innerHTML=buildRows(g.awayPlayers,g.aStats)||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>';
 }
 
 // Push a signal to Firebase so scoreboard.html (or any other open display)
@@ -2613,6 +2691,14 @@ function computeStandingsFromGameHistory(){
     if(!g||!g.home||!g.away) return;
     var hs=g.homeScore, as_=g.awayScore;
     if(hs==null||as_==null) return;
+    // Prefer the decision saved directly on the record at the moment it
+    // was made (reliable — knows today's real date at finish time).
+    // Falls back to week-only for older records saved before this flag
+    // existed — no date-based fallback here, since re-deriving from an
+    // unparseable/undated record could wrongly exclude a legitimate
+    // older regular-season game.
+    var isExcluded=(g.excludedFromStandings!=null) ? g.excludedFromStandings : ((g.week!=null) && g.week>=9);
+    if(isExcluded) return;
     var homeTeam=teams.find(function(t){return t.name===g.home;});
     var awayTeam=teams.find(function(t){return t.name===g.away;});
     var hc=(homeTeam&&homeTeam.color)||'#FF5C00';
@@ -3559,14 +3645,26 @@ function finishGame(){
     // played after Aug 19 are NOT playoff games just because that date
     // has passed in real time).
     var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
-    if(!standings[hn])standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
-    if(!standings[an])standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
-    standings[hn].color=hc; standings[an].color=ac;
+    // Only create a brand-new standings row for a team that doesn't
+    // already have one if this game actually counts toward the regular
+    // season. Otherwise an excluded game (a playoff game, or an
+    // exhibition like an All-Star game) would leave a phantom 0-0 row
+    // cluttering the real standings table for a team that was never
+    // actually part of the regular season.
     if(!isPlayoffGame){
+      if(!standings[hn]) standings[hn]={w:0,l:0,pf:0,pa:0,color:hc};
+      if(!standings[an]) standings[an]={w:0,l:0,pf:0,pa:0,color:ac};
+      standings[hn].color=hc; standings[an].color=ac;
       standings[hn].pf=(standings[hn].pf||0)+hs; standings[hn].pa=(standings[hn].pa||0)+as_;
       standings[an].pf=(standings[an].pf||0)+as_; standings[an].pa=(standings[an].pa||0)+hs;
       if(hs>as_){standings[hn].w++;standings[an].l++;}
       else if(as_>hs){standings[an].w++;standings[hn].l++;}
+    } else {
+      // Excluded game — still refresh color for a team that already has
+      // a real standings row (e.g. a real team's playoff game), but
+      // never create a fresh row from scratch here.
+      if(standings[hn]) standings[hn].color=hc;
+      if(standings[an]) standings[an].color=ac;
     }
     // Mark schedule game final — check both home/away orderings, since the
     // live game may have been started with sides swapped from however the
@@ -3620,6 +3718,13 @@ function finishGame(){
       homePlayers:teams[game.hi].players,awayPlayers:teams[game.ai].players,
       playLog:game.playLog||[],
       week:matchedWeek,
+      // Saved directly rather than re-derived later — a re-derivation
+      // from week/date alone can't reliably reconstruct this decision
+      // (an exhibition game like an All-Star Game has no matching
+      // schedule week at all, and the recorded date string has no year
+      // and doesn't always parse), so the actual decision made right now
+      // (when today's real date is known) is captured here instead.
+      excludedFromStandings:isPlayoffGame,
       season:appSettings.season||'',
       hLineup:game.hLineup||[],aLineup:game.aLineup||[]
     };
