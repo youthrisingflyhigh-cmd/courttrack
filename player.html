@@ -1387,6 +1387,7 @@ function renderFilm(){
     // the earlier regular-season meetings too.
     var round1Pairs=[['Fly High','Treez'],['Fleetwork','United'],['Moneyball','SB Hoops']];
     var round2Pairs=[['Fly High','Moneyball'],['Ohana','United']];
+    var championshipPairs=[['Ohana','Fly High']];
     var gHome=(g.home||'').toLowerCase(), gAway=(g.away||'').toLowerCase();
     function matchesAnyPair(pairs){
       return pairs.some(function(pair){
@@ -1397,8 +1398,10 @@ function renderFilm(){
     var dateStr=(g.date||'').toLowerCase();
     var isAug19=dateStr.indexOf('august 19')>=0||dateStr.indexOf('aug 19')>=0;
     var isAug26=dateStr.indexOf('august 26')>=0||dateStr.indexOf('aug 26')>=0;
+    var isSep2=dateStr.indexOf('september 2')>=0||dateStr.indexOf('sep 2')>=0;
     if(isAug19&&matchesAnyPair(round1Pairs)) return 9;
     if(isAug26&&matchesAnyPair(round2Pairs)) return 10;
+    if(isSep2&&matchesAnyPair(championshipPairs)) return 11;
     if(g.week||g.week===0) return g.week;
     // Hardcoded fix: SB HOOPS vs OHANA (33-63) should be Week 2
     if((g.home==='SB HOOPS'&&g.away==='OHANA')||(g.home==='OHANA'&&g.away==='SB HOOPS')){
@@ -1751,6 +1754,58 @@ function getSeededStandings(){
     if(b.diff!==a.diff) return b.diff-a.diff;
     return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
+}
+
+// ── ALL-STAR (3-Point Contest + All-Star Game) ──
+// Kept fully separate from the regular season's bracket/standings — the
+// All-Star Game itself is just a normal finished game, picked out of
+// Game History and displayed here rather than in the regular Game Film/
+// Scores lists.
+function renderAllStarTab(){
+  var el=document.getElementById('tab-allstar');
+  var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:0.25rem;">⭐ All-Star</h2>';
+  html+='<p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">3-Point Contest + All-Star Game.</p>';
+
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--orange);letter-spacing:1px;margin-bottom:0.75rem;">🎯 3-POINT CONTEST</div>';
+  var sorted=(threePointContest.participants||[]).slice().sort(function(a,b){return (b.score||0)-(a.score||0);});
+  if(!sorted.length){
+    html+='<p style="color:var(--muted);font-style:italic;margin-bottom:2rem;">No participants yet.</p>';
+  } else {
+    html+='<div class="card" style="margin-bottom:2rem;"><table><thead><tr><th style="text-align:left;">Rank</th><th style="text-align:left;">Name</th><th style="text-align:left;">Team</th><th>Score</th><th>Status</th></tr></thead><tbody>';
+    html+=sorted.map(function(p,i){
+      var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+      return '<tr>'
+        +'<td style="text-align:left;">'+medal+'</td>'
+        +'<td style="text-align:left;font-weight:700;">'+p.name+'</td>'
+        +'<td style="text-align:left;color:var(--muted);">'+(p.teamName||'—')+'</td>'
+        +'<td style="font-weight:900;color:var(--orange);">'+(p.score||0)+'</td>'
+        +'<td>'+(p.completed?'<span style="color:var(--green);">✓ Done</span>':(p.id===threePointContest.currentId?'<span style="color:var(--orange);">● Shooting</span>':'<span style="color:var(--muted);">Waiting</span>'))+'</td>'
+        +'</tr>';
+    }).join('');
+    html+='</tbody></table></div>';
+  }
+
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--orange);letter-spacing:1px;margin-bottom:0.75rem;">🏀 ALL-STAR GAME</div>';
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  var g=allStarGameId?hist.find(function(x){return x&&x.id===allStarGameId;}):null;
+  if(!g){
+    html+='<p style="color:var(--muted);font-style:italic;">Not played yet.</p>';
+  } else {
+    html+='<div class="card" style="margin-bottom:1rem;"><div style="padding:16px;font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;text-align:center;">'+g.home+' '+g.homeScore+' — '+g.awayScore+' '+g.away+'</div></div>';
+    function buildRows(players,statsObj){
+      return (players||[]).map(function(p){
+        var s=(statsObj&&statsObj[p.num])||{};
+        if(!(s.pts>0||s.reb>0||s.ast>0||s.stl>0||s.blk>0||s.to>0)) return '';
+        return '<tr><td>#'+p.num+'</td><td style="text-align:left;">'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td></tr>';
+      }).join('');
+    }
+    var homeRows=buildRows(g.homePlayers,g.hStats);
+    var awayRows=buildRows(g.awayPlayers,g.aStats);
+    html+='<div class="stats-card" style="margin-bottom:1rem;"><div class="stats-card-header">'+g.home+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(homeRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
+    html+='<div class="stats-card"><div class="stats-card-header">'+g.away+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(awayRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
+  }
+
+  el.innerHTML=html;
 }
 
 function renderStandings(){
