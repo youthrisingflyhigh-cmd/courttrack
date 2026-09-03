@@ -10,7 +10,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Barlow,sans-serif;background:var(--dark);color:var(--light);min-height:100vh;}
 h1,h2,h3{font-family:Barlow Condensed,sans-serif;}
-nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:56px;background:var(--dark2);border-bottom:1px solid #2a2a2a;position:sticky;top:0;z-index:100;gap:8px;flex-wrap:wrap;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;min-height:56px;background:var(--dark2);border-bottom:1px solid #2a2a2a;position:sticky;top:0;z-index:100;gap:8px;flex-wrap:wrap;}
 .nav-logo{font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:22px;letter-spacing:1px;color:var(--white);line-height:1;}
 .nav-logo span{color:var(--orange);}
 .nav-logo small{display:block;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--muted);line-height:1;margin-top:2px;}
@@ -30,12 +30,12 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .mobile-tab{padding:14px 20px;font-size:15px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:1px solid #1e1e1e;text-align:left;cursor:pointer;font-family:'Barlow',sans-serif;transition:all 0.1s;}
 .mobile-tab:hover,.mobile-tab:active{background:#1a1a1a;color:var(--white);}
 .mobile-tab.active{color:var(--orange);}
-@media(max-width:900px){
+@media(max-width:1100px){
   .nav-tabs-desktop{display:none;}
   .hamburger-btn{display:flex;}
   nav{flex-wrap:nowrap;}
 }
-@media(min-width:901px){
+@media(min-width:1101px){
   .hamburger-btn{display:none;}
   .mobile-menu{display:none!important;}
 }
@@ -881,7 +881,7 @@ BYE: Ohana, AIM
           </div>
         </div>
         <div style="display:flex;justify-content:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-          <button class="btn btn-orange" onclick="tpcTimerStart()" id="tpc-start-btn">▶ Start (45s)</button>
+          <button class="btn btn-orange" onclick="tpcTimerToggle()" id="tpc-start-btn">▶ Start (45s)</button>
           <button class="btn" style="background:var(--dark3);border:1px solid #555;" onclick="tpcTimerReset()">↺ Reset Timer</button>
         </div>
         <div style="display:flex;justify-content:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -1549,6 +1549,22 @@ function tpcTimerStart(){
   tpcSaveState();
   tpcResumeInterval();
 }
+// Real pause — stops the countdown but deliberately does NOT touch
+// timerSeconds (unlike Reset, which goes back to 45). Clicking Start
+// again resumes from exactly where it was paused.
+function tpcTimerPause(){
+  tpcTimerStop();
+  tpcSaveState();
+  renderTpcUI();
+}
+// The visible button toggles between these two rather than becoming
+// disabled once running — previously it just relabeled itself to
+// "Running…" and disabled the click, which meant there was no way to
+// actually pause mid-countdown at all.
+function tpcTimerToggle(){
+  if(threePointContest.timerRunning) tpcTimerPause();
+  else tpcTimerStart();
+}
 // Starts the actual countdown interval without touching timerRunning/
 // timerSeconds — used both by a fresh Start click and by the auto-resume
 // check above (which restarts a countdown that Firebase says should
@@ -1633,8 +1649,8 @@ function renderTpcUI(){
     document.getElementById('tpc-score-display').textContent=current.score||0;
     var mins=Math.floor(threePointContest.timerSeconds/60), secs=threePointContest.timerSeconds%60;
     document.getElementById('tpc-timer-display').textContent=mins+':'+(secs<10?'0':'')+secs;
-    document.getElementById('tpc-start-btn').textContent=threePointContest.timerRunning?'⏸ Running…':'▶ Start (45s)';
-    document.getElementById('tpc-start-btn').disabled=threePointContest.timerRunning;
+    document.getElementById('tpc-start-btn').textContent=threePointContest.timerRunning?'⏸ Pause':(threePointContest.timerSeconds<45?'▶ Resume':'▶ Start (45s)');
+    document.getElementById('tpc-start-btn').disabled=false;
   } else if(activeEl){
     activeEl.style.display='none';
   }
