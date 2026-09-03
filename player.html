@@ -717,6 +717,7 @@ db.ref(ctPath('threePointContest')).on('value',function(s){
 db.ref(ctPath('allStarGameId')).on('value',function(s){
   allStarGameId=s.val()||null;
   if(currentTab==='allstar') renderAllStarTab();
+  if(currentTab==='film') renderFilm();
 });
 
 db.ref(ctPath('game')).on('value',function(s){
@@ -1338,6 +1339,11 @@ function renderFilm(){
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   hist=hist.filter(function(g){return g&&g.videoUrl&&extractYouTubeId(g.videoUrl);});
+  // The All-Star Game (if one's been picked in the ⭐ All-Star tab) has
+  // its own dedicated display there — excluded here so it doesn't also
+  // show up in the regular season's Game Film list under a confusing
+  // "Week TBD" bucket.
+  if(allStarGameId) hist=hist.filter(function(g){return g.id!==allStarGameId;});
   if(!hist.length){
     el.innerHTML='<p style="color:var(--muted);font-style:italic;font-size:13px;">No game film uploaded yet — check back after the next game!</p>';
     return;
@@ -1422,7 +1428,7 @@ function renderFilm(){
     var n=Number(wk);
     if(n===9) return 'Playoff Round 1';
     if(n===10) return 'Semifinals';
-    if(n===11) return 'Championship Weekend';
+    if(n===11) return 'Championship Day';
     return 'Week '+wk;
   }
 
