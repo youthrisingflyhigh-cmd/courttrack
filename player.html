@@ -1030,11 +1030,19 @@ function displayMVPNavigator(el){
   el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;"></div>';
   var display=document.getElementById('mvp-nav-display');
 
-  // Get weeks that have COMPLETED games (status: final)
+  // Get weeks that have completed games — read directly from Game
+  // History rather than Schedule's status:'final' flag. Schedule
+  // status can get stuck as "upcoming" forever if a game's schedule
+  // entry never matched correctly at the time it was finished (a real
+  // bug we hit for this division), even though the actual game result
+  // is safely recorded in Game History regardless. Reading straight from
+  // Game History means this doesn't depend on Schedule being correct at
+  // all, and needs no separate rebuild step to work.
   var weeksWithGames=[];
-  schedule.forEach(function(g){
-    if(g&&g.round&&g.status==='final'&&weeksWithGames.indexOf(g.round)<0){
-      weeksWithGames.push(g.round);
+  var histForWeeks=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  histForWeeks.forEach(function(g){
+    if(g && (g.week!=null) && weeksWithGames.indexOf(g.week)<0){
+      weeksWithGames.push(g.week);
     }
   });
   weeksWithGames.sort(function(a,b){return a-b;});
