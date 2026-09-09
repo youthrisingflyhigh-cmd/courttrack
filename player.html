@@ -936,14 +936,23 @@ function probePotwSlot(n,v){
   });
 }
 // Same idea, scoped per-week instead of a flat running number — up to 3
-// photos per week (potw/<division>/w<week>-1.jpg, -2.jpg, -3.jpg).
+// photos per week. Checks the new per-division folder first
+// (potw/<division>/w<week>-<i>.jpg), then falls back to the older
+// global path (images/mvp/w<week>-<i>.PNG) that Summer 2026's
+// already-uploaded photos live at from before this folder convention
+// existed — without this fallback, those real existing photos would
+// silently stop showing the moment the new convention was introduced.
 function probeWeekSlot(week,i,v){
   var folder='potw/'+(CT_BASE.split('/').pop()||'ct');
   var jpg=folder+'/w'+week+'-'+i+'.jpg?v='+v;
   var png=folder+'/w'+week+'-'+i+'.png?v='+v;
   return probeImage(jpg).then(function(ok){
     if(ok) return jpg;
-    return probeImage(png).then(function(ok2){ return ok2?png:null; });
+    return probeImage(png).then(function(ok2){
+      if(ok2) return png;
+      var legacy='images/mvp/w'+week+'-'+i+'.PNG?v='+v;
+      return probeImage(legacy).then(function(ok3){ return ok3?legacy:null; });
+    });
   });
 }
 function loadPotwGallery(card){
