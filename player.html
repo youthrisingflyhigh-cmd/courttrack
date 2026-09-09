@@ -956,9 +956,9 @@ function loadPotwGallery(card){
 function renderPOTWGallery(card,srcs){
   var thumbs=srcs.slice().reverse(); // newest (highest number) first
   var html='<div class="potw-header">⭐ MVP of the Week</div>'
-    +'<div style="padding:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:16px;">';
+    +'<div style="padding:20px;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:16px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;">';
   thumbs.forEach(function(src){
-    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;width:180px;flex-shrink:0;">'
+    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;width:180px;flex-shrink:0;scroll-snap-align:start;">'
       +'<img src="'+src+'" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover;" loading="lazy">'
     +'</div>';
   });
