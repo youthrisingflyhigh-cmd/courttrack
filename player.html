@@ -935,23 +935,25 @@ function probePotwSlot(n,v){
     return probeImage(png).then(function(ok2){ return ok2?png:null; });
   });
 }
+// Same idea, scoped per-week instead of a flat running number — up to 3
+// photos per week (potw/<division>/w<week>-1.jpg, -2.jpg, -3.jpg).
+function probeWeekSlot(week,i,v){
+  var folder='potw/'+(CT_BASE.split('/').pop()||'ct');
+  var jpg=folder+'/w'+week+'-'+i+'.jpg?v='+v;
+  var png=folder+'/w'+week+'-'+i+'.png?v='+v;
+  return probeImage(jpg).then(function(ok){
+    if(ok) return jpg;
+    return probeImage(png).then(function(ok2){ return ok2?png:null; });
+  });
+}
 function loadPotwGallery(card){
-  var v=new Date().toISOString().slice(0,10);
-  var found=[];
-  var MAX=50; // safety cap so a typo/missing gap can't loop forever
-  function step(n){
-    if(n>MAX) return finish();
-    return probePotwSlot(n,v).then(function(src){
-      if(!src) return finish();
-      found.push(src);
-      return step(n+1);
-    });
-  }
-  function finish(){
-    if(!found.length){ displayMVPNavigator(card); return; }
-    renderPOTWGallery(card,found);
-  }
-  step(1);
+  // Always goes straight to the week-based navigator now (3 photos per
+  // week, with prev/next) — this used to check for an older flat
+  // potw-1.jpg/-2.jpg numbering scheme first, but that's a different
+  // convention than the per-week one actually in use, and having both
+  // meant an old flat-numbered upload would silently take priority and
+  // hide the week-based photos entirely.
+  displayMVPNavigator(card);
 }
 function renderPOTWGallery(card,srcs){
   var thumbs=srcs.slice().reverse(); // newest (highest number) first
@@ -1018,7 +1020,7 @@ function displayMVPNavigator(el){
   if(!el) return;
   el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;"></div>';
   var display=document.getElementById('mvp-nav-display');
-  
+
   // Get weeks that have COMPLETED games (status: final)
   var weeksWithGames=[];
   schedule.forEach(function(g){
@@ -1027,25 +1029,30 @@ function displayMVPNavigator(el){
     }
   });
   weeksWithGames.sort(function(a,b){return a-b;});
-  
+
   if(!weeksWithGames.length){
     display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No completed games yet.</div>';
     return;
   }
-  
+
   if(mvpNavIdx>=weeksWithGames.length)mvpNavIdx=0;
   var currentWeek=weeksWithGames[mvpNavIdx];
-  
-  var cardsHtml='';
-  for(var i=1;i<=3;i++){
-    var photoUrl='images/mvp/w'+currentWeek+'-'+i+'.PNG';
-    cardsHtml+='<img src="'+photoUrl+'" style="width:clamp(110px,28vw,180px);height:auto;aspect-ratio:120/143;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
-  }
-  
-  var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
-  var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithGames.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithGames.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithGames.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithGames.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
-  
-  display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">'+prevBtn+'<div style="display:flex;gap:8px;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:clamp(12px,3vw,16px);color:var(--orange);font-weight:700;margin-top:8px;">Week '+currentWeek+'</div>';
+  display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div>';
+
+  var v=new Date().toISOString().slice(0,10);
+  Promise.all([1,2,3].map(function(i){ return probeWeekSlot(currentWeek,i,v); })).then(function(urls){
+    var found=urls.filter(Boolean);
+    var cardsHtml = found.length
+      ? found.map(function(src){
+          return '<img onclick="openPotwLightbox(\''+src+'\')" src="'+src+'" style="cursor:pointer;width:clamp(110px,28vw,180px);height:auto;aspect-ratio:120/143;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
+        }).join('')
+      : '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:20px;">No photos uploaded for this week yet.</div>';
+
+    var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
+    var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithGames.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithGames.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithGames.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithGames.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
+
+    display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">'+prevBtn+'<div style="display:flex;gap:8px;overflow-x:auto;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:clamp(12px,3vw,16px);color:var(--orange);font-weight:700;margin-top:8px;">Week '+currentWeek+'</div>';
+  });
 }
 
 function renderPOTWFallback(card){
