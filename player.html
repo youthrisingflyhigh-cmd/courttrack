@@ -950,6 +950,14 @@ function probeWeekSlot(week,i,v){
     if(ok) return jpg;
     return probeImage(png).then(function(ok2){
       if(ok2) return png;
+      // The legacy global path (images/mvp/...) is a single SHARED
+      // folder with no division scoping at all — it only holds Summer
+      // 2026's real pre-existing photos. Checking it for any other
+      // division would find those same photos and wrongly treat them as
+      // belonging to that division too (exactly what happened here:
+      // Summer 2026's real Week 3/4 photos got picked up as if they were
+      // 6'2"'s). Only ever check it for the legacy division itself.
+      if(CT_BASE!=='ct') return null;
       var legacy='images/mvp/w'+week+'-'+i+'.PNG?v='+v;
       return probeImage(legacy).then(function(ok3){ return ok3?legacy:null; });
     });
