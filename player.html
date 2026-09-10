@@ -1030,7 +1030,7 @@ function displayMVPNavigator(el){
   el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;">'
     +'<div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
   var display=document.getElementById('mvp-nav-display');
-  var v=new Date().toISOString().slice(0,10);
+  var v=Date.now(); // per-load, not per-day — a date-only cache-buster meant repeat testing within the same day could still serve a stale cached image even after the real file was corrected
 
   // Fully decoupled from game data now — no Schedule, no Game History,
   // no week numbers on any game record. This just checks, week by week,
