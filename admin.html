@@ -4466,6 +4466,15 @@ function initSubDragAndDrop(){
       // Start the actual visual drag now that it's clearly a drag, not a tap
       try{ grid.setPointerCapture(e.pointerId); }catch(err){}
       var rect=subDrag.chipEl.getBoundingClientRect();
+      // Captured once here — re-measuring this on every single move event
+      // (there can be dozens per second) forces a synchronous layout
+      // reflow each time, which is exactly what was causing the drag to
+      // feel laggy. The chip itself doesn't move during a drag anyway
+      // (only the ghost does), so one measurement is all that's needed.
+      subDrag.startRect={left:rect.left,top:rect.top};
+      // Same idea — query the dropzones once instead of on every move.
+      subDrag.dropzones=Array.prototype.slice.call(document.querySelectorAll('.sub-dropzone'));
+      subDrag.highlightedZone=null;
       var ghost=subDrag.chipEl.cloneNode(true);
       ghost.style.position='fixed';
       ghost.style.left=rect.left+'px';
@@ -4481,37 +4490,68 @@ function initSubDragAndDrop(){
       subDrag.chipEl.style.opacity='0.3';
     }
     if(subDrag.ghostEl){
-      var rect2=subDrag.chipEl.getBoundingClientRect();
-      subDrag.ghostEl.style.left=(rect2.left+dx)+'px';
-      subDrag.ghostEl.style.top=(rect2.top+dy)+'px';
+      subDrag.ghostEl.style.left=(subDrag.startRect.left+dx)+'px';
+      subDrag.ghostEl.style.top=(subDrag.startRect.top+dy)+'px';
     }
-    // Highlight whichever valid same-side dropzone is under the pointer
-    document.querySelectorAll('.sub-dropzone').forEach(function(z){
-      z.style.borderColor='transparent';
-      z.style.background='';
-    });
+    // Highlight whichever valid same-side dropzone is under the pointer —
+    // only touches the DOM when the highlighted zone actually changes
+    // between moves, instead of resetting every zone's style on every
+    // single move regardless of whether anything changed.
     var under=document.elementFromPoint(e.clientX,e.clientY);
     var zoneUnder=under&&under.closest('.sub-dropzone');
-    if(zoneUnder && zoneUnder.dataset.side===subDrag.side){
-      zoneUnder.style.borderColor='var(--orange)';
-      zoneUnder.style.background='rgba(255,92,0,0.06)';
+    var validZoneUnder=(zoneUnder && zoneUnder.dataset.side===subDrag.side)?zoneUnder:null;
+    if(validZoneUnder!==subDrag.highlightedZone){
+      if(subDrag.highlightedZone){
+        subDrag.highlightedZone.style.borderColor='transparent';
+        subDrag.highlightedZone.style.background='';
+      }
+      if(validZoneUnder){
+        validZoneUnder.style.borderColor='var(--orange)';
+        validZoneUnder.style.background='rgba(255,92,0,0.06)';
+      }
+      subDrag.highlightedZone=validZoneUnder;
+    }
+    // Dropping directly on another specific chip (in a different zone,
+    // same side) swaps the two 1:1, rather than just adding the dragged
+    // player into that zone. Highlighted with its own distinct outline so
+    // it's clear you're about to swap with that specific person.
+    var chipUnder=under&&under.closest('.player-chip');
+    var validChipUnder=(chipUnder && chipUnder!==subDrag.chipEl && validZoneUnder && validZoneUnder.dataset.zone!==subDrag.fromZone)?chipUnder:null;
+    if(validChipUnder!==subDrag.highlightedChip){
+      if(subDrag.highlightedChip) subDrag.highlightedChip.style.boxShadow='';
+      if(validChipUnder) validChipUnder.style.boxShadow='0 0 0 3px var(--orange)';
+      subDrag.highlightedChip=validChipUnder;
     }
   });
 
   function endDrag(e){
     if(!subDrag || e.pointerId!==subDrag.pointerId) return;
-    document.querySelectorAll('.sub-dropzone').forEach(function(z){
-      z.style.borderColor='transparent';
-      z.style.background='';
-    });
+    if(subDrag.highlightedZone){
+      subDrag.highlightedZone.style.borderColor='transparent';
+      subDrag.highlightedZone.style.background='';
+    }
+    if(subDrag.highlightedChip) subDrag.highlightedChip.style.boxShadow='';
     if(subDrag.ghostEl) subDrag.ghostEl.remove();
     if(subDrag.chipEl) subDrag.chipEl.style.opacity='';
 
     if(subDrag.moved){
       var under=document.elementFromPoint(e.clientX,e.clientY);
       var zoneUnder=under&&under.closest('.sub-dropzone');
-      if(zoneUnder && zoneUnder.dataset.side===subDrag.side && zoneUnder.dataset.zone!==subDrag.fromZone){
-        setPlayerStatus(subDrag.side, subDrag.num, zoneUnder.dataset.zone==='oncourt'?'IN':'SUB');
+      var validZoneUnder=(zoneUnder && zoneUnder.dataset.side===subDrag.side && zoneUnder.dataset.zone!==subDrag.fromZone)?zoneUnder:null;
+      if(validZoneUnder){
+        var chipUnder=under&&under.closest('.player-chip');
+        // Dropped on a specific other chip — swap the two 1:1, rather
+        // than just adding the dragged player into the zone on its own.
+        if(chipUnder && chipUnder!==subDrag.chipEl){
+          var targetNum=chipUnder.dataset.num;
+          var targetSide=chipUnder.dataset.side;
+          if(targetSide===subDrag.side){
+            setPlayerStatus(subDrag.side, subDrag.num, validZoneUnder.dataset.zone==='oncourt'?'IN':'SUB');
+            setPlayerStatus(subDrag.side, targetNum, subDrag.fromZone==='oncourt'?'IN':'SUB');
+          }
+        } else {
+          setPlayerStatus(subDrag.side, subDrag.num, validZoneUnder.dataset.zone==='oncourt'?'IN':'SUB');
+        }
       }
     }
     subDrag=null;
