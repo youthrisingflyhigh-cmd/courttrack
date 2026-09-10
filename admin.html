@@ -1038,8 +1038,8 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Schedule from Game History</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Rebuilds the Schedule (final games with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared/overwritten.</p>
-      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Rebuild Schedule from Game History</button>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Marks finished games as final (with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Merges in without touching anything else — future/upcoming weeks stay exactly as they are. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Sync Finished Games into Schedule</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -2643,16 +2643,16 @@ fbListen(ctPath('game'), function(v){
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi]?teams[game.hi].name:'Home';
       document.getElementById('away-lbl').textContent=teams[game.ai]?teams[game.ai].name:'Away';
-      document.getElementById('home-pts').style.color=teams[game.hi]?teams[game.hi].color:'#FF4500';
-      document.getElementById('away-pts').style.color=teams[game.ai]?teams[game.ai].color:'#888';
+      document.getElementById('home-pts').style.color='#fff';
+      document.getElementById('away-pts').style.color='#fff';
       document.getElementById('home-pts').textContent=game.homeScore||0;
       document.getElementById('away-pts').textContent=game.awayScore||0;
       document.getElementById('mini-home-lbl').textContent=teams[game.hi]?teams[game.hi].name.toUpperCase():'HOME';
       document.getElementById('mini-away-lbl').textContent=teams[game.ai]?teams[game.ai].name.toUpperCase():'AWAY';
       document.getElementById('mini-home-pts').textContent=game.homeScore||0;
       document.getElementById('mini-away-pts').textContent=game.awayScore||0;
-      document.getElementById('mini-home-pts').style.color=teams[game.hi]?teams[game.hi].color:'#FF4500';
-      document.getElementById('mini-away-pts').style.color=teams[game.ai]?teams[game.ai].color:'#888';
+      document.getElementById('mini-home-pts').style.color='#fff';
+      document.getElementById('mini-away-pts').style.color='#fff';
       renderDualChips(); renderDualStatBtns(); renderBox();
     }
   }
@@ -4109,26 +4109,44 @@ function rebuildScheduleFromGameHistory(){
     alert('No games found in Game History to rebuild the schedule from.');
     return;
   }
-  if(!confirm('This rebuilds the Schedule from the '+hist.length+' game(s) saved in Game History, marking each as final with its real score. Any existing Schedule entries (e.g. upcoming/unplayed games) will be replaced. Continue?')) return;
+  if(!confirm('This marks '+hist.length+' game(s) from Game History as final in the Schedule (with their real scores), merging into whatever\'s already there. Upcoming/future weeks are left untouched. Continue?')) return;
 
-  var rebuilt=hist.slice().reverse().map(function(g){
-    return {
+  // MERGE, not replace — a full replace here previously wiped out every
+  // upcoming/future week's placeholder entries whenever this ran, since
+  // it only ever knew about games that have actually been played. Now it
+  // only touches entries for games that match something in Game
+  // History (marking them final with the real score), and leaves every
+  // other existing Schedule entry — including future weeks — exactly as
+  // it was.
+  var existing=toArr(schedule).slice();
+  var matchedCount=0;
+  hist.forEach(function(g){
+    var gHome=(g.home||'').toLowerCase(), gAway=(g.away||'').toLowerCase();
+    var idx=existing.findIndex(function(s){
+      var sHome=(s.home||'').toLowerCase(), sAway=(s.away||'').toLowerCase();
+      return (sHome===gHome&&sAway===gAway)||(sHome===gAway&&sAway===gHome);
+    });
+    var finalEntry={
       home:g.home, away:g.away,
       homeScore:g.homeScore, awayScore:g.awayScore,
-      date:g.date||'', time:g.time||'', location:g.location||'',
-      round:(g.week||g.week===0)?g.week:1,
+      date:g.date||(idx>=0?existing[idx].date:'') , time:g.time||(idx>=0?existing[idx].time:''),
+      location:g.location||(idx>=0?existing[idx].location:''),
+      round:(g.week||g.week===0)?g.week:(idx>=0?existing[idx].round:1),
       isBye:false, isPlayoff:!!((g.week||g.week===0)&&g.week>=9),
       status:'final'
     };
+    if(idx>=0) existing[idx]=finalEntry;
+    else existing.push(finalEntry);
+    matchedCount++;
   });
 
-  schedule=rebuilt;
+  schedule=existing;
   if(!_dataFullyLoaded){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
   fbSet(ctPath('schedule'), schedule);
-  alert('✅ Schedule rebuilt from '+rebuilt.length+' game(s) in Game History.');
+  alert('✅ Merged '+matchedCount+' finished game(s) into the Schedule. Upcoming weeks were left untouched.');
   if(typeof renderSchedule==='function') renderSchedule();
 }
 
@@ -6167,8 +6185,8 @@ function showPage(p){
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi].name;
       document.getElementById('away-lbl').textContent=teams[game.ai].name;
-      document.getElementById('home-pts').style.color=teams[game.hi].color;
-      document.getElementById('away-pts').style.color=teams[game.ai].color;
+      document.getElementById('home-pts').style.color='#fff';
+      document.getElementById('away-pts').style.color='#fff';
       document.getElementById('home-pts').textContent=game.homeScore;
       document.getElementById('away-pts').textContent=game.awayScore;
       // Sync the H1/H2 buttons to the real current half — these are
@@ -6180,8 +6198,8 @@ function showPage(p){
       document.getElementById('mini-away-lbl').textContent=teams[game.ai].name.toUpperCase();
       document.getElementById('mini-home-pts').textContent=game.homeScore;
       document.getElementById('mini-away-pts').textContent=game.awayScore;
-      document.getElementById('mini-home-pts').style.color=teams[game.hi].color;
-      document.getElementById('mini-away-pts').style.color=teams[game.ai].color;
+      document.getElementById('mini-home-pts').style.color='#fff';
+      document.getElementById('mini-away-pts').style.color='#fff';
       selPlayerHome=null; selPlayerAway=null;
       renderDualChips(); renderDualStatBtns(); renderBox();
     }
