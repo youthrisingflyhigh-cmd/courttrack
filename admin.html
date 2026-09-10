@@ -86,7 +86,7 @@ select{flex:1;min-width:100px;}
 .q-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
 .section-label{font-family:Barlow Condensed,sans-serif;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
 .player-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;}
-.player-chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid #2a2a2a;background:var(--dark2);cursor:pointer;transition:all 0.12s;}
+.player-chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid #2a2a2a;background:var(--dark2);cursor:pointer;transition:all 0.12s;touch-action:none;}
 .player-chip:hover{border-color:#444;}
 .player-chip .jersey{font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:16px;min-width:20px;text-align:center;}
 .player-chip .pname{font-size:13px;font-weight:600;color:var(--light);}
@@ -598,6 +598,22 @@ BYE: Ohana, AIM
 
 <!-- LIVE TRACKING -->
 <div class="page" id="page-track">
+  <div id="pregame-checklist" style="position:fixed;top:70px;left:12px;z-index:50;background:var(--dark2);border:1px solid #333;border-radius:10px;padding:10px 12px;width:200px;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;" onclick="togglePregameChecklist()">
+      <span style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;">✓ Pre-Game Checklist</span>
+      <span id="pregame-checklist-chevron" style="color:#666;font-size:12px;">▾</span>
+    </div>
+    <div id="pregame-checklist-body">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ddd;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="pregame-check-roster" onchange="savePregameChecklist()" style="width:16px;height:16px;flex-shrink:0;">
+        Update rosters and numbers
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ddd;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="pregame-check-camera" onchange="savePregameChecklist()" style="width:16px;height:16px;flex-shrink:0;">
+        Camera is recording
+      </label>
+    </div>
+  </div>
   <!-- ── RECENT GAMES ── -->
   <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
     <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">RECENT GAMES</div>
@@ -783,8 +799,10 @@ BYE: Ohana, AIM
           <span class="section-label" style="margin:0;" id="home-side-lbl">HOME</span>
         </div>
         <div style="padding:12px 14px;">
-          <div class="section-label" style="margin-bottom:8px;">Select player</div>
-          <div class="player-row" id="player-chips-home" style="margin-bottom:12px;"></div>
+          <div class="section-label" style="margin-bottom:8px;">On Court <span style="color:#555;font-weight:400;text-transform:none;">— drag to Bench to sub out</span></div>
+          <div class="player-row sub-dropzone" id="oncourt-chips-home" data-side="home" data-zone="oncourt" style="margin-bottom:12px;min-height:44px;border:2px dashed transparent;border-radius:8px;transition:border-color 0.15s,background 0.15s;"></div>
+          <div class="section-label" style="margin-bottom:8px;">Bench <span style="color:#555;font-weight:400;text-transform:none;">— drag to On Court to sub in</span></div>
+          <div class="player-row sub-dropzone" id="bench-chips-home" data-side="home" data-zone="bench" style="margin-bottom:12px;min-height:44px;border:2px dashed transparent;border-radius:8px;transition:border-color 0.15s,background 0.15s;"></div>
           <div class="section-label" id="track-lbl-home" style="margin-bottom:8px;">No player selected</div>
           <div class="stat-grid" id="stat-btns-home"></div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
@@ -802,8 +820,10 @@ BYE: Ohana, AIM
           <span class="section-label" style="margin:0;" id="away-side-lbl">AWAY</span>
         </div>
         <div style="padding:12px 14px;">
-          <div class="section-label" style="margin-bottom:8px;">Select player</div>
-          <div class="player-row" id="player-chips-away" style="margin-bottom:12px;"></div>
+          <div class="section-label" style="margin-bottom:8px;">On Court <span style="color:#555;font-weight:400;text-transform:none;">— drag to Bench to sub out</span></div>
+          <div class="player-row sub-dropzone" id="oncourt-chips-away" data-side="away" data-zone="oncourt" style="margin-bottom:12px;min-height:44px;border:2px dashed transparent;border-radius:8px;transition:border-color 0.15s,background 0.15s;"></div>
+          <div class="section-label" style="margin-bottom:8px;">Bench <span style="color:#555;font-weight:400;text-transform:none;">— drag to On Court to sub in</span></div>
+          <div class="player-row sub-dropzone" id="bench-chips-away" data-side="away" data-zone="bench" style="margin-bottom:12px;min-height:44px;border:2px dashed transparent;border-radius:8px;transition:border-color 0.15s,background 0.15s;"></div>
           <div class="section-label" id="track-lbl-away" style="margin-bottom:8px;">No player selected</div>
           <div class="stat-grid" id="stat-btns-away"></div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
@@ -2811,11 +2831,48 @@ function runDeleteGame(){
   closeDeleteGameModal();
 }
 
+// ── PRE-GAME CHECKLIST ──
+// Purely local (device-specific, via localStorage) — this is a personal
+// reminder for whoever's running the tracker on this particular device,
+// not game data, so it doesn't need to sync through Firebase at all.
+function savePregameChecklist(){
+  var state={
+    roster: document.getElementById('pregame-check-roster').checked,
+    camera: document.getElementById('pregame-check-camera').checked
+  };
+  try{ localStorage.setItem('ct_pregame_checklist', JSON.stringify(state)); }catch(e){}
+}
+function loadPregameChecklist(){
+  try{
+    var raw=localStorage.getItem('ct_pregame_checklist');
+    if(raw){
+      var state=JSON.parse(raw);
+      var rEl=document.getElementById('pregame-check-roster'), cEl=document.getElementById('pregame-check-camera');
+      if(rEl) rEl.checked=!!state.roster;
+      if(cEl) cEl.checked=!!state.camera;
+    }
+    var collapsed=localStorage.getItem('ct_pregame_checklist_collapsed')==='1';
+    if(collapsed){
+      document.getElementById('pregame-checklist-body').style.display='none';
+      document.getElementById('pregame-checklist-chevron').textContent='▸';
+    }
+  }catch(e){}
+}
+function togglePregameChecklist(){
+  var body=document.getElementById('pregame-checklist-body');
+  var collapsed=body.style.display==='none';
+  body.style.display=collapsed?'block':'none';
+  document.getElementById('pregame-checklist-chevron').textContent=collapsed?'▾':'▸';
+  try{ localStorage.setItem('ct_pregame_checklist_collapsed', collapsed?'0':'1'); }catch(e){}
+}
+
 function onAllLoaded(){
   var overlay=document.getElementById('loading-overlay');
   if(overlay) overlay.style.display='none';
   populateSeasonDivisionSelector();
   renderTeams(); renderRoster(); renderSelects();
+  initSubDragAndDrop();
+  loadPregameChecklist();
   // Auto-heal Summer 2026 standings specifically: rather than depending
   // on someone remembering to click "Restore Summer 2026 Final Standings"
   // in Settings, just apply the confirmed-correct final numbers directly
@@ -4370,6 +4427,130 @@ function renderTimeouts(){
   document.getElementById('away-timeouts-display').innerHTML=aDisplay;
 }
 
+// ── DRAG-TO-SUB (On Court ↔ Bench) ──
+// Uses Pointer Events specifically (not the native HTML5 drag-and-drop
+// API) since Pointer Events unify mouse, touch, and pen under one model
+// — the native DnD API only fires reliably for a mouse, which wouldn't
+// work courtside on a phone/tablet. Delegated on a stable ancestor
+// rather than attached to individual chips, since renderDualChips()
+// regenerates that HTML on every render (would otherwise mean
+// re-attaching listeners constantly, or losing them).
+var subDrag=null; // {side,num,fromZone,ghostEl,startX,startY,moved}
+var SUB_DRAG_THRESHOLD=8; // px of movement before a tap becomes a drag — lets a plain tap still select the player for stat tracking as before
+
+function initSubDragAndDrop(){
+  var grid=document.getElementById('dual-track-grid');
+  if(!grid || grid._subDragInit) return;
+  grid._subDragInit=true;
+
+  grid.addEventListener('pointerdown', function(e){
+    if(e.target.closest('button')) return; // let the IN/SUB/OUT and swap buttons work normally
+    var chip=e.target.closest('.player-chip');
+    if(!chip) return;
+    var zone=chip.closest('.sub-dropzone');
+    if(!zone) return;
+    subDrag={
+      side:chip.dataset.side, num:chip.dataset.num,
+      fromZone:zone.dataset.zone, chipEl:chip,
+      startX:e.clientX, startY:e.clientY, moved:false, ghostEl:null,
+      pointerId:e.pointerId
+    };
+  });
+
+  grid.addEventListener('pointermove', function(e){
+    if(!subDrag || e.pointerId!==subDrag.pointerId) return;
+    var dx=e.clientX-subDrag.startX, dy=e.clientY-subDrag.startY;
+    if(!subDrag.moved){
+      if(Math.abs(dx)<SUB_DRAG_THRESHOLD && Math.abs(dy)<SUB_DRAG_THRESHOLD) return;
+      subDrag.moved=true;
+      // Start the actual visual drag now that it's clearly a drag, not a tap
+      try{ grid.setPointerCapture(e.pointerId); }catch(err){}
+      var rect=subDrag.chipEl.getBoundingClientRect();
+      var ghost=subDrag.chipEl.cloneNode(true);
+      ghost.style.position='fixed';
+      ghost.style.left=rect.left+'px';
+      ghost.style.top=rect.top+'px';
+      ghost.style.width=rect.width+'px';
+      ghost.style.zIndex='9999';
+      ghost.style.pointerEvents='none';
+      ghost.style.opacity='0.9';
+      ghost.style.boxShadow='0 8px 24px rgba(0,0,0,0.5)';
+      ghost.style.transform='scale(1.03)';
+      document.body.appendChild(ghost);
+      subDrag.ghostEl=ghost;
+      subDrag.chipEl.style.opacity='0.3';
+    }
+    if(subDrag.ghostEl){
+      var rect2=subDrag.chipEl.getBoundingClientRect();
+      subDrag.ghostEl.style.left=(rect2.left+dx)+'px';
+      subDrag.ghostEl.style.top=(rect2.top+dy)+'px';
+    }
+    // Highlight whichever valid same-side dropzone is under the pointer
+    document.querySelectorAll('.sub-dropzone').forEach(function(z){
+      z.style.borderColor='transparent';
+      z.style.background='';
+    });
+    var under=document.elementFromPoint(e.clientX,e.clientY);
+    var zoneUnder=under&&under.closest('.sub-dropzone');
+    if(zoneUnder && zoneUnder.dataset.side===subDrag.side){
+      zoneUnder.style.borderColor='var(--orange)';
+      zoneUnder.style.background='rgba(255,92,0,0.06)';
+    }
+  });
+
+  function endDrag(e){
+    if(!subDrag || e.pointerId!==subDrag.pointerId) return;
+    document.querySelectorAll('.sub-dropzone').forEach(function(z){
+      z.style.borderColor='transparent';
+      z.style.background='';
+    });
+    if(subDrag.ghostEl) subDrag.ghostEl.remove();
+    if(subDrag.chipEl) subDrag.chipEl.style.opacity='';
+
+    if(subDrag.moved){
+      var under=document.elementFromPoint(e.clientX,e.clientY);
+      var zoneUnder=under&&under.closest('.sub-dropzone');
+      if(zoneUnder && zoneUnder.dataset.side===subDrag.side && zoneUnder.dataset.zone!==subDrag.fromZone){
+        setPlayerStatus(subDrag.side, subDrag.num, zoneUnder.dataset.zone==='oncourt'?'IN':'SUB');
+      }
+    }
+    subDrag=null;
+  }
+  grid.addEventListener('pointerup', endDrag);
+  grid.addEventListener('pointercancel', endDrag);
+}
+
+// Sets a player directly to a specific status (used by drag-and-drop) —
+// same logging/save pattern as toggleSub()'s cycle, just going straight
+// to the target status instead of stepping through the cycle.
+function setPlayerStatus(side,num,newStatus){
+  if(!game) return;
+  var isHome=side==='home';
+  if(isHome && !game.hStatus) game.hStatus={};
+  if(!isHome && !game.aStatus) game.aStatus={};
+  var status=isHome?game.hStatus:game.aStatus;
+  var key=status[num]!==undefined?num:(status[String(num)]!==undefined?String(num):num);
+  var cur=status[key]!==undefined?status[key]:'SUB';
+  if(cur===newStatus) return;
+  status[key]=newStatus;
+  var ti=isHome?game.hi:game.ai;
+  var p=teams[ti].players.find(function(x){return x.num==num;});
+  if(!game.playLog) game.playLog=[];
+  var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  var labels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
+  var entry={
+    id:entryId, side:side, num:key,
+    playerName:p?p.name:'', teamName:teams[ti].name, teamColor:teams[ti].color,
+    key:'sub', label:labels[newStatus]||newStatus, pts:0, neg:newStatus==='OUT',
+    score:game.homeScore+'-'+game.awayScore, half:game.q, clock:timerFmt(timerSeconds),
+    timestamp:Date.now(), prevStatus:cur
+  };
+  game.playLog.push(entry);
+  logStack.push({id:entryId,side:side,num:key,key:'sub',pts:0,neg:newStatus==='OUT',prevStatus:cur});
+  addSubLogRow(entry);
+  saveLiveGame(); renderDualChips();
+}
+
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
@@ -4444,11 +4625,23 @@ function renderDualChips(){
     }).map(function(x){return x.p;});
   }
 
-  // Home chips
-  document.getElementById('player-chips-home').innerHTML=sortByStatus(ht.players,game.hStatus).map(function(p){ return chipHtml('home',p); }).join('');
+  function getStatus(statusMap,num){
+    return (statusMap&&(statusMap[num]!==undefined?statusMap[num]:statusMap[String(num)]))||'SUB';
+  }
 
-  // Away chips
-  document.getElementById('player-chips-away').innerHTML=sortByStatus(at.players,game.aStatus).map(function(p){ return chipHtml('away',p); }).join('');
+  // Split into two draggable zones (On Court / Bench) per side. OUT
+  // players still show in Bench (dimmed) — dragging doesn't handle OUT,
+  // that stays on the existing tap-to-cycle button on each chip.
+  ['home','away'].forEach(function(side){
+    var isHome=side==='home';
+    var teamObj=isHome?ht:at;
+    var statusMap=isHome?game.hStatus:game.aStatus;
+    var sorted=sortByStatus(teamObj.players,statusMap);
+    var onCourt=sorted.filter(function(p){return getStatus(statusMap,p.num)==='IN';});
+    var bench=sorted.filter(function(p){return getStatus(statusMap,p.num)!=='IN';});
+    document.getElementById('oncourt-chips-'+side).innerHTML=onCourt.length?onCourt.map(function(p){return chipHtml(side,p);}).join(''):'<div style="color:#555;font-size:12px;font-style:italic;padding:8px;">Drag players here</div>';
+    document.getElementById('bench-chips-'+side).innerHTML=bench.length?bench.map(function(p){return chipHtml(side,p);}).join(''):'<div style="color:#555;font-size:12px;font-style:italic;padding:8px;">Drag players here</div>';
+  });
 }
 
 function pickPlayerSide(side,num){
