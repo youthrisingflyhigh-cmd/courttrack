@@ -1027,48 +1027,51 @@ function computeSeasonLeaders(){
 var mvpNavIdx=0;
 function displayMVPNavigator(el){
   if(!el) return;
-  el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;"></div>';
+  el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;">'
+    +'<div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
   var display=document.getElementById('mvp-nav-display');
+  var v=new Date().toISOString().slice(0,10);
 
-  // Get weeks that have completed games — read directly from Game
-  // History rather than Schedule's status:'final' flag. Schedule
-  // status can get stuck as "upcoming" forever if a game's schedule
-  // entry never matched correctly at the time it was finished (a real
-  // bug we hit for this division), even though the actual game result
-  // is safely recorded in Game History regardless. Reading straight from
-  // Game History means this doesn't depend on Schedule being correct at
-  // all, and needs no separate rebuild step to work.
-  var weeksWithGames=[];
-  var histForWeeks=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  histForWeeks.forEach(function(g){
-    if(g && (g.week!=null) && weeksWithGames.indexOf(g.week)<0){
-      weeksWithGames.push(g.week);
-    }
-  });
-  weeksWithGames.sort(function(a,b){return a-b;});
-
-  if(!weeksWithGames.length){
-    display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No completed games yet.</div>';
-    return;
+  // Fully decoupled from game data now — no Schedule, no Game History,
+  // no week numbers on any game record. This just checks, week by week,
+  // whether any photos were actually uploaded for it, and only offers
+  // navigation to weeks that have at least one. Simple and predictable:
+  // upload a photo for a week, it becomes navigable; don't, and it's
+  // skipped entirely.
+  var MAX_WEEKS=20; // safety cap, not tied to any real season length
+  function weekHasAnyPhoto(week){
+    return Promise.all([1,2,3].map(function(i){ return probeWeekSlot(week,i,v); }))
+      .then(function(urls){ return urls.some(Boolean); });
+  }
+  function checkWeek(week,foundWeeks){
+    if(week>MAX_WEEKS) return Promise.resolve(foundWeeks);
+    return weekHasAnyPhoto(week).then(function(has){
+      if(has) foundWeeks.push(week);
+      return checkWeek(week+1,foundWeeks);
+    });
   }
 
-  if(mvpNavIdx>=weeksWithGames.length)mvpNavIdx=0;
-  var currentWeek=weeksWithGames[mvpNavIdx];
-  display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div>';
+  checkWeek(1,[]).then(function(weeksWithPhotos){
+    if(!weeksWithPhotos.length){
+      display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No photos uploaded yet.</div>';
+      return;
+    }
+    if(mvpNavIdx>=weeksWithPhotos.length) mvpNavIdx=weeksWithPhotos.length-1;
+    var currentWeek=weeksWithPhotos[mvpNavIdx];
 
-  var v=new Date().toISOString().slice(0,10);
-  Promise.all([1,2,3].map(function(i){ return probeWeekSlot(currentWeek,i,v); })).then(function(urls){
+    Promise.all([1,2,3].map(function(i){ return probeWeekSlot(currentWeek,i,v); })).then(function(urls){
     var found=urls.filter(Boolean);
     var cardsHtml = found.length
       ? found.map(function(src){
-          return '<img onclick="openPotwLightbox(\''+src+'\')" src="'+src+'" style="cursor:pointer;width:clamp(110px,28vw,180px);height:auto;aspect-ratio:120/143;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
+          return '<img onclick="openPotwLightbox(\''+src+'\')" src="'+src+'" style="cursor:pointer;width:clamp(110px,28vw,180px);height:auto;max-height:min(50vh,320px);object-fit:contain;border-radius:8px;flex-shrink:0;background:#000;" />';
         }).join('')
       : '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:20px;">No photos uploaded for this week yet.</div>';
 
     var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
-    var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithGames.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithGames.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithGames.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithGames.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
+    var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithPhotos.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithPhotos.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithPhotos.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithPhotos.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
 
     display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">'+prevBtn+'<div style="display:flex;gap:8px;overflow-x:auto;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:clamp(12px,3vw,16px);color:var(--orange);font-weight:700;margin-top:8px;">Week '+currentWeek+'</div>';
+    });
   });
 }
 
