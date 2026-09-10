@@ -5572,16 +5572,16 @@ function renderStandings(){
         +'<div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Box Score</div>'
         +'<div style="overflow-x:auto;">'
         +'<table style="margin-bottom:8px;"><thead><tr><th>#</th><th>'+g.home+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead>'
-        +'<tbody>'+makeBoxRows(g.homePlayers,g.hStats,g.homeColor)+'</tbody></table>'
+        +'<tbody>'+makeBoxRows(g.homePlayers,g.hStats,'var(--white)')+'</tbody></table>'
         +'<table><thead><tr><th>#</th><th>'+g.away+'</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead>'
-        +'<tbody>'+makeBoxRows(g.awayPlayers,g.aStats,g.awayColor)+'</tbody></table>'
+        +'<tbody>'+makeBoxRows(g.awayPlayers,g.aStats,'var(--white)')+'</tbody></table>'
         +'</div></div>';
     }
     var expanded=false;
     return '<div style="background:var(--dark2);border:1px solid #2a2a2a;border-radius:8px;margin-bottom:12px;overflow:hidden;">'
       +'<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;flex-wrap:wrap;cursor:pointer;" onclick="toggleHistory('+gi+')">'
       +'<div style="font-size:12px;color:var(--muted);min-width:120px;">'+g.date+'</div>'
-      +'<div style="flex:1;font-size:14px;font-weight:600;"><span style="color:'+g.homeColor+'">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:'+g.awayColor+'">'+g.away+'</span></div>'
+      +'<div style="flex:1;font-size:14px;font-weight:600;"><span style="color:var(--white)">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:var(--white)">'+g.away+'</span></div>'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;">'+g.homeScore+' — '+g.awayScore+'</div>'
       +'<div style="font-size:12px;font-weight:700;color:var(--green);">W: '+winner+' ('+ws+'-'+ls+')</div>'
       +topScorerHtml
@@ -5715,7 +5715,7 @@ function renderGames(){
       +'<div class="game-record-header" onclick="toggleGameRecord('+gi+')">'
       +'<div style="flex:1;">'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);">'
-      +'<span style="color:'+(g.homeColor||'#fff')+'">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:'+(g.awayColor||'#888')+'">'+(g.away||'')+'</span>'
+      +'<span style="color:var(--white)">'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span style="color:var(--white)">'+(g.away||'')+'</span>'
       +(ytId?' <span title="Game film available" style="font-size:13px;">🎥</span>':'')
       +'</div>'
       +'<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div>'
@@ -5732,10 +5732,10 @@ function renderGames(){
       +'<button class="game-tab" id="gtab-'+gi+'-video" onclick="switchGameTab('+gi+',\'video\')">🎥 Game Film</button>'
       +'</div>'
       +'<div class="game-tab-panel active" id="gpanel-'+gi+'-box">'
-      +'<div style="font-size:11px;font-weight:700;color:'+(g.homeColor||'#fff')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div>'
-      +'<div style="overflow-x:auto;margin-bottom:16px;"><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,g.homeColor||'#fff')+'</tbody></table></div>'
-      +'<div style="font-size:11px;font-weight:700;color:'+(g.awayColor||'#888')+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div>'
-      +'<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,g.awayColor||'#888')+'</tbody></table></div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div>'
+      +'<div style="overflow-x:auto;margin-bottom:16px;"><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--white)')+'</tbody></table></div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div>'
+      +'<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--white)')+'</tbody></table></div>'
       +'</div>'
       +'<div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div>'
       +'<div class="game-tab-panel" id="gpanel-'+gi+'-video">'
