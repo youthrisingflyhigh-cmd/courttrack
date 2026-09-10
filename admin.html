@@ -4533,14 +4533,35 @@ function initSubDragAndDrop(){
     // same side) swaps the two 1:1, rather than just adding the dragged
     // player into that zone. Highlighted with its own distinct outline so
     // it's clear you're about to swap with that specific person.
-    var chipUnder=under&&under.closest('.player-chip');
-    var validChipUnder=(chipUnder && chipUnder!==subDrag.chipEl && validZoneUnder && validZoneUnder.dataset.zone!==subDrag.fromZone)?chipUnder:null;
+    // Uses "nearest chip in the zone" rather than requiring an exact
+    // pixel-perfect hit — touch input especially rarely lands exactly on
+    // target, which was making this feel inconsistent (worked sometimes,
+    // silently fell back to a generic zone-drop other times).
+    var chipUnder=(validZoneUnder && validZoneUnder.dataset.zone!==subDrag.fromZone)?findNearestChipInZone(validZoneUnder,e.clientX,e.clientY,subDrag.chipEl):null;
+    var validChipUnder=chipUnder;
     if(validChipUnder!==subDrag.highlightedChip){
       if(subDrag.highlightedChip) subDrag.highlightedChip.style.boxShadow='';
       if(validChipUnder) validChipUnder.style.boxShadow='0 0 0 3px var(--orange)';
       subDrag.highlightedChip=validChipUnder;
     }
   });
+
+  // Finds the chip in a given zone closest to (x,y) — used instead of a
+  // strict elementFromPoint hit-test, which requires landing precisely on
+  // the chip's own pixels and was making the swap-with-a-specific-player
+  // feature feel unreliable, especially on touch.
+  function findNearestChipInZone(zone,x,y,excludeChip){
+    var chips=zone.querySelectorAll('.player-chip');
+    var best=null, bestDist=Infinity;
+    chips.forEach(function(chip){
+      if(chip===excludeChip) return;
+      var r=chip.getBoundingClientRect();
+      var cx=r.left+r.width/2, cy=r.top+r.height/2;
+      var dist=Math.hypot(x-cx,y-cy);
+      if(dist<bestDist){ bestDist=dist; best=chip; }
+    });
+    return best;
+  }
 
   function endDrag(e){
     if(!subDrag || e.pointerId!==subDrag.pointerId) return;
@@ -4557,10 +4578,13 @@ function initSubDragAndDrop(){
       var zoneUnder=under&&under.closest('.sub-dropzone');
       var validZoneUnder=(zoneUnder && zoneUnder.dataset.side===subDrag.side && zoneUnder.dataset.zone!==subDrag.fromZone)?zoneUnder:null;
       if(validZoneUnder){
-        var chipUnder=under&&under.closest('.player-chip');
-        // Dropped on a specific other chip — swap the two 1:1, rather
-        // than just adding the dragged player into the zone on its own.
-        if(chipUnder && chipUnder!==subDrag.chipEl){
+        // Same "nearest chip" logic used for the highlight during drag —
+        // using a strict exact-hit-test here (instead of matching what
+        // was actually highlighted) was exactly why this sometimes
+        // silently fell back to a generic zone-drop even after showing
+        // the swap highlight around a specific player.
+        var chipUnder=findNearestChipInZone(validZoneUnder,e.clientX,e.clientY,subDrag.chipEl);
+        if(chipUnder){
           var targetNum=chipUnder.dataset.num;
           var targetSide=chipUnder.dataset.side;
           if(targetSide===subDrag.side){
