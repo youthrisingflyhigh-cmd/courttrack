@@ -499,12 +499,6 @@ BYE: Ohana, AIM
       <div class="card-header"><h3>1. Teams</h3><div style="display:flex;gap:6px;"><button class="btn-orange" style="padding:4px 10px;border-radius:6px;font-size:12px;" onclick="openBulkImportModal()">📋 Bulk Import Teams</button><button class="btn-red" style="border:1px solid var(--red);padding:4px 10px;border-radius:6px;" onclick="resetTeams()">🗑 Reset All Teams</button></div></div>
       <div class="card-body">
         <div class="input-row" style="flex-wrap:wrap;">
-          <select id="team-league-select" style="min-width:200px;">
-            <option value="35+ Mens League">🏀 35+ Men's League</option>
-            <option value="40+ Mens League">🏀 40+ Men's League</option>
-            <option value="6ft2 Under Division">🏀 6'2" & Under Division</option>
-            <option value="Open Division">🏀 Open Division</option>
-          </select>
           <input type="text" id="team-name-input" placeholder="Team name" maxlength="30"/>
           <button class="btn btn-orange" onclick="addTeam()">+ Add</button>
         </div>
@@ -2963,10 +2957,9 @@ function fmt12(hh,mm){var h=hh%24;return (h%12||12)+':'+(mm<10?'0':'')+mm+(h>=12
 // ── SETUP ──
 function addTeam(){
   var n=document.getElementById('team-name-input').value.trim();
-  var league=document.getElementById('team-league-select').value||'35+ Mens League';
   if(!n){ alert('Please enter a team name.'); return; }
   var c=TEAM_COLOR_PALETTE[teams.length%TEAM_COLOR_PALETTE.length];
-  teams.push({name:n,color:c,players:[],league:league});
+  teams.push({name:n,color:c,players:[]});
   document.getElementById('team-name-input').value='';
   // Save teams — listener on ct/teams will auto-update the UI
   fbSet(ctPath('teams'), teams);
@@ -3041,7 +3034,6 @@ function runBulkImport(){
   var text=document.getElementById('bulk-import-text').value;
   var parsed=parseBulkImportText(text);
   if(!parsed.length){ alert('Nothing parsed — check the format (each team needs a "TEAM: Name" line).'); return; }
-  var league=document.getElementById('team-league-select')?document.getElementById('team-league-select').value:'';
   var createdCount=0, mergedCount=0;
   parsed.forEach(function(t,i){
     // If a team with this name already exists (e.g. an empty placeholder
@@ -3060,7 +3052,7 @@ function runBulkImport(){
       mergedCount++;
     } else {
       var color=TEAM_COLOR_PALETTE[(teams.length+i)%TEAM_COLOR_PALETTE.length];
-      teams.push({name:t.name,color:color,league:league,players:newPlayers});
+      teams.push({name:t.name,color:color,players:newPlayers});
       createdCount++;
     }
   });
