@@ -5465,7 +5465,7 @@ function renderFall2026Bracket(container){
 // standings, per the league's own bracket rule.
 function renderThursdayLeagueBracket(container){
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
-  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:760px;">';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:1050px;">';
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
@@ -5506,9 +5506,8 @@ function renderThursdayLeagueBracket(container){
   html+=card([{seed:'W',name:'Winner: QF3',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'7:25 PM');
   html+='</div>';
 
-  html+='</div></div>';
+  html+='<div style="width:1px;align-self:stretch;background:#2a2a2a;margin:0 24px;"></div>';
 
-  html+='<div style="overflow-x:auto;padding-bottom:12px;margin-top:20px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
   html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">OCT 29</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
@@ -5523,6 +5522,7 @@ function renderThursdayLeagueBracket(container){
     +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:2px;">CHAMPIONSHIP</div>'
     +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:25 PM · WINNER: SEMI 1 vs SEMI 2</div></div>';
   html+='</div>';
+
   html+='</div></div>';
 
   html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings</div>';
