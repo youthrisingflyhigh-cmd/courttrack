@@ -4128,6 +4128,21 @@ function rebuildScheduleFromGameHistory(){
   // History (marking them final with the real score), and leaves every
   // other existing Schedule entry — including future weeks — exactly as
   // it was.
+  // Known date → round mapping for games missing a week number and with
+  // no existing schedule match to inherit one from — without this, such
+  // a game silently defaulted to Week 1 regardless of its real date,
+  // which is exactly what dumped a July 8 game and three Aug 19 playoff
+  // games all into "Week 1" alongside the real Week 1 games.
+  function resolveRoundFromDate(dateStr){
+    var d=(dateStr||'').toLowerCase();
+    if(d.indexOf('july 1')>=0||d.indexOf('jul 1,')>=0) return 1;
+    if(d.indexOf('july 8')>=0||d.indexOf('jul 8')>=0) return 2;
+    if(d.indexOf('august 19')>=0||d.indexOf('aug 19')>=0) return 9;
+    if(d.indexOf('august 26')>=0||d.indexOf('aug 26')>=0) return 10;
+    if(d.indexOf('september 2')>=0||d.indexOf('sep 2')>=0) return 11;
+    return null;
+  }
+
   var existing=toArr(schedule).slice();
   var matchedCount=0;
   hist.forEach(function(g){
@@ -4136,13 +4151,15 @@ function rebuildScheduleFromGameHistory(){
       var sHome=(s.home||'').toLowerCase(), sAway=(s.away||'').toLowerCase();
       return (sHome===gHome&&sAway===gAway)||(sHome===gAway&&sAway===gHome);
     });
+    var dateBasedRound=resolveRoundFromDate(g.date);
+    var resolvedRound=(g.week||g.week===0)?g.week:(dateBasedRound!==null?dateBasedRound:(idx>=0?existing[idx].round:1));
     var finalEntry={
       home:g.home, away:g.away,
       homeScore:g.homeScore, awayScore:g.awayScore,
       date:g.date||(idx>=0?existing[idx].date:'') , time:g.time||(idx>=0?existing[idx].time:''),
       location:g.location||(idx>=0?existing[idx].location:''),
-      round:(g.week||g.week===0)?g.week:(idx>=0?existing[idx].round:1),
-      isBye:false, isPlayoff:!!((g.week||g.week===0)&&g.week>=9),
+      round:resolvedRound,
+      isBye:false, isPlayoff:!!(resolvedRound>=9),
       status:'final'
     };
     if(idx>=0) existing[idx]=finalEntry;
