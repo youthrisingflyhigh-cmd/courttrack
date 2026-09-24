@@ -5465,7 +5465,7 @@ function renderFall2026Bracket(container){
 // standings, per the league's own bracket rule.
 function renderThursdayLeagueBracket(container){
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
-  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:1050px;">';
+  html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:660px;">';
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
@@ -5475,35 +5475,22 @@ function renderThursdayLeagueBracket(container){
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
   }
 
-  // Back to all 8 teams — Quarterfinals AND Semifinals both on Oct 22
-  // now (previously split across two separate days), fully seed-based
-  // (no more fixed Diskarte/Wolfpack matchup). Oct 29 stays a separate
-  // event day (3-Point Shootout → All-Star → Championship).
-  html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">QUARTERFINALS · OCT 22</div>';
-  html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#8',name:'Seed 8'}],'6:30 PM');
-  html+=card([{seed:'#4',name:'Seed 4',border:true},{seed:'#5',name:'Seed 5'}],'6:30 PM');
-  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#7',name:'Seed 7'}],'6:30 PM');
-  html+=card([{seed:'#3',name:'Seed 3',border:true},{seed:'#6',name:'Seed 6'}],'6:30 PM');
-  html+='</div>';
-
-  html+='<div style="position:relative;width:40px;height:420px;flex-shrink:0;">';
-  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:170px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:200px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:116px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
-  html+='<div style="position:absolute;top:245px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:245px;right:0;width:2px;height:170px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:412px;left:0;right:0;height:2px;background:#333;"></div>';
-  html+='<div style="position:absolute;top:328px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
-  html+='</div>';
-
+  // Top 4 seeds only — no Quarterfinal round, no byes. Matches the same
+  // structure used for Fall 2026 · 35+ League: Semifinals on one day,
+  // then a separate event day (3-Point Shootout → All-Star →
+  // Championship).
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
   html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 22</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-  html+=card([{seed:'W',name:'Winner: QF1',dim:true,border:true},{seed:'W',name:'Winner: QF2',dim:true}],'7:25 PM');
-  html+=card([{seed:'W',name:'Winner: QF3',dim:true,border:true},{seed:'W',name:'Winner: QF4',dim:true}],'7:25 PM');
+  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'6:30 PM');
+  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'7:25 PM');
+  html+='</div>';
+
+  html+='<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
+  html+='<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:32px;right:0;width:2px;height:118px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:150px;left:0;right:0;height:2px;background:#333;"></div>';
+  html+='<div style="position:absolute;top:90px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
   html+='</div>';
 
   html+='<div style="width:1px;align-self:stretch;background:#2a2a2a;margin:0 24px;"></div>';
@@ -5525,7 +5512,7 @@ function renderThursdayLeagueBracket(container){
 
   html+='</div></div>';
 
-  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">All 8 teams make playoffs · Seeding from final standings</div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
 
   container.innerHTML=html;
 }
