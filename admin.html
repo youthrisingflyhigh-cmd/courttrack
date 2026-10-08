@@ -2844,14 +2844,27 @@ function openPlayerLookupModal(){
   setTimeout(function(){ var i=document.getElementById('player-lookup-input'); if(i) i.focus(); },50);
 }
 function closePlayerLookupModal(){ document.getElementById('player-lookup-modal').style.display='none'; }
-var _lookupMissing=[];
+var _lookupFix=[];
 function _nt(s){ return (s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,''); }
+var _LK_STAT=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'];
+function _lkFirst(n){ return ((n||'').trim().split(/\s+/)[0]||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+// Finds the log entry for a game under a given jersey number, across every
+// spelling of the team's name. Returns {key,entry,idx} or null.
+function _lkFindLog(teamObj,num,gameId){
+  var tn=_nt(teamObj.name), keys=Object.keys(playerStats||{});
+  for(var i=0;i<keys.length;i++){
+    if(_nt(keys[i])!==tn) continue;
+    var e=(playerStats[keys[i]]||{})[num]; if(!e) continue;
+    var logs=toArr(e.games);
+    for(var j=0;j<logs.length;j++){ if(logs[j] && logs[j].gameId===gameId) return {key:keys[i],entry:e,idx:j,logs:logs}; }
+  }
+  return null;
+}
 function runPlayerLookup(){
-  _lookupMissing=[];
+  _lookupFix=[];
   var q=(document.getElementById('player-lookup-input').value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   var out=document.getElementById('player-lookup-result');
   if(q.length<2){ out.textContent='Type at least 2 letters of a first name.'; return; }
-  function fk(n){ return ((n||'').trim().split(/\s+/)[0]||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
   var hist=toArr(gameHistory);
   var exactTeams={}; teams.forEach(function(t){ exactTeams[t.name]=true; });
   var lines=[];
@@ -2873,7 +2886,7 @@ function runPlayerLookup(){
           if(m) nm=m.name;
         }
       }
-      if(fk(nm)!==q) return;
+      if(_lkFirst(nm)!==q) return;
       var s=playerStats[teamKey][num]||{};
       foundA++;
       lines.push('  team "'+teamKey+'"'+(exactTeams[teamKey]?'':'  <-- NOT an exact current team name')+'  #'+num+'  '+nm+'  '+(s.pts||0)+' pts, '+(s.gp||0)+' gp, '+toArr(s.games).length+' game log entries');
@@ -2881,72 +2894,124 @@ function runPlayerLookup(){
   });
   if(!foundA) lines.push('  (none found)');
 
-  // B) Every game they appear in
-  lines.push('');
-  lines.push('GAMES THEY APPEAR IN (from Game History)');
-  var foundB=0;
+  // B) Every game they appear in, and where it's counted
+  var played=[]; // {g,sk,lk,num,name,teamObj,isHome}
   hist.slice().reverse().forEach(function(g){
     if(!g) return;
-    [{pk:'homePlayers',sk:'hStats',lk:'hLineup',team:g.home},{pk:'awayPlayers',sk:'aStats',lk:'aLineup',team:g.away}].forEach(function(s){
+    [{pk:'homePlayers',sk:'hStats',lk:'hLineup',team:g.home,isHome:true},{pk:'awayPlayers',sk:'aStats',lk:'aLineup',team:g.away,isHome:false}].forEach(function(s){
       (g[s.pk]||[]).forEach(function(p){
-        if(fk(p.name)!==q) return;
+        if(_lkFirst(p.name)!==q) return;
         var st=(g[s.sk]||{})[p.num];
-        var lu=(g[s.lk]||[]).some(function(n){ return String(n)===String(p.num); });
-        var played=lu||(st&&['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){ return (st[k]||0)>0; }));
-        if(!played) return;
-        foundB++;
-        var sn=_nt(s.team);
-        var logged=Object.keys(playerStats||{}).some(function(key){
-          if(_nt(key)!==sn) return false;
-          var tot=(playerStats[key]||{})[p.num];
-          return tot && toArr(tot.games).some(function(x){ return x && x.gameId===g.id; });
-        });
-        var teamObj=teams.filter(function(t){ return _nt(t.name)===sn; })[0];
-        if(!logged && teamObj) _lookupMissing.push({g:g,sk:s.sk,num:String(p.num),name:p.name,teamObj:teamObj,isHome:s.team===g.home});
-        lines.push('  '+(g.date||'?')+'  team "'+s.team+'"  #'+p.num+' '+p.name+'  '+((st&&st.pts)||0)+' pts'
-          +(logged?'':'   <-- NOT in season totals'));
+        var inLineup=(g[s.lk]||[]).some(function(n){ return String(n)===String(p.num); });
+        var did=inLineup||(st&&['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){ return (st[k]||0)>0; }));
+        if(!did) return;
+        var teamObj=teams.filter(function(t){ return _nt(t.name)===_nt(s.team); })[0];
+        played.push({g:g,sk:s.sk,num:String(p.num),name:p.name,teamObj:teamObj,isHome:s.isHome,team:s.team,st:st||{}});
       });
     });
   });
-  if(!foundB) lines.push('  (no games found where a player with that first name played)');
+
+  // Current roster number for this first name, per team (only if exactly one)
+  var targetByTeam={};
+  teams.forEach(function(t){
+    var c1=t.players.filter(function(p){ return _lkFirst(p.name)===q; });
+    if(c1.length===1) targetByTeam[_nt(t.name)]=String(c1[0].num);
+  });
+
+  lines.push('');
+  lines.push('GAMES THEY APPEAR IN (from Game History)');
+  played.forEach(function(r){
+    var note='';
+    if(r.teamObj){
+      var target=targetByTeam[_nt(r.teamObj.name)]||null;
+      var atWorn=_lkFindLog(r.teamObj,r.num,r.g.id);
+      var atTarget=target?_lkFindLog(r.teamObj,target,r.g.id):null;
+      if(target && r.num!==target){
+        if(atTarget){ note=''; }
+        else if(atWorn){ note='   <-- counted under #'+r.num+', will move to #'+target; _lookupFix.push({action:'move',r:r,target:target,found:atWorn}); }
+        else { note='   <-- NOT in season totals, will add to #'+target; _lookupFix.push({action:'add',r:r,target:target}); }
+      } else {
+        if(!atWorn){ note='   <-- NOT in season totals'; _lookupFix.push({action:'add',r:r,target:r.num}); }
+      }
+    }
+    lines.push('  '+(r.g.date||'?')+'  team "'+r.team+'"  #'+r.num+' '+r.name+'  '+(r.st.pts||0)+' pts'+note);
+  });
+  if(!played.length) lines.push('  (no games found where a player with that first name played)');
+
+  // C) Who holds each number he wore, right now
+  var nums={};
+  played.forEach(function(r){ if(r.teamObj) nums[_nt(r.teamObj.name)+'|'+r.num]={teamObj:r.teamObj,num:r.num}; });
+  var numKeys=Object.keys(nums);
+  if(numKeys.length){
+    lines.push('');
+    lines.push('NUMBERS HE WORE — who has each one now');
+    numKeys.forEach(function(k){
+      var t=nums[k].teamObj, num=nums[k].num;
+      var holder=t.players.filter(function(p){ return String(p.num)===num; })[0];
+      var tot={pts:0,gp:0,logs:0};
+      Object.keys(playerStats||{}).forEach(function(key){
+        if(_nt(key)!==_nt(t.name)) return;
+        var e=(playerStats[key]||{})[num]; if(!e) return;
+        tot.pts+=(e.pts||0); tot.gp+=(e.gp||0); tot.logs+=toArr(e.games).length;
+      });
+      lines.push('  '+t.name+' #'+num+':  on roster now: '+(holder?holder.name:'nobody')+'   |   stats filed under this number: '+tot.pts+' pts, '+tot.gp+' gp, '+tot.logs+' game log entries');
+    });
+  }
+
   out.textContent=lines.join('\n');
   var act=document.getElementById('player-lookup-actions');
   if(act){
-    act.innerHTML=_lookupMissing.length
-      ? '<button onclick="runAddMissingGames()" style="width:100%;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Add '+_lookupMissing.length+' missing game(s) to season totals</button>'
-        +'<div style="font-size:11px;color:#888;margin-top:6px;">Adds only the games flagged above, with the stats from that game\'s box score. They then combine with the player\'s other numbers on the public site automatically.</div>'
+    var mv=_lookupFix.filter(function(f){ return f.action==='move'; }).length;
+    var ad=_lookupFix.filter(function(f){ return f.action==='add'; }).length;
+    act.innerHTML=_lookupFix.length
+      ? '<button onclick="runFixPlayerGames()" style="width:100%;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Fix '+_lookupFix.length+' game(s)'+(mv?' — move '+mv:'')+(ad?(mv?', add ':' — add ')+ad:'')+'</button>'
+        +'<div style="font-size:11px;color:#888;margin-top:6px;">Puts each flagged game under the player\'s current number. Moves only the flagged games, so anyone else filed under the same old number keeps their own stats. Box scores are not changed.</div>'
       : '';
   }
 }
 
-// One-click repair: games the player really played (per Game History) that
-// never made it into their season totals get added, using that game's own
-// box score line. Skips any game already logged, so it's safe to re-run.
-function runAddMissingGames(){
-  if(!_lookupMissing.length) return;
+// Puts each flagged game under the player's current number: "move" takes the
+// game out of the old number's totals (only that game's stats) and into the
+// current number; "add" is for games that were never counted at all.
+// Skips anything already in place, so re-running is safe.
+function runFixPlayerGames(){
+  if(!_lookupFix.length) return;
+  if(game){ alert('Finish or clear the live game first.'); return; }
   if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
-  if(!confirm('Add '+_lookupMissing.length+' missing game(s) to season totals?')) return;
-  var STAT=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'], added=0;
-  _lookupMissing.forEach(function(m){
-    var g=m.g, st=(g[m.sk]||{})[m.num]||{};
-    var tm=playerStats[m.teamObj.name]||(playerStats[m.teamObj.name]={});
-    var e=tm[m.num]||(tm[m.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]});
-    e.games=toArr(e.games).slice();
-    if(e.games.some(function(x){ return x && x.gameId===g.id; })) return;
-    STAT.forEach(function(k){ e[k]=(e[k]||0)+(st[k]||0); });
-    e.gp=(e.gp||0)+1;
-    var homeWon=(g.homeScore||0)>(g.awayScore||0);
-    e.games.push({
-      gameId:g.id, date:g.date, opp:m.isHome?g.away:g.home,
-      pts:st.pts||0,reb:st.reb||0,ast:st.ast||0,stl:st.stl||0,blk:st.blk||0,to:st.to||0,
-      fgm:st.fgm||0,'3pm':st['3pm']||0,ftm:st.ftm||0,
-      result:(m.isHome===homeWon)?'W':'L'
-    });
-    added++;
+  if(!confirm('Fix '+_lookupFix.length+' game(s)? This changes season totals (box scores stay the same).')) return;
+  var moved=0, added=0;
+  _lookupFix.forEach(function(f){
+    var r=f.r, g=r.g, t=r.teamObj;
+    var tm=playerStats[t.name]||(playerStats[t.name]={});
+    var dest=tm[f.target]||(tm[f.target]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]});
+    dest.games=toArr(dest.games).slice();
+    if(dest.games.some(function(x){ return x && x.gameId===g.id; })) return;
+    var logObj;
+    if(f.action==='move'){
+      var src=_lkFindLog(t,r.num,g.id); if(!src) return;
+      logObj=src.logs[src.idx];
+      _LK_STAT.forEach(function(k){ src.entry[k]=Math.max(0,(src.entry[k]||0)-(logObj[k]||0)); });
+      src.entry.miss=Math.max(0,(src.entry.miss||0)-(r.st.miss||0));
+      src.entry.gp=Math.max(0,(src.entry.gp||0)-1);
+      var rest=src.logs.slice(); rest.splice(src.idx,1); src.entry.games=rest;
+      var empty=!src.entry.gp && !rest.length && _LK_STAT.every(function(k){ return !src.entry[k]; });
+      if(empty) delete playerStats[src.key][r.num];
+      moved++;
+    } else {
+      var homeWon=(g.homeScore||0)>(g.awayScore||0);
+      logObj={gameId:g.id,date:g.date,opp:r.isHome?g.away:g.home,
+        pts:r.st.pts||0,reb:r.st.reb||0,ast:r.st.ast||0,stl:r.st.stl||0,blk:r.st.blk||0,to:r.st.to||0,
+        fgm:r.st.fgm||0,'3pm':r.st['3pm']||0,ftm:r.st.ftm||0,result:(r.isHome===homeWon)?'W':'L'};
+      added++;
+    }
+    _LK_STAT.forEach(function(k){ dest[k]=(dest[k]||0)+(logObj[k]||0); });
+    dest.miss=(dest.miss||0)+(r.st.miss||0);
+    dest.gp=(dest.gp||0)+1;
+    dest.games.push(logObj);
   });
   fbSet(ctPath('playerStats'),playerStats);
   try{ if(typeof renderPlayersTab==='function') renderPlayersTab(); }catch(e){}
-  alert('✅ Added '+added+' game(s) to season totals.');
+  alert('✅ Done. Moved '+moved+' game(s) and added '+added+'.');
   runPlayerLookup();
 }
 
