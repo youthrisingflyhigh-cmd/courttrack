@@ -2829,9 +2829,12 @@ function _dpFirst(name){
 function _dpActive(entry,lineup,num){
   if(!entry) return false;
   if((lineup||[]).some(function(n){ return String(n)===String(num); })) return true;
-  var sum=0;
-  Object.keys(entry).forEach(function(k){ if(k!=='gp' && typeof entry[k]==='number') sum+=Math.abs(entry[k]); });
-  return sum>0;
+  return ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){ return (entry[k]||0)>0; });
+}
+// Everything after the first word: "Mike R" -> "r", "Dez" -> "".
+function _dpLast(name){
+  var parts=(name||'').trim().split(/\s+/).slice(1).join(' ');
+  return parts.toLowerCase().replace(/[^a-z0-9]/g,'');
 }
 function _dpSides(g,teamName){
   var sides=[];
@@ -2872,12 +2875,18 @@ function findDuplicatePlayerGroups(){
     Object.keys(byFirst).forEach(function(key){
       var members=byFirst[key];
       if(members.length<2) return;
-      var blocked=false;
-      for(var i=0;i<members.length&&!blocked;i++) for(var j=i+1;j<members.length;j++){
-        if(_dpPlayedTogether(t.name,members[i].num,members[j].num)>0){ blocked=true; break; }
+      // Different last names/initials ("Mike R" vs "Mike T") means different
+      // people. Being in the same game does NOT — one player entered under
+      // two numbers routinely ends up in the same game (started under one,
+      // scored under the other).
+      var blocked=false, shared=0;
+      for(var i=0;i<members.length;i++) for(var j=i+1;j<members.length;j++){
+        var la=_dpLast(members[i].name), lb=_dpLast(members[j].name);
+        if(la && lb && la!==lb) blocked=true;
+        shared+=_dpPlayedTogether(t.name,members[i].num,members[j].num);
       }
       members.forEach(function(m){ m.pts=(m.stats&&m.stats.pts)||0; m.gp=(m.stats&&m.stats.gp)||0; });
-      groups.push({team:t.name,teamObj:t,first:key,members:members,blocked:blocked});
+      groups.push({team:t.name,teamObj:t,first:key,members:members,blocked:blocked,shared:shared});
     });
   });
   return groups;
@@ -2904,9 +2913,10 @@ function renderDupPlayers(){
     }).join('');
     var action;
     if(g.blocked){
-      action='<div style="font-size:12px;color:#fca5a5;">Two of these numbers played in the same game, so they\'re different people. Not offering a merge.</div>';
+      action='<div style="font-size:12px;color:#fca5a5;">Different last names or initials, so these look like different people. Not offering a merge. If they really are one person, use Merge Player Stats above.</div>';
     } else {
-      action='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">'
+      action=(g.shared?'<div style="font-size:11px;color:#d9a441;margin-top:4px;">'+g.shared+' game(s) have more than one of these numbers. Their stats from that game get added together and it counts as one game played.</div>':'')
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">'
         +'<span style="font-size:11px;color:#888;">Keep as:</span>'
         +'<select id="dup-keeper-'+gi+'" style="flex:1;min-width:140px;padding:6px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;">'
         +eligible.map(function(m){ return '<option value="'+_dpEsc(m.num)+'"'+(m===defKeeper?' selected':'')+'>#'+_dpEsc(m.num)+' '+_dpEsc(m.name)+'</option>'; }).join('')
@@ -2925,7 +2935,8 @@ function renderDupPlayers(){
 // all-zero entry instead of treating it as a collision.
 function mergeOnePlayerEntry(teamName,fromNum,intoNum,intoName){
   fromNum=String(fromNum); intoNum=String(intoNum);
-  var patched=0;
+  var patched=0, shared=0;
+  var STATK=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'];
   toArr(gameHistory).forEach(function(g){
     _dpSides(g,teamName).forEach(function(s){
       var st=g[s.statsKey]; if(!st || !st[fromNum]) return;
@@ -2934,8 +2945,14 @@ function mergeOnePlayerEntry(teamName,fromNum,intoNum,intoName){
       var fromE=st[fromNum], intoE=st[intoNum];
       if(intoE){
         var fromAct=_dpActive(fromE,lu,fromNum), intoAct=_dpActive(intoE,lu,intoNum);
-        if(fromAct && intoAct) return; // shouldn't happen — blocked groups never get here
-        if(!fromAct){ delete st[fromNum]; dropFromSnapshot(fromNum); }
+        if(fromAct && intoAct){
+          // Same person entered under both numbers in this game — add the
+          // two stat lines together into one, and count it as one game.
+          STATK.forEach(function(k){ intoE[k]=(intoE[k]||0)+(fromE[k]||0); });
+          delete st[fromNum]; dropFromSnapshot(fromNum);
+          shared++;
+        }
+        else if(!fromAct){ delete st[fromNum]; dropFromSnapshot(fromNum); }
         else { st[intoNum]=fromE; delete st[fromNum]; dropFromSnapshot(fromNum); }
       } else {
         st[intoNum]=fromE; delete st[fromNum];
@@ -2944,7 +2961,11 @@ function mergeOnePlayerEntry(teamName,fromNum,intoNum,intoName){
         if(pe && alreadyThere){ dropFromSnapshot(fromNum); }
         else if(pe){ pe.num=isNaN(Number(intoNum))?intoNum:Number(intoNum); pe.name=intoName; }
       }
-      if(g[s.lineupKey]) g[s.lineupKey]=lu.map(function(n){ return String(n)===fromNum?(isNaN(Number(intoNum))?intoNum:Number(intoNum)):n; });
+      if(g[s.lineupKey]){
+        var seenLu={};
+        g[s.lineupKey]=lu.map(function(n){ return String(n)===fromNum?(isNaN(Number(intoNum))?intoNum:Number(intoNum)):n; })
+          .filter(function(n){ var k=String(n); if(seenLu[k]) return false; seenLu[k]=true; return true; });
+      }
       toArr(g.playLog).forEach(function(e){
         if(e && e.side===s.side && String(e.num)===fromNum){ e.num=isNaN(Number(intoNum))?intoNum:Number(intoNum); e.playerName=intoName; }
       });
@@ -2958,10 +2979,21 @@ function mergeOnePlayerEntry(teamName,fromNum,intoNum,intoName){
     if(!tm[intoNum]) tm[intoNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
     var into=tm[intoNum];
     ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'].forEach(function(k){ into[k]=(into[k]||0)+(fromTotals[k]||0); });
-    if(fromTotals.games && fromTotals.games.length){ into.games=(into.games||[]).concat(fromTotals.games); }
+    // A game both numbers played was counted once for each — it's one game.
+    into.gp=Math.max(0,(into.gp||0)-shared);
+    var fromGames=toArr(fromTotals.games);
+    if(fromGames.length){
+      var intoGames=toArr(into.games).slice();
+      fromGames.forEach(function(fg){
+        var twin=(fg && fg.gameId!=null)?intoGames.filter(function(x){ return x && x.gameId===fg.gameId; })[0]:null;
+        if(twin){ ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].forEach(function(k){ twin[k]=(twin[k]||0)+(fg[k]||0); }); }
+        else intoGames.push(fg);
+      });
+      into.games=intoGames;
+    }
     delete tm[fromNum];
   }
-  return patched;
+  return {patched:patched,shared:shared};
 }
 function runMergeDupGroup(gi){
   var g=_dupGroups[gi]; if(!g || g.blocked) return;
@@ -2975,8 +3007,8 @@ function runMergeDupGroup(gi){
   var desc=others.map(function(m){ return '#'+m.num+' '+m.name+' ('+m.pts+' pts, '+m.gp+' gp)'; }).join(' and ');
   if(!confirm('Merge '+desc+' into #'+keeper.num+' '+keeper.name+' ('+keeper.pts+' pts, '+keeper.gp+' gp) on '+g.team+'?\n\nThis updates every past game for that team so the box scores show one player'+(removeRoster?', and removes the merged-away number from the roster':'')+'. Cannot be undone.')) return;
 
-  var total=0;
-  others.forEach(function(m){ total+=mergeOnePlayerEntry(g.team,m.num,keeper.num,keeper.name); });
+  var total=0, sharedTotal=0;
+  others.forEach(function(m){ var r=mergeOnePlayerEntry(g.team,m.num,keeper.num,keeper.name); total+=r.patched; sharedTotal+=r.shared; });
   if(removeRoster){
     var t=g.teamObj;
     others.forEach(function(m){
@@ -2990,7 +3022,7 @@ function runMergeDupGroup(gi){
   try{ if(typeof renderTeamsTab==='function') renderTeamsTab(); }catch(e){}
   try{ if(typeof renderPlayersTab==='function') renderPlayersTab(); }catch(e){}
   renderDupPlayers();
-  alert('✅ Merged into #'+keeper.num+' '+keeper.name+'. Updated '+total+' past game record(s).');
+  alert('✅ Merged into #'+keeper.num+' '+keeper.name+'. Updated '+total+' past game record(s)'+(sharedTotal?(', including '+sharedTotal+' game(s) where both numbers appeared — those were added together and count once'):'')+'.');
 }
 
 // ── FIX A MISSPELLED TEAM NAME IN PAST GAMES ──

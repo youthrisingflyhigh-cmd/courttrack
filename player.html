@@ -845,18 +845,56 @@ function resolveNameForNum(t,numKey){
 // several different number-keys over a season (a number gets edited/reused,
 // a roster gets rebuilt, etc). Rather than showing that same person as
 // several separate rows with fragments of their real total, this merges
-// every number-key back together by matching on team + player name, so
+// every number-key back together by matching on team + FIRST NAME, so
 // each person shows up exactly once with their full combined stats —
 // whether they're still on the roster or not.
+//
+// First name + team is treated as enough to identify someone ("Dez" and
+// "Dez Smith" on the same team are the same person, and so are two numbers
+// for one player, even if both ended up in the same game). The one
+// exception: if a team has two names that share a first name but clearly
+// differ after it ("Mike R" and "Mike T"), those are different people and
+// stay separate rows. A game that more than one of someone's numbers
+// appeared in is counted as one game played, not several.
 function getMergedPlayerRows(){
   var merged=[];
+  function firstKey(name){
+    var f=(name||'').trim().split(/\s+/)[0]||'';
+    return f.toLowerCase().replace(/[^a-z0-9]/g,'');
+  }
   teams.forEach(function(t){
     var ps=playerStats[t.name]||{};
     var byName={};
     var order=[];
 
+    // Resolve every stat entry's name once (reused below), and note any
+    // first name this team uses with two clearly different last names or
+    // initials — those are different people and must not be combined.
+    var resolved={};
+    Object.keys(ps).forEach(function(numKey){ resolved[numKey]=resolveNameForNum(t,numKey); });
+    var lastsByFirst={};
+    function noteName(nm){
+      if(!nm) return;
+      var f=firstKey(nm); if(f.length<2) return;
+      var last=(nm.trim().split(/\s+/).slice(1).join(' ')||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      if(last) (lastsByFirst[f]=lastsByFirst[f]||{})[last]=true;
+    }
+    t.players.forEach(function(p){ noteName(p.name); });
+    Object.keys(resolved).forEach(function(k){ noteName(resolved[k]); });
+    var conflicts={};
+    Object.keys(lastsByFirst).forEach(function(f){ if(Object.keys(lastsByFirst[f]).length>1) conflicts[f]=true; });
+
+    function rowKey(name){
+      var full=(name||'').trim().toLowerCase();
+      if(!full) return '';
+      if(/^former player #/.test(full)) return 'n|'+full;
+      var f=firstKey(name);
+      if(f.length<2 || conflicts[f]) return 'n|'+full;
+      return 'f|'+f;
+    }
+
     function ensureRow(name,numKey,isCurrent){
-      var key=(name||'').trim().toLowerCase();
+      var key=rowKey(name);
       if(!key) return null;
       if(!byName[key]){
         byName[key]={
@@ -882,7 +920,7 @@ function getMergedPlayerRows(){
       var hasStats=(s.gp||0)>0||(s.pts||0)>0||(s.reb||0)>0||(s.ast||0)>0;
       if(!hasStats) return;
       var isCurrentNum = t.players.some(function(p){ return String(p.num)===String(numKey); });
-      var nm=resolveNameForNum(t,numKey);
+      var nm=resolved[numKey];
       if(!nm) nm='Former Player #'+numKey;
       var row=ensureRow(nm,numKey,isCurrentNum);
       if(!row) return;
@@ -892,7 +930,25 @@ function getMergedPlayerRows(){
       if(s.games&&s.games.length) row.s.games=row.s.games.concat(s.games);
     });
 
-    order.forEach(function(key){ merged.push(byName[key]); });
+    order.forEach(function(key){
+      var row=byName[key];
+      // If more than one of this player's numbers appeared in the same
+      // game, fold those into one log line and count it as one game.
+      var byId={}, out=[], dup=0;
+      (row.s.games||[]).forEach(function(g){
+        if(g && g.gameId!=null && byId[g.gameId]){
+          ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].forEach(function(k){ byId[g.gameId][k]=(byId[g.gameId][k]||0)+(g[k]||0); });
+          dup++;
+        } else {
+          var copy=Object.assign({},g);
+          if(g && g.gameId!=null) byId[g.gameId]=copy;
+          out.push(copy);
+        }
+      });
+      row.s.games=out;
+      row.s.gp=Math.max(0,(row.s.gp||0)-dup);
+      merged.push(row);
+    });
   });
   return merged;
 }
