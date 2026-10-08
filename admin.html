@@ -401,6 +401,32 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="fix-team-name-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:480px;max-height:85vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 6px;font-size:16px;">Fix a Misspelled Team Name</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:14px;" id="fixname-source-label"></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Name found in old games that doesn't match a current team</label>
+    <select id="fixname-old" onchange="previewFixTeamName()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:14px;"></select>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Should be this current team</label>
+    <select id="fixname-new" onchange="previewFixTeamName()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:14px;"></select>
+    <div id="fixname-preview" style="font-size:12px;color:var(--muted);margin-bottom:14px;white-space:pre-wrap;background:var(--dark3);border-radius:6px;padding:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeFixTeamNameModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="runFixTeamName()" style="flex:1;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Fix It</button>
+    </div>
+  </div>
+</div>
+
+<div id="dup-players-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:94%;max-width:560px;max-height:88vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 6px;font-size:16px;">Duplicate Players</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;" id="dup-players-source"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ddd;margin-bottom:14px;"><input type="checkbox" id="dup-remove-roster" checked> Also remove the merged-away player from the roster</label>
+    <div id="dup-players-list"></div>
+    <button onclick="closeDupPlayersModal()" style="width:100%;margin-top:14px;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Close</button>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -1061,6 +1087,12 @@ BYE: Ohana, AIM
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Fix a Misspelled Team Name in Past Games</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">If a team was spelled differently when games were played (e.g. "Fleet Work" vs "Fleetwork"), finished games keep the old spelling and won't line up with the schedule, standings, or player stats. This finds any team name in this division that doesn't match a current team and rewrites it to the right one everywhere, then fills in the schedule scores.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openFixTeamNameModal()">🔧 Fix a Team Name</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Head-to-Head Overrides</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For when a real game happened between two teams but its record got lost and can't be recovered — tells the standings tiebreaker who actually won, without needing a full game record. Takes priority over anything found in Game History.</p>
       <div class="input-row" style="margin-bottom:8px;">
@@ -1135,6 +1167,12 @@ BYE: Ohana, AIM
         </div>
         <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="mergePlayerStats()">🔀 Merge</button>
       </div>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Find Duplicate Players (same team, same first name)</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Scans every team for players who share a first name but have different jersey numbers, and lets you merge their stats into one player. It never offers a merge if both numbers played in the same game, since that has to be two different people.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openDupPlayersModal()">🔎 Find Duplicate Players</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -2778,6 +2816,339 @@ function openDeleteGameModal(){
   }
   document.getElementById('delete-game-modal').style.display='flex';
 }
+// ── FIND & MERGE DUPLICATE PLAYERS (same team, same first name) ──
+var _dupGroups=[];
+function _dpEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _dpFirst(name){
+  var f=(name||'').trim().split(/\s+/)[0]||'';
+  return f.toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+// Did this number actually play in this game? Stats entries get created
+// for the whole roster up front, so an entry existing doesn't mean much —
+// only count it if there's real activity or they were in the lineup.
+function _dpActive(entry,lineup,num){
+  if(!entry) return false;
+  if((lineup||[]).some(function(n){ return String(n)===String(num); })) return true;
+  var sum=0;
+  Object.keys(entry).forEach(function(k){ if(k!=='gp' && typeof entry[k]==='number') sum+=Math.abs(entry[k]); });
+  return sum>0;
+}
+function _dpSides(g,teamName){
+  var sides=[];
+  if(g && g.home===teamName) sides.push({statsKey:'hStats',playersKey:'homePlayers',lineupKey:'hLineup',side:'home'});
+  if(g && g.away===teamName) sides.push({statsKey:'aStats',playersKey:'awayPlayers',lineupKey:'aLineup',side:'away'});
+  return sides;
+}
+function _dpPlayedTogether(teamName,numA,numB){
+  var n=0;
+  toArr(gameHistory).forEach(function(g){
+    _dpSides(g,teamName).forEach(function(s){
+      var st=g[s.statsKey]||{}, lu=g[s.lineupKey]||[];
+      if(_dpActive(st[numA],lu,numA) && _dpActive(st[numB],lu,numB)) n++;
+    });
+  });
+  return n;
+}
+function findDuplicatePlayerGroups(){
+  var groups=[];
+  teams.forEach(function(t){
+    var entries={};
+    t.players.forEach(function(p){ entries[String(p.num)]={num:String(p.num),name:p.name,onRoster:true}; });
+    var ps=playerStats[t.name]||{};
+    Object.keys(ps).forEach(function(num){
+      if(!entries[num]){
+        var nm=resolveNameForNum(t,num);
+        if(!nm) return;
+        entries[num]={num:num,name:nm,onRoster:false};
+      }
+      entries[num].stats=ps[num];
+    });
+    var byFirst={};
+    Object.keys(entries).forEach(function(num){
+      var e=entries[num], key=_dpFirst(e.name);
+      if(key.length<2) return;
+      (byFirst[key]=byFirst[key]||[]).push(e);
+    });
+    Object.keys(byFirst).forEach(function(key){
+      var members=byFirst[key];
+      if(members.length<2) return;
+      var blocked=false;
+      for(var i=0;i<members.length&&!blocked;i++) for(var j=i+1;j<members.length;j++){
+        if(_dpPlayedTogether(t.name,members[i].num,members[j].num)>0){ blocked=true; break; }
+      }
+      members.forEach(function(m){ m.pts=(m.stats&&m.stats.pts)||0; m.gp=(m.stats&&m.stats.gp)||0; });
+      groups.push({team:t.name,teamObj:t,first:key,members:members,blocked:blocked});
+    });
+  });
+  return groups;
+}
+function openDupPlayersModal(){
+  document.getElementById('dup-players-source').textContent='Division: '+CT_ACTIVE_LABEL;
+  renderDupPlayers();
+  document.getElementById('dup-players-modal').style.display='flex';
+}
+function closeDupPlayersModal(){ document.getElementById('dup-players-modal').style.display='none'; }
+function renderDupPlayers(){
+  _dupGroups=findDuplicatePlayerGroups();
+  var el=document.getElementById('dup-players-list');
+  if(!_dupGroups.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:8px 0;">No duplicates found — no team has two players sharing a first name.</div>';
+    return;
+  }
+  el.innerHTML=_dupGroups.map(function(g,gi){
+    var anyOnRoster=g.members.some(function(m){ return m.onRoster; });
+    var eligible=g.members.filter(function(m){ return anyOnRoster?m.onRoster:true; });
+    var defKeeper=eligible.slice().sort(function(a,b){ return b.gp-a.gp; })[0];
+    var rows=g.members.map(function(m){
+      return '<div style="font-size:12px;color:#ddd;padding:3px 0;">#'+_dpEsc(m.num)+' <strong>'+_dpEsc(m.name)+'</strong> <span style="color:#888;">· '+m.pts+' pts · '+m.gp+' gp · '+(m.onRoster?'on roster':'old stats only')+'</span></div>';
+    }).join('');
+    var action;
+    if(g.blocked){
+      action='<div style="font-size:12px;color:#fca5a5;">Two of these numbers played in the same game, so they\'re different people. Not offering a merge.</div>';
+    } else {
+      action='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">'
+        +'<span style="font-size:11px;color:#888;">Keep as:</span>'
+        +'<select id="dup-keeper-'+gi+'" style="flex:1;min-width:140px;padding:6px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;">'
+        +eligible.map(function(m){ return '<option value="'+_dpEsc(m.num)+'"'+(m===defKeeper?' selected':'')+'>#'+_dpEsc(m.num)+' '+_dpEsc(m.name)+'</option>'; }).join('')
+        +'</select>'
+        +'<button onclick="runMergeDupGroup('+gi+')" style="padding:7px 14px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Merge</button>'
+        +'</div>';
+    }
+    return '<div style="border:1px solid #333;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--dark3);">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:4px;">'+_dpEsc(g.team)+'</div>'
+      +rows+action+'</div>';
+  }).join('');
+}
+// Moves one jersey number's stats/identity into another across every past
+// game for the team, and into the season totals. Handles the common case
+// where stats entries exist for the whole roster by dropping/replacing an
+// all-zero entry instead of treating it as a collision.
+function mergeOnePlayerEntry(teamName,fromNum,intoNum,intoName){
+  fromNum=String(fromNum); intoNum=String(intoNum);
+  var patched=0;
+  toArr(gameHistory).forEach(function(g){
+    _dpSides(g,teamName).forEach(function(s){
+      var st=g[s.statsKey]; if(!st || !st[fromNum]) return;
+      var arr=g[s.playersKey]||[], lu=g[s.lineupKey]||[];
+      function dropFromSnapshot(num){ var i=arr.findIndex(function(p){ return String(p.num)===num; }); if(i>=0) arr.splice(i,1); }
+      var fromE=st[fromNum], intoE=st[intoNum];
+      if(intoE){
+        var fromAct=_dpActive(fromE,lu,fromNum), intoAct=_dpActive(intoE,lu,intoNum);
+        if(fromAct && intoAct) return; // shouldn't happen — blocked groups never get here
+        if(!fromAct){ delete st[fromNum]; dropFromSnapshot(fromNum); }
+        else { st[intoNum]=fromE; delete st[fromNum]; dropFromSnapshot(fromNum); }
+      } else {
+        st[intoNum]=fromE; delete st[fromNum];
+        var pe=arr.find(function(p){ return String(p.num)===fromNum; });
+        var alreadyThere=arr.some(function(p){ return String(p.num)===intoNum; });
+        if(pe && alreadyThere){ dropFromSnapshot(fromNum); }
+        else if(pe){ pe.num=isNaN(Number(intoNum))?intoNum:Number(intoNum); pe.name=intoName; }
+      }
+      if(g[s.lineupKey]) g[s.lineupKey]=lu.map(function(n){ return String(n)===fromNum?(isNaN(Number(intoNum))?intoNum:Number(intoNum)):n; });
+      toArr(g.playLog).forEach(function(e){
+        if(e && e.side===s.side && String(e.num)===fromNum){ e.num=isNaN(Number(intoNum))?intoNum:Number(intoNum); e.playerName=intoName; }
+      });
+      patched++;
+    });
+  });
+  // Season totals
+  var tm=playerStats[teamName]||(playerStats[teamName]={});
+  var fromTotals=tm[fromNum];
+  if(fromTotals){
+    if(!tm[intoNum]) tm[intoNum]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]};
+    var into=tm[intoNum];
+    ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'].forEach(function(k){ into[k]=(into[k]||0)+(fromTotals[k]||0); });
+    if(fromTotals.games && fromTotals.games.length){ into.games=(into.games||[]).concat(fromTotals.games); }
+    delete tm[fromNum];
+  }
+  return patched;
+}
+function runMergeDupGroup(gi){
+  var g=_dupGroups[gi]; if(!g || g.blocked) return;
+  if(game){ alert('Finish or clear the live game first — merging players mid-game could break it.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var keepNum=document.getElementById('dup-keeper-'+gi).value;
+  var keeper=g.members.filter(function(m){ return m.num===keepNum; })[0];
+  var others=g.members.filter(function(m){ return m.num!==keepNum; });
+  if(!keeper || !others.length) return;
+  var removeRoster=document.getElementById('dup-remove-roster').checked;
+  var desc=others.map(function(m){ return '#'+m.num+' '+m.name+' ('+m.pts+' pts, '+m.gp+' gp)'; }).join(' and ');
+  if(!confirm('Merge '+desc+' into #'+keeper.num+' '+keeper.name+' ('+keeper.pts+' pts, '+keeper.gp+' gp) on '+g.team+'?\n\nThis updates every past game for that team so the box scores show one player'+(removeRoster?', and removes the merged-away number from the roster':'')+'. Cannot be undone.')) return;
+
+  var total=0;
+  others.forEach(function(m){ total+=mergeOnePlayerEntry(g.team,m.num,keeper.num,keeper.name); });
+  if(removeRoster){
+    var t=g.teamObj;
+    others.forEach(function(m){
+      if(m.onRoster && keeper.onRoster) t.players=t.players.filter(function(p){ return String(p.num)!==m.num; });
+    });
+  }
+  fbSet(ctPath('history'),gameHistory);
+  fbSet(ctPath('playerStats'),playerStats);
+  fbSet(ctPath('teams'),teams);
+  try{ renderTeams(); renderRoster(); renderSelects(); }catch(e){}
+  try{ if(typeof renderTeamsTab==='function') renderTeamsTab(); }catch(e){}
+  try{ if(typeof renderPlayersTab==='function') renderPlayersTab(); }catch(e){}
+  renderDupPlayers();
+  alert('✅ Merged into #'+keeper.num+' '+keeper.name+'. Updated '+total+' past game record(s).');
+}
+
+// ── FIX A MISSPELLED TEAM NAME IN PAST GAMES ──
+// Finished games store team names as plain text, so if a team's spelling
+// changed after games were played, those games stop lining up with the
+// schedule, standings, and player stats. This rewrites the old spelling to
+// the current team everywhere, merging any split standings/player stats.
+var _fixNameCandidates=[];
+function _fnLc(s){ return (s||'').toString().toLowerCase().trim(); }
+function _fnLev(a,b){
+  a=_fnLc(a).replace(/\s+/g,''); b=_fnLc(b).replace(/\s+/g,'');
+  var m=[],i,j;
+  for(i=0;i<=b.length;i++) m[i]=[i];
+  for(j=0;j<=a.length;j++) m[0][j]=j;
+  for(i=1;i<=b.length;i++) for(j=1;j<=a.length;j++){
+    m[i][j]=b.charAt(i-1)===a.charAt(j-1)?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+  }
+  return m[b.length][a.length];
+}
+function collectUnknownTeamNames(){
+  var known={}; teams.forEach(function(t){ known[_fnLc(t.name)]=true; });
+  var found={};
+  function add(n){ if(!n) return; var k=_fnLc(n); if(k && !known[k] && !found[k]) found[k]=n; }
+  toArr(gameHistory).forEach(function(g){ if(g){ add(g.home); add(g.away); } });
+  Object.keys(standings||{}).forEach(add);
+  Object.keys(playerStats||{}).forEach(add);
+  toArr(schedule).forEach(function(s){ if(s){ add(s.home); add(s.away); } });
+  return Object.keys(found).map(function(k){ return found[k]; });
+}
+function openFixTeamNameModal(){
+  document.getElementById('fixname-source-label').textContent='Division: '+CT_ACTIVE_LABEL;
+  _fixNameCandidates=collectUnknownTeamNames();
+  var oldSel=document.getElementById('fixname-old'), newSel=document.getElementById('fixname-new');
+  if(!_fixNameCandidates.length){
+    oldSel.innerHTML='<option value="">None found — every name matches a current team</option>';
+    newSel.innerHTML='';
+    document.getElementById('fixname-preview').textContent='Nothing to fix in this division.';
+    document.getElementById('fix-team-name-modal').style.display='flex';
+    return;
+  }
+  oldSel.innerHTML=_fixNameCandidates.map(function(n,i){ return '<option value="'+i+'">'+n.replace(/</g,'&lt;')+'</option>'; }).join('');
+  newSel.innerHTML=teams.map(function(t,i){ return '<option value="'+i+'">'+t.name.replace(/</g,'&lt;')+'</option>'; }).join('');
+  suggestFixTarget();
+  previewFixTeamName();
+  document.getElementById('fix-team-name-modal').style.display='flex';
+}
+function suggestFixTarget(){
+  var oi=parseInt(document.getElementById('fixname-old').value);
+  var oldName=_fixNameCandidates[oi]; if(!oldName) return;
+  var best=-1, bestD=Infinity;
+  teams.forEach(function(t,i){ var d=_fnLev(oldName,t.name); if(d<bestD){ bestD=d; best=i; } });
+  if(best>=0) document.getElementById('fixname-new').value=String(best);
+}
+function closeFixTeamNameModal(){ document.getElementById('fix-team-name-modal').style.display='none'; }
+function previewFixTeamName(){
+  var oi=parseInt(document.getElementById('fixname-old').value);
+  var ni=parseInt(document.getElementById('fixname-new').value);
+  var prev=document.getElementById('fixname-preview');
+  var oldName=_fixNameCandidates[oi], nt=teams[ni];
+  if(!oldName||!nt){ prev.textContent=''; return; }
+  var oldL=_fnLc(oldName), games=0;
+  toArr(gameHistory).forEach(function(g){ if(g && (_fnLc(g.home)===oldL||_fnLc(g.away)===oldL)) games++; });
+  var st=Object.keys(standings||{}).some(function(k){ return _fnLc(k)===oldL; });
+  var ps=Object.keys(playerStats||{}).some(function(k){ return _fnLc(k)===oldL; });
+  var sc=0; toArr(schedule).forEach(function(s){ if(s && (_fnLc(s.home)===oldL||_fnLc(s.away)===oldL)) sc++; });
+  prev.textContent='"'+oldName+'"  →  "'+nt.name+'"\n\n'
+    +games+' finished game(s) will be renamed\n'
+    +(st?'Standings row will be merged into '+nt.name+'\n':'No standings row under the old name\n')
+    +(ps?'Player stats will be merged into '+nt.name+'\n':'No player stats under the old name\n')
+    +sc+' schedule row(s) use the old name';
+}
+function runFixTeamName(){
+  var oi=parseInt(document.getElementById('fixname-old').value);
+  var ni=parseInt(document.getElementById('fixname-new').value);
+  var oldName=_fixNameCandidates[oi], nt=teams[ni];
+  if(!oldName||!nt){ alert('Pick both names first.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  if(!confirm('Rewrite "'+oldName+'" to "'+nt.name+'" in every past game, standings, player stats, and schedule row in '+CT_ACTIVE_LABEL+'? Cannot be undone.')) return;
+
+  var oldL=_fnLc(oldName), newName=nt.name;
+
+  // 1. Game history
+  var hist=toArr(gameHistory), renamed=[];
+  hist.forEach(function(g){
+    if(!g) return;
+    var ch=false;
+    if(_fnLc(g.home)===oldL){ g.home=newName; g.homeColor=nt.color||g.homeColor; ch=true; }
+    if(_fnLc(g.away)===oldL){ g.away=newName; g.awayColor=nt.color||g.awayColor; ch=true; }
+    if(ch) renamed.push(g);
+  });
+
+  // 2. Standings — merge old row into the current team's row
+  var stKey=Object.keys(standings||{}).filter(function(k){ return _fnLc(k)===oldL; })[0];
+  if(stKey){
+    var os=standings[stKey];
+    var nKey=Object.keys(standings).filter(function(k){ return _fnLc(k)===_fnLc(newName); })[0];
+    if(nKey){
+      ['w','l','pf','pa'].forEach(function(k){ standings[nKey][k]=(standings[nKey][k]||0)+(os[k]||0); });
+    } else {
+      standings[newName]=Object.assign({},os,{color:nt.color||os.color});
+    }
+    delete standings[stKey];
+  }
+
+  // 3. Player stats — merge by jersey number, summing numeric fields
+  var psKey=Object.keys(playerStats||{}).filter(function(k){ return _fnLc(k)===oldL; })[0];
+  if(psKey){
+    var oldPs=playerStats[psKey];
+    var nPsKey=Object.keys(playerStats).filter(function(k){ return _fnLc(k)===_fnLc(newName); })[0];
+    if(!nPsKey){ playerStats[newName]={}; nPsKey=newName; }
+    Object.keys(oldPs).forEach(function(num){
+      var src=oldPs[num], dst=playerStats[nPsKey][num];
+      if(!dst){ playerStats[nPsKey][num]=src; return; }
+      Object.keys(src).forEach(function(f){
+        if(typeof src[f]==='number') dst[f]=(dst[f]||0)+src[f];
+        else if(dst[f]===undefined) dst[f]=src[f];
+      });
+    });
+    delete playerStats[psKey];
+  }
+
+  // 4. Schedule — rename any rows using the old spelling, then fill in
+  // scores for the renamed games. Skips 0-0 games (phantoms) so they can't
+  // grab a row meant for the real result.
+  var sched=toArr(schedule);
+  sched.forEach(function(s){
+    if(!s) return;
+    if(_fnLc(s.home)===oldL) s.home=newName;
+    if(_fnLc(s.away)===oldL) s.away=newName;
+  });
+  var marked=0;
+  renamed.forEach(function(g){
+    if((g.homeScore||0)+(g.awayScore||0)===0) return;
+    var gh=_fnLc(g.home), ga=_fnLc(g.away);
+    var row=sched.filter(function(s){
+      return s && !s.isBye && s.status!=='final' &&
+        ((_fnLc(s.home)===gh&&_fnLc(s.away)===ga)||(_fnLc(s.home)===ga&&_fnLc(s.away)===gh));
+    })[0];
+    if(row){
+      if(_fnLc(row.home)===gh){ row.homeScore=g.homeScore; row.awayScore=g.awayScore; }
+      else { row.homeScore=g.awayScore; row.awayScore=g.homeScore; }
+      row.status='final';
+      marked++;
+    }
+  });
+
+  gameHistory=hist; schedule=sched;
+  fbSet(ctPath('history'),gameHistory);
+  fbSet(ctPath('standings'),standings);
+  fbSet(ctPath('playerStats'),playerStats);
+  fbSet(ctPath('schedule'),schedule);
+  try{ renderTeams(); renderSelects(); }catch(e){}
+  try{ if(typeof renderStandings==='function') renderStandings(); }catch(e){}
+  try{ if(typeof renderSchedule==='function') renderSchedule(); }catch(e){}
+  closeFixTeamNameModal();
+  alert('✅ Fixed "'+oldName+'" → "'+newName+'".\n\n'+renamed.length+' game(s) renamed\n'+marked+' schedule row(s) now show their final score.\n\nIf any other misspelled names remain, open the tool again.');
+}
+
 function closeDeleteGameModal(){
   document.getElementById('delete-game-modal').style.display='none';
 }
