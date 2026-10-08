@@ -825,15 +825,42 @@ function renderHome(){
 // Resolve the name attached to a given team+number at any point in time —
 // current roster first, then falling back to old game history snapshots
 // (each saved game records the roster as it was for that game).
+// Team names are compared ignoring capitalization, spaces and punctuation,
+// so "Short Kings", "SHORT KINGS" and "ShortKings" all count as the same
+// team. Stats and game records are filed under whatever spelling the team
+// had when the game was played; matching them exactly meant an older game
+// under a slightly different spelling was never linked to the player.
+function normTeam(s){ return (s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+// All of a team's per-number stats, combining every key that is the same
+// team under a different spelling.
+function teamPlayerStats(t){
+  var tn=normTeam(t.name), out={};
+  var NUMK=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'];
+  Object.keys(playerStats||{}).forEach(function(key){
+    if(normTeam(key)!==tn) return;
+    var src=playerStats[key]||{};
+    Object.keys(src).forEach(function(num){
+      var s=src[num]||{};
+      var games=toArr(s.games);
+      if(!out[num]){ out[num]=Object.assign({},s,{games:games.slice()}); return; }
+      NUMK.forEach(function(k){ out[num][k]=(out[num][k]||0)+(s[k]||0); });
+      out[num].games=out[num].games.concat(games);
+    });
+  });
+  return out;
+}
+
 function resolveNameForNum(t,numKey){
   var cur=t.players.find(function(p){ return String(p.num)===String(numKey); });
   if(cur) return cur.name;
   var hist=[];
   try{ hist = Array.isArray(gameHistory) ? gameHistory : Object.values(gameHistory||{}); }catch(e){}
+  var tn=normTeam(t.name);
   for(var i=hist.length-1; i>=0; i--){
     var g=hist[i];
     if(!g) continue;
-    var roster = g.home===t.name ? g.homePlayers : g.away===t.name ? g.awayPlayers : null;
+    var roster = normTeam(g.home)===tn ? g.homePlayers : normTeam(g.away)===tn ? g.awayPlayers : null;
     if(!roster) continue;
     var match=roster.find(function(rp){ return String(rp.num)===String(numKey); });
     if(match) return match.name;
@@ -863,7 +890,7 @@ function getMergedPlayerRows(){
     return f.toLowerCase().replace(/[^a-z0-9]/g,'');
   }
   teams.forEach(function(t){
-    var ps=playerStats[t.name]||{};
+    var ps=teamPlayerStats(t);
     var byName={};
     var order=[];
 
