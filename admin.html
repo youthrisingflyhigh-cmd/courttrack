@@ -427,6 +427,19 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="player-lookup-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:94%;max-width:640px;max-height:88vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 6px;font-size:16px;">Player Lookup</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;" id="player-lookup-source"></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input type="text" id="player-lookup-input" placeholder="First name, e.g. Scott" style="flex:1;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;" onkeydown="if(event.key==='Enter')runPlayerLookup()">
+      <button onclick="runPlayerLookup()" style="padding:8px 16px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Look up</button>
+    </div>
+    <pre id="player-lookup-result" style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.5;color:#ddd;background:var(--dark3);border-radius:6px;padding:10px;margin:0 0 12px;min-height:60px;"></pre>
+    <button onclick="closePlayerLookupModal()" style="width:100%;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Close</button>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -1173,6 +1186,12 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Find Duplicate Players (same team, same first name)</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Scans every team for players who share a first name but have different jersey numbers, and lets you merge their stats into one player. It never offers a merge if both numbers played in the same game, since that has to be two different people.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openDupPlayersModal()">🔎 Find Duplicate Players</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Player Lookup (find missing stats)</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Type a first name and it shows everywhere that player's stats live: every stats entry (with the exact team spelling it's filed under) and every game they appear in, flagging any game that's missing from their season totals. Use this when someone's total looks too low.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="openPlayerLookupModal()">🔍 Player Lookup</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -2816,6 +2835,73 @@ function openDeleteGameModal(){
   }
   document.getElementById('delete-game-modal').style.display='flex';
 }
+// ── PLAYER LOOKUP (diagnose missing stats) ──
+function openPlayerLookupModal(){
+  document.getElementById('player-lookup-source').textContent='Division: '+CT_ACTIVE_LABEL;
+  document.getElementById('player-lookup-result').textContent='';
+  document.getElementById('player-lookup-modal').style.display='flex';
+  setTimeout(function(){ var i=document.getElementById('player-lookup-input'); if(i) i.focus(); },50);
+}
+function closePlayerLookupModal(){ document.getElementById('player-lookup-modal').style.display='none'; }
+function runPlayerLookup(){
+  var q=(document.getElementById('player-lookup-input').value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  var out=document.getElementById('player-lookup-result');
+  if(q.length<2){ out.textContent='Type at least 2 letters of a first name.'; return; }
+  function fk(n){ return ((n||'').trim().split(/\s+/)[0]||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+  var hist=toArr(gameHistory);
+  var exactTeams={}; teams.forEach(function(t){ exactTeams[t.name]=true; });
+  var lines=[];
+
+  // A) Season-total entries
+  lines.push('SEASON TOTALS (stats entries filed under each team)');
+  var foundA=0;
+  Object.keys(playerStats||{}).forEach(function(teamKey){
+    var tkL=teamKey.toLowerCase();
+    var teamObj=teams.filter(function(t){ return t.name.toLowerCase()===tkL; })[0];
+    Object.keys(playerStats[teamKey]||{}).forEach(function(num){
+      var nm=null;
+      if(teamObj){ var rp=teamObj.players.filter(function(p){ return String(p.num)===num; })[0]; if(rp) nm=rp.name; }
+      if(!nm){
+        for(var i=0;i<hist.length&&!nm;i++){
+          var g=hist[i]; if(!g) continue;
+          var roster=(g.home||'').toLowerCase()===tkL?g.homePlayers:((g.away||'').toLowerCase()===tkL?g.awayPlayers:null);
+          var m=roster&&roster.filter(function(p){ return String(p.num)===num; })[0];
+          if(m) nm=m.name;
+        }
+      }
+      if(fk(nm)!==q) return;
+      var s=playerStats[teamKey][num]||{};
+      foundA++;
+      lines.push('  team "'+teamKey+'"'+(exactTeams[teamKey]?'':'  <-- NOT an exact current team name')+'  #'+num+'  '+nm+'  '+(s.pts||0)+' pts, '+(s.gp||0)+' gp, '+toArr(s.games).length+' game log entries');
+    });
+  });
+  if(!foundA) lines.push('  (none found)');
+
+  // B) Every game they appear in
+  lines.push('');
+  lines.push('GAMES THEY APPEAR IN (from Game History)');
+  var foundB=0;
+  hist.slice().reverse().forEach(function(g){
+    if(!g) return;
+    [{pk:'homePlayers',sk:'hStats',lk:'hLineup',team:g.home},{pk:'awayPlayers',sk:'aStats',lk:'aLineup',team:g.away}].forEach(function(s){
+      (g[s.pk]||[]).forEach(function(p){
+        if(fk(p.name)!==q) return;
+        var st=(g[s.sk]||{})[p.num];
+        var lu=(g[s.lk]||[]).some(function(n){ return String(n)===String(p.num); });
+        var played=lu||(st&&['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){ return (st[k]||0)>0; }));
+        if(!played) return;
+        foundB++;
+        var tot=(playerStats[s.team]||{})[p.num];
+        var logged=tot && toArr(tot.games).some(function(x){ return x && x.gameId===g.id; });
+        lines.push('  '+(g.date||'?')+'  team "'+s.team+'"  #'+p.num+' '+p.name+'  '+((st&&st.pts)||0)+' pts'
+          +(logged?'':'   <-- NOT in season totals under "'+s.team+'" #'+p.num));
+      });
+    });
+  });
+  if(!foundB) lines.push('  (no games found where a player with that first name played)');
+  out.textContent=lines.join('\n');
+}
+
 // ── FIND & MERGE DUPLICATE PLAYERS (same team, same first name) ──
 var _dupGroups=[];
 function _dpEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
