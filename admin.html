@@ -436,6 +436,7 @@ th, td { padding: 10px 8px !important; }
       <button onclick="runPlayerLookup()" style="padding:8px 16px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Look up</button>
     </div>
     <pre id="player-lookup-result" style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.5;color:#ddd;background:var(--dark3);border-radius:6px;padding:10px;margin:0 0 12px;min-height:60px;"></pre>
+    <div id="player-lookup-actions" style="margin-bottom:12px;"></div>
     <button onclick="closePlayerLookupModal()" style="width:100%;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Close</button>
   </div>
 </div>
@@ -2843,7 +2844,10 @@ function openPlayerLookupModal(){
   setTimeout(function(){ var i=document.getElementById('player-lookup-input'); if(i) i.focus(); },50);
 }
 function closePlayerLookupModal(){ document.getElementById('player-lookup-modal').style.display='none'; }
+var _lookupMissing=[];
+function _nt(s){ return (s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,''); }
 function runPlayerLookup(){
+  _lookupMissing=[];
   var q=(document.getElementById('player-lookup-input').value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   var out=document.getElementById('player-lookup-result');
   if(q.length<2){ out.textContent='Type at least 2 letters of a first name.'; return; }
@@ -2891,15 +2895,59 @@ function runPlayerLookup(){
         var played=lu||(st&&['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].some(function(k){ return (st[k]||0)>0; }));
         if(!played) return;
         foundB++;
-        var tot=(playerStats[s.team]||{})[p.num];
-        var logged=tot && toArr(tot.games).some(function(x){ return x && x.gameId===g.id; });
+        var sn=_nt(s.team);
+        var logged=Object.keys(playerStats||{}).some(function(key){
+          if(_nt(key)!==sn) return false;
+          var tot=(playerStats[key]||{})[p.num];
+          return tot && toArr(tot.games).some(function(x){ return x && x.gameId===g.id; });
+        });
+        var teamObj=teams.filter(function(t){ return _nt(t.name)===sn; })[0];
+        if(!logged && teamObj) _lookupMissing.push({g:g,sk:s.sk,num:String(p.num),name:p.name,teamObj:teamObj,isHome:s.team===g.home});
         lines.push('  '+(g.date||'?')+'  team "'+s.team+'"  #'+p.num+' '+p.name+'  '+((st&&st.pts)||0)+' pts'
-          +(logged?'':'   <-- NOT in season totals under "'+s.team+'" #'+p.num));
+          +(logged?'':'   <-- NOT in season totals'));
       });
     });
   });
   if(!foundB) lines.push('  (no games found where a player with that first name played)');
   out.textContent=lines.join('\n');
+  var act=document.getElementById('player-lookup-actions');
+  if(act){
+    act.innerHTML=_lookupMissing.length
+      ? '<button onclick="runAddMissingGames()" style="width:100%;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;">Add '+_lookupMissing.length+' missing game(s) to season totals</button>'
+        +'<div style="font-size:11px;color:#888;margin-top:6px;">Adds only the games flagged above, with the stats from that game\'s box score. They then combine with the player\'s other numbers on the public site automatically.</div>'
+      : '';
+  }
+}
+
+// One-click repair: games the player really played (per Game History) that
+// never made it into their season totals get added, using that game's own
+// box score line. Skips any game already logged, so it's safe to re-run.
+function runAddMissingGames(){
+  if(!_lookupMissing.length) return;
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  if(!confirm('Add '+_lookupMissing.length+' missing game(s) to season totals?')) return;
+  var STAT=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'], added=0;
+  _lookupMissing.forEach(function(m){
+    var g=m.g, st=(g[m.sk]||{})[m.num]||{};
+    var tm=playerStats[m.teamObj.name]||(playerStats[m.teamObj.name]={});
+    var e=tm[m.num]||(tm[m.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,gp:0,games:[]});
+    e.games=toArr(e.games).slice();
+    if(e.games.some(function(x){ return x && x.gameId===g.id; })) return;
+    STAT.forEach(function(k){ e[k]=(e[k]||0)+(st[k]||0); });
+    e.gp=(e.gp||0)+1;
+    var homeWon=(g.homeScore||0)>(g.awayScore||0);
+    e.games.push({
+      gameId:g.id, date:g.date, opp:m.isHome?g.away:g.home,
+      pts:st.pts||0,reb:st.reb||0,ast:st.ast||0,stl:st.stl||0,blk:st.blk||0,to:st.to||0,
+      fgm:st.fgm||0,'3pm':st['3pm']||0,ftm:st.ftm||0,
+      result:(m.isHome===homeWon)?'W':'L'
+    });
+    added++;
+  });
+  fbSet(ctPath('playerStats'),playerStats);
+  try{ if(typeof renderPlayersTab==='function') renderPlayersTab(); }catch(e){}
+  alert('✅ Added '+added+' game(s) to season totals.');
+  runPlayerLookup();
 }
 
 // ── FIND & MERGE DUPLICATE PLAYERS (same team, same first name) ──

@@ -897,8 +897,25 @@ function getMergedPlayerRows(){
     // Resolve every stat entry's name once (reused below), and note any
     // first name this team uses with two clearly different last names or
     // initials — those are different people and must not be combined.
+    var tn=normTeam(t.name);
     var resolved={};
     Object.keys(ps).forEach(function(numKey){ resolved[numKey]=resolveNameForNum(t,numKey); });
+    // Index games by id so each logged game can be credited to whoever
+    // actually wore that number in THAT game, using the roster snapshot
+    // saved with the game — not whoever holds the number today.
+    var histById={}, snapshotNames=[];
+    toArr(gameHistory).forEach(function(g){
+      if(!g) return;
+      if(g.id!=null) histById[g.id]=g;
+      var r=normTeam(g.home)===tn?g.homePlayers:(normTeam(g.away)===tn?g.awayPlayers:null);
+      (r||[]).forEach(function(p){ if(p && p.name) snapshotNames.push(p.name); });
+    });
+    function nameInGame(gameId,numKey){
+      var g=histById[gameId]; if(!g) return null;
+      var roster=normTeam(g.home)===tn?g.homePlayers:(normTeam(g.away)===tn?g.awayPlayers:null);
+      var m=roster && roster.filter(function(p){ return String(p.num)===String(numKey); })[0];
+      return m?m.name:null;
+    }
     var lastsByFirst={};
     function noteName(nm){
       if(!nm) return;
@@ -908,6 +925,7 @@ function getMergedPlayerRows(){
     }
     t.players.forEach(function(p){ noteName(p.name); });
     Object.keys(resolved).forEach(function(k){ noteName(resolved[k]); });
+    snapshotNames.forEach(noteName);
     var conflicts={};
     Object.keys(lastsByFirst).forEach(function(f){ if(Object.keys(lastsByFirst[f]).length>1) conflicts[f]=true; });
 
@@ -942,19 +960,43 @@ function getMergedPlayerRows(){
     t.players.forEach(function(p){ ensureRow(p.name,p.num,true); });
 
     // Fold in every stat entry — current or orphaned — by resolved name.
+    var LOGK=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'];
     Object.keys(ps).forEach(function(numKey){
       var s=ps[numKey]||{};
-      var hasStats=(s.gp||0)>0||(s.pts||0)>0||(s.reb||0)>0||(s.ast||0)>0;
+      var logs=toArr(s.games);
+      var hasStats=(s.gp||0)>0||(s.pts||0)>0||(s.reb||0)>0||(s.ast||0)>0||logs.length>0;
       if(!hasStats) return;
-      var isCurrentNum = t.players.some(function(p){ return String(p.num)===String(numKey); });
-      var nm=resolved[numKey];
-      if(!nm) nm='Former Player #'+numKey;
-      var row=ensureRow(nm,numKey,isCurrentNum);
-      if(!row) return;
-      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss','gp'].forEach(function(k){
-        row.s[k]=(row.s[k]||0)+(s[k]||0);
+      var fallbackName=resolved[numKey]||('Former Player #'+numKey);
+
+      // 1) Each logged game goes to whoever wore this number in that game.
+      var logSums={}; LOGK.forEach(function(k){ logSums[k]=0; });
+      logs.forEach(function(ge){
+        if(!ge) return;
+        var nm=nameInGame(ge.gameId,numKey)||fallbackName;
+        var row=ensureRow(nm,numKey,false);
+        if(!row) return;
+        LOGK.forEach(function(k){ row.s[k]=(row.s[k]||0)+(ge[k]||0); logSums[k]+=(ge[k]||0); });
+        row.s.gp=(row.s.gp||0)+1;
+        row.s.games.push(ge);
       });
-      if(s.games&&s.games.length) row.s.games=row.s.games.concat(s.games);
+
+      // 2) Whatever the season totals include that the game log doesn't
+      // explain (older entries with no log, manual stat transfers) goes
+      // where it always has: to whoever resolves for this number.
+      var leftoverGp=Math.max(0,(s.gp||0)-logs.length);
+      var leftover={}, any=leftoverGp>0;
+      LOGK.concat(['miss']).forEach(function(k){
+        leftover[k]=(s[k]||0)-(logSums[k]||0);
+        if(leftover[k]!==0) any=true;
+      });
+      if(any){
+        var isCurrentNum=t.players.some(function(p){ return String(p.num)===String(numKey); });
+        var row2=ensureRow(fallbackName,numKey,isCurrentNum);
+        if(row2){
+          LOGK.concat(['miss']).forEach(function(k){ row2.s[k]=(row2.s[k]||0)+leftover[k]; });
+          row2.s.gp=(row2.s.gp||0)+leftoverGp;
+        }
+      }
     });
 
     order.forEach(function(key){
@@ -974,6 +1016,7 @@ function getMergedPlayerRows(){
       });
       row.s.games=out;
       row.s.gp=Math.max(0,(row.s.gp||0)-dup);
+      ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){ row.s[k]=Math.max(0,row.s[k]||0); });
       merged.push(row);
     });
   });
