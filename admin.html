@@ -550,6 +550,7 @@ BYE: Ohana, AIM
     <div class="card">
       <div class="card-header">
         <h3 id="roster-title">2. Roster — select a team</h3>
+        <button class="btn-ghost" id="rename-team-btn" style="display:none;" onclick="renameSelectedTeam()">✏️ Rename Team</button>
         <button class="btn-red" id="del-team-btn" style="display:none;" onclick="delSelectedTeam()">🗑 Delete Team</button>
       </div>
       <div class="card-body">
@@ -3351,14 +3352,14 @@ function previewFixTeamName(){
     +(ps?'Player stats will be merged into '+nt.name+'\n':'No player stats under the old name\n')
     +sc+' schedule row(s) use the old name';
 }
-function runFixTeamName(){
-  var oi=parseInt(document.getElementById('fixname-old').value);
-  var ni=parseInt(document.getElementById('fixname-new').value);
-  var oldName=_fixNameCandidates[oi], nt=teams[ni];
-  if(!oldName||!nt){ alert('Pick both names first.'); return; }
-  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
-  if(!confirm('Rewrite "'+oldName+'" to "'+nt.name+'" in every past game, standings, player stats, and schedule row in '+CT_ACTIVE_LABEL+'? Cannot be undone.')) return;
-
+// Rewrites one team's name everywhere it's stored as plain text: past games
+// (and their play-by-play labels), standings, player stats, schedule rows,
+// head-to-head tiebreakers and 3-point contest entries. Merges rather than
+// overwrites when the destination already has a row. Shared by "Fix a
+// Team Name" (old misspelling -> current team) and "Rename Team".
+// Callers are responsible for saving afterward.
+function _rewriteTeamNameEverywhere(oldName,nt,opts){
+  opts=opts||{};
   var oldL=_fnLc(oldName), newName=nt.name;
 
   // 1. Game history
@@ -3375,20 +3376,23 @@ function runFixTeamName(){
   var stKey=Object.keys(standings||{}).filter(function(k){ return _fnLc(k)===oldL; })[0];
   if(stKey){
     var os=standings[stKey];
-    var nKey=Object.keys(standings).filter(function(k){ return _fnLc(k)===_fnLc(newName); })[0];
+    var nKey=Object.keys(standings).filter(function(k){ return k!==stKey && _fnLc(k)===_fnLc(newName); })[0];
     if(nKey){
       ['w','l','pf','pa'].forEach(function(k){ standings[nKey][k]=(standings[nKey][k]||0)+(os[k]||0); });
-    } else {
+      delete standings[stKey];
+    } else if(stKey!==newName){
       standings[newName]=Object.assign({},os,{color:nt.color||os.color});
+      delete standings[stKey];
+    } else {
+      standings[stKey].color=nt.color||os.color;
     }
-    delete standings[stKey];
   }
 
   // 3. Player stats — merge by jersey number, summing numeric fields
   var psKey=Object.keys(playerStats||{}).filter(function(k){ return _fnLc(k)===oldL; })[0];
   if(psKey){
     var oldPs=playerStats[psKey];
-    var nPsKey=Object.keys(playerStats).filter(function(k){ return _fnLc(k)===_fnLc(newName); })[0];
+    var nPsKey=Object.keys(playerStats).filter(function(k){ return k!==psKey && _fnLc(k)===_fnLc(newName); })[0];
     if(!nPsKey){ playerStats[newName]={}; nPsKey=newName; }
     Object.keys(oldPs).forEach(function(num){
       var src=oldPs[num], dst=playerStats[nPsKey][num];
@@ -3411,7 +3415,7 @@ function runFixTeamName(){
     if(_fnLc(s.away)===oldL) s.away=newName;
   });
   var marked=0;
-  renamed.forEach(function(g){
+  if(opts.markSchedule) renamed.forEach(function(g){
     if((g.homeScore||0)+(g.awayScore||0)===0) return;
     var gh=_fnLc(g.home), ga=_fnLc(g.away);
     var row=sched.filter(function(s){
@@ -3427,16 +3431,46 @@ function runFixTeamName(){
   });
 
   gameHistory=hist; schedule=sched;
+
+  // Play-by-play labels inside each game, tiebreaker overrides, 3-point entries
+  hist.forEach(function(g){
+    if(!g) return;
+    toArr(g.playLog).forEach(function(e){ if(e && _fnLc(e.teamName)===oldL) e.teamName=newName; });
+  });
+  var h2hChanged=false;
+  toArr(typeof h2hOverrides!=='undefined'?h2hOverrides:[]).forEach(function(o){
+    if(!o) return;
+    ['teamA','teamB','winner'].forEach(function(k){ if(_fnLc(o[k])===oldL){ o[k]=newName; h2hChanged=true; } });
+  });
+  var tpcChanged=false;
+  toArr(threePointContest&&threePointContest.participants).forEach(function(p){
+    if(p && _fnLc(p.teamName)===oldL){ p.teamName=newName; tpcChanged=true; }
+  });
+  return {games:renamed.length,marked:marked,h2hChanged:h2hChanged,tpcChanged:tpcChanged};
+}
+
+function runFixTeamName(){
+  var oi=parseInt(document.getElementById('fixname-old').value);
+  var ni=parseInt(document.getElementById('fixname-new').value);
+  var oldName=_fixNameCandidates[oi], nt=teams[ni];
+  if(!oldName||!nt){ alert('Pick both names first.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  if(!confirm('Rewrite "'+oldName+'" to "'+nt.name+'" in every past game, standings, player stats, and schedule row in '+CT_ACTIVE_LABEL+'? Cannot be undone.')) return;
+
+  var res=_rewriteTeamNameEverywhere(oldName,nt,{markSchedule:true});
   fbSet(ctPath('history'),gameHistory);
   fbSet(ctPath('standings'),standings);
   fbSet(ctPath('playerStats'),playerStats);
   fbSet(ctPath('schedule'),schedule);
+  if(res.h2hChanged) fbSet(ctPath('h2hOverrides'),h2hOverrides);
+  if(res.tpcChanged) fbSet(ctPath('threePointContest'),threePointContest);
   try{ renderTeams(); renderSelects(); }catch(e){}
   try{ if(typeof renderStandings==='function') renderStandings(); }catch(e){}
   try{ if(typeof renderSchedule==='function') renderSchedule(); }catch(e){}
   closeFixTeamNameModal();
-  alert('✅ Fixed "'+oldName+'" → "'+newName+'".\n\n'+renamed.length+' game(s) renamed\n'+marked+' schedule row(s) now show their final score.\n\nIf any other misspelled names remain, open the tool again.');
+  alert('✅ Fixed "'+oldName+'" → "'+nt.name+'".\n\n'+res.games+' game(s) renamed\n'+res.marked+' schedule row(s) now show their final score.\n\nIf any other misspelled names remain, open the tool again.');
 }
+
 
 function closeDeleteGameModal(){
   document.getElementById('delete-game-modal').style.display='none';
@@ -3852,6 +3886,7 @@ function pickTeam(i){
   selTeam=i; renderTeams(); renderRoster();
   document.getElementById('roster-title').textContent='2. Roster — '+teams[i].name;
   document.getElementById('del-team-btn').style.display='inline-block';
+  var rb=document.getElementById('rename-team-btn'); if(rb) rb.style.display='inline-block';
 }
 
 function delSelectedTeam(){
@@ -3860,7 +3895,42 @@ function delSelectedTeam(){
   teams.splice(selTeam,1); selTeam=null;
   document.getElementById('roster-title').textContent='2. Roster — select a team';
   document.getElementById('del-team-btn').style.display='none';
+  var rb=document.getElementById('rename-team-btn'); if(rb) rb.style.display='none';
   fbSet(ctPath('teams'),teams); renderRoster(); renderSelects();
+}
+
+// Renames a team everywhere its name is stored. Team names are saved as
+// plain text on every past game, standings row, stats row and schedule
+// row, so changing only the team itself would orphan all of that — this
+// updates every one of them together.
+function renameSelectedTeam(){
+  if(selTeam===null){ alert('Select a team first.'); return; }
+  if(game){ alert('Finish or clear the live game first — renaming a team mid-game could break it.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var t=teams[selTeam], oldName=t.name;
+  var input=prompt('Rename "'+oldName+'" to:',oldName);
+  if(input===null) return;
+  var newName=input.trim().replace(/\s+/g,' ');
+  if(!newName){ alert('Enter a team name.'); return; }
+  if(newName.length>30){ alert('Team names can be at most 30 characters.'); return; }
+  if(newName===oldName) return;
+  var clash=teams.some(function(x,i){ return i!==selTeam && _nt(x.name)===_nt(newName); });
+  if(clash){ alert('Another team already has that name.'); return; }
+  if(!confirm('Rename "'+oldName+'" to "'+newName+'"?\n\nThis updates the name on every past game, standings row, player stat, schedule row and tiebreaker in '+CT_ACTIVE_LABEL+'. Cannot be undone.')) return;
+
+  t.name=newName;
+  var res=_rewriteTeamNameEverywhere(oldName,t,{markSchedule:false});
+  fbSet(ctPath('teams'),teams);
+  fbSet(ctPath('history'),gameHistory);
+  fbSet(ctPath('standings'),standings);
+  fbSet(ctPath('playerStats'),playerStats);
+  fbSet(ctPath('schedule'),schedule);
+  if(res.h2hChanged) fbSet(ctPath('h2hOverrides'),h2hOverrides);
+  if(res.tpcChanged) fbSet(ctPath('threePointContest'),threePointContest);
+  try{ renderTeams(); renderSelects(); pickTeam(selTeam); }catch(e){}
+  try{ if(typeof renderStandings==='function') renderStandings(); }catch(e){}
+  try{ if(typeof renderSchedule==='function') renderSchedule(); }catch(e){}
+  alert('✅ Renamed "'+oldName+'" to "'+newName+'". Updated '+res.games+' past game(s) and everything else that used the old name.');
 }
 
 function addPlayer(){
