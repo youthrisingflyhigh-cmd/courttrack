@@ -296,6 +296,7 @@ th, td { padding: 10px 8px !important; }
   <select id="season-division-select" onchange="switchSeasonDivision()" style="padding:6px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
   <button onclick="openNewSeasonDivisionModal()" style="padding:6px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ New Season/Division</button>
   <button onclick="openRenameSeasonDivisionModal()" style="padding:6px 12px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">✏️ Rename</button>
+  <button id="archive-sd-btn" onclick="toggleArchiveSeasonDivision()" style="padding:6px 12px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📦 Archive</button>
 </div>
 
 <div id="new-season-division-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
@@ -1196,6 +1197,12 @@ BYE: Ohana, AIM
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Download a Backup of This Division</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Saves the active division's teams, games, standings, stats, and schedule to a file on your computer. Read-only — it doesn't change anything. A good idea before archiving a season.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="downloadDivisionBackup()">📥 Download Backup</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Transfer Stats</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Fixes a scoring mix-up — e.g. a basket that was logged under the wrong player. Moves a specific amount of one stat from one current player's season totals to another's. This only adjusts season totals, not the original saved game's box score, so re-running "Rebuild from Game History" later would undo this — use Rebuild first if you need both.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
@@ -2015,8 +2022,59 @@ function populateSeasonDivisionSelector(){
     if(!sel)return;
     sel.innerHTML=list.map(function(entry){
       var selected=(entry.base===CT_BASE)?' selected':'';
-      return '<option value="'+entry.base+'" data-label="'+entry.label+'"'+selected+'>'+entry.label+'</option>';
+      return '<option value="'+entry.base+'" data-label="'+entry.label+'"'+selected+'>'+entry.label+(entry.archived?' (archived)':'')+'</option>';
     }).join('');
+    updateArchiveButton(list);
+  });
+}
+
+// ── ARCHIVE A SEASON/DIVISION ──
+// Archiving only sets a flag on the division's entry in the index. Nothing
+// is moved or deleted: all its teams, games, standings and stats stay
+// exactly where they are, and it stays fully visible here in admin. The
+// public site (player.html) and the scoreboard just stop listing it.
+function updateArchiveButton(list){
+  var btn=document.getElementById('archive-sd-btn'); if(!btn) return;
+  var entry=(list||[]).filter(function(e){ return e && e.base===CT_BASE; })[0];
+  btn.textContent=(entry && entry.archived)?'↩ Unarchive':'📦 Archive';
+}
+function toggleArchiveSeasonDivision(){
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    var idx=list.findIndex(function(e){ return e && e.base===CT_BASE; });
+    if(idx<0){ alert("Couldn't find the current season/division in the index."); return; }
+    var entry=list[idx];
+    if(entry.archived){
+      if(!confirm('Unarchive "'+entry.label+'"? It will show on the public site again.')) return;
+      delete entry.archived; delete entry.archivedAt;
+    } else {
+      var others=list.filter(function(e,i){ return e && i!==idx && !e.archived; });
+      if(!others.length){ alert('You can\'t archive your only active division — the public site would have nothing to show. Create or unarchive another one first.'); return; }
+      if(!confirm('Archive "'+entry.label+'"?\n\nIt will disappear from the public site (player.html) and the scoreboard. All its data stays exactly where it is — nothing is deleted — and you can still open it here in admin and unarchive it anytime.')) return;
+      entry.archived=true; entry.archivedAt=new Date().toISOString();
+    }
+    db.ref('ctIndex/seasons').set(list,function(){
+      populateSeasonDivisionSelector();
+      alert(entry.archived?'📦 Archived. It no longer shows on the public site.':'↩ Unarchived. It shows on the public site again.');
+    });
+  });
+}
+
+// Saves this division's data to a file on your computer (read-only — it
+// doesn't change anything). For the original Summer 2026 league the data
+// lives at the root, which also holds every newer division, so those are
+// left out and the file contains only this one.
+function downloadDivisionBackup(){
+  db.ref(CT_BASE).once('value',function(snap){
+    var data=snap.val()||{};
+    if(CT_BASE===LEGACY_BASE) delete data.seasons;
+    var payload={exportedAt:new Date().toISOString(),division:CT_ACTIVE_LABEL,base:CT_BASE,data:data};
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='courttrack-backup-'+slugify(CT_ACTIVE_LABEL)+'-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
   });
 }
 
@@ -6014,6 +6072,9 @@ function findPlayoffWinner(nameA,nameB,week){
 // Shootout → All-Star → Championship) on 12/2, same format as the
 // Thursday League and the original Summer 2026 championship day.
 function renderFall2026Bracket(container){
+  // Dates are specific to the 35+ league; any other new division stays TBD.
+  var is35=CT_BASE.indexOf('35-men-s-league')!==-1;
+  var semiDate=is35?'11/25':'TBD', eventDate=is35?'12/2':'TBD';
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
   html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
 
@@ -6026,7 +6087,7 @@ function renderFall2026Bracket(container){
   }
 
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · 11/25</div>';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · '+semiDate+'</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
   html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'TBD');
   html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'TBD');
@@ -6040,7 +6101,7 @@ function renderFall2026Bracket(container){
   html+='</div>';
 
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
-  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">12/2</div>';
+  html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">'+eventDate+'</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
   html+='<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
   html+='<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
@@ -6128,7 +6189,7 @@ function renderPlayoffBracket(){
   // 2026 35+ and Fall 2026 35+) could plausibly share the same team
   // names (Ohana, Fly High, etc. carrying over season to season).
   if(CT_BASE.indexOf('6-2-under')!==-1){ renderThursdayLeagueBracket(container); return; }
-  if(CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1){ renderFall2026Bracket(container); return; }
+  if(CT_BASE!==LEGACY_BASE){ renderFall2026Bracket(container); return; }
 
   // Round 1 seeding is FROZEN as of playoffs starting Aug 19 — no longer
   // recomputed live from getSeededStandings(). Locking it here means it

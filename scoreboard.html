@@ -719,11 +719,25 @@ db.ref('ctIndex/seasons').once('value').then(function(snap){
   var val=snap.val();
   if(Array.isArray(val)) list=val.filter(Boolean);
   else if(val&&typeof val==='object') list=Object.values(val).filter(Boolean);
+  // No ?ct= used to always mean the original Summer 2026 league. If that's
+  // been archived, send it to the current division instead.
+  if(!getUrlParam('ct')){
+    var legacy=list.filter(function(e){ return e.base===LEGACY_BASE; })[0];
+    if(legacy && legacy.archived){
+      var active=list.filter(function(e){ return !e.archived; });
+      if(active.length){
+        var succ=active.filter(function(e){ return e.divisionLabel===legacy.divisionLabel; })[0]||active[0];
+        var u=new URL(window.location.href); u.searchParams.set('ct',succ.base);
+        window.location.replace(u.toString());
+        return;
+      }
+    }
+  }
   var sel=document.getElementById('division-select');
   if(!sel||!list.length) return;
-  sel.innerHTML=list.map(function(e){
+  sel.innerHTML=list.filter(function(e){ return !e.archived || e.base===CT_BASE; }).map(function(e){
     var selected=(e.base===CT_BASE)?' selected':'';
-    return '<option value="'+e.base+'"'+selected+'>'+e.label+'</option>';
+    return '<option value="'+e.base+'"'+selected+'>'+e.label+(e.archived?' (archived)':'')+'</option>';
   }).join('');
 }).catch(function(){});
 

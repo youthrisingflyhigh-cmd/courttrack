@@ -615,14 +615,34 @@ function getUrlParam(name){
 var CT_BASE=getUrlParam('ct')||LEGACY_BASE;
 function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
 
+// A link with no ?ct= used to always mean the original Summer 2026 league.
+// Once that league is archived, send those visitors to its successor (the
+// current division with the same division name, e.g. Fall 2026 35+), or
+// the first active division if there isn't one. Links that name a division
+// explicitly are never redirected.
+(function sendArchivedDefaultToCurrent(){
+  if(getUrlParam('ct')) return;
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val()).filter(Boolean);
+    var legacy=list.filter(function(e){ return e.base===LEGACY_BASE; })[0];
+    if(!legacy || !legacy.archived) return;
+    var active=list.filter(function(e){ return !e.archived; });
+    if(!active.length) return;
+    var succ=active.filter(function(e){ return e.divisionLabel===legacy.divisionLabel; })[0]||active[0];
+    var url=new URL(window.location.href);
+    url.searchParams.set('ct',succ.base);
+    window.location.replace(url.toString());
+  });
+})();
+
 function populateSeasonDivisionSelector(){
   db.ref('ctIndex/seasons').once('value',function(snap){
     var list=toArr(snap.val());
     var sel=document.getElementById('season-division-select');
     if(!sel||!list.length)return;
-    sel.innerHTML=list.map(function(entry){
+    sel.innerHTML=list.filter(function(entry){ return entry && (!entry.archived || entry.base===CT_BASE); }).map(function(entry){
       var selected=(entry.base===CT_BASE)?' selected':'';
-      return '<option value="'+entry.base+'"'+selected+'>'+entry.label+'</option>';
+      return '<option value="'+entry.base+'"'+selected+'>'+entry.label+(entry.archived?' (archived)':'')+'</option>';
     }).join('');
   });
 }
@@ -1694,7 +1714,14 @@ function renderSchedule(){
   var isThursdayLeague=CT_BASE.indexOf('6-2-under')!==-1;
   var isFall2026ThirtyFive=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1;
 
-  if(isFall2026ThirtyFive){
+  // Any other brand-new division (e.g. a 40+ league) gets the same blank
+  // placeholder instead of falling through to the frozen Summer 2026
+  // bracket. Dates stay TBD unless it's the 35+ league, which has its own.
+  var isNewDivisionBlank=(CT_BASE!==LEGACY_BASE) && !isThursdayLeague;
+  var blankSemiDate=isFall2026ThirtyFive?'11/25':'TBD';
+  var blankEventDate=isFall2026ThirtyFive?'12/2':'TBD';
+
+  if(isNewDivisionBlank){
     // Fall 2026 · 35+ Men's League — brand new division, no standings
     // yet, so this stays fully blank (Seed 1-4 placeholders, no team
     // names guessed). Semifinals on 11/25, then a full event day
@@ -1708,7 +1735,7 @@ function renderSchedule(){
     }
     html += '<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
     html += '<div style="display:flex;flex-direction:column;gap:0;">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · 11/25</div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · '+blankSemiDate+'</div>';
     html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
     html += f26Card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'TBD');
     html += f26Card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'TBD');
@@ -1720,7 +1747,7 @@ function renderSchedule(){
     html += '<div style="position:absolute;top:90px;left:0;width:20px;height:2px;background:#FF4500;"></div>';
     html += '</div>';
     html += '<div style="display:flex;flex-direction:column;gap:0;">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">12/2</div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">'+blankEventDate+'</div>';
     html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 TBD</div>';
     html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
     html += '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 3-Point Shootout</div>';
