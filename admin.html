@@ -483,6 +483,7 @@ BYE: Ohana, AIM
 7:50 PM | Short Kings vs United
 8:40 PM | Diskarte vs SJ Eagles" style="width:100%;height:280px;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;font-family:monospace;margin-bottom:8px;resize:vertical;"></textarea>
     <div id="bulk-import-schedule-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--dark3);border-radius:6px;padding:10px;display:none;"></div>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#ddd;margin-bottom:12px;line-height:1.4;"><input type="checkbox" id="bulk-import-schedule-only-weeks" style="margin-top:2px;flex-shrink:0;"> <span><strong>Only replace the weeks in this text.</strong> Every other week stays exactly as it is. Use this to fix specific weeks without touching the rest. Scores already on those weeks are kept, and any that are missing are filled in from your saved games right after.</span></label>
     <div style="display:flex;gap:8px;">
       <button onclick="closeBulkImportScheduleModal()" style="flex:1;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Cancel</button>
       <button onclick="previewBulkImportSchedule()" style="flex:1;padding:10px;background:var(--dark4);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Preview</button>
@@ -1076,6 +1077,10 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Schedule from Game History</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Marks finished games as final (with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Matches games to schedule rows even if a team was spelled slightly differently when the game was played, shows you exactly what it will change before it changes anything, and leaves everything else — names, dates, future weeks — exactly as it is. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Sync Finished Games into Schedule</button>
+
+      <p style="font-size:13px;color:var(--muted);margin:14px 0 4px;"><strong style="color:#fca5a5;">Clean Up Duplicate / Misdated Schedule Rows</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Repairs damage from an older version of the sync button: extra rows added under an old team spelling (showing in the wrong week), and rows whose date turned into text like "Wednesday, September 23" with the location missing. It moves each extra row's score onto the real schedule row, deletes the extra, and puts dates back in the normal format. Shows exactly what it will change first.</p>
+      <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="cleanUpScheduleRows()">🧹 Clean Up Schedule</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -3833,6 +3838,9 @@ function runBulkImportSchedule(){
   // moment a schedule got re-imported (e.g. to add future weeks) after
   // some games had already been played. Matched by team pairing, same
   // as the merge logic in "Sync Finished Games into Schedule".
+  var onlyWeeksEl=document.getElementById('bulk-import-schedule-only-weeks');
+  if(onlyWeeksEl && onlyWeeksEl.checked){ runReplaceScheduleWeeks(games); return; }
+
   var existingFinals=toArr(schedule).filter(function(s){return s.status==='final';});
   var merged=games.map(function(g){
     if(g.isBye) return g;
@@ -3851,6 +3859,48 @@ function runBulkImportSchedule(){
   if(typeof renderSchedule==='function') renderSchedule();
   closeBulkImportScheduleModal();
   alert('✅ Imported '+games.length+' schedule entries.'+(finalCount?(' Kept '+finalCount+' already-played game(s) with their real scores.'):''));
+}
+
+// Replaces ONLY the weeks that appear in the import text; every other week is
+// left exactly as it is. For each imported game, any score the old row for
+// that same pairing in that same week already had is carried over, so
+// nothing real is lost; whatever is still missing is then filled in from
+// Game History by the normal sync.
+function runReplaceScheduleWeeks(games){
+  var rounds={}; games.forEach(function(g){ rounds[g.round]=true; });
+  var roundList=Object.keys(rounds).map(Number).sort(function(a,b){return a-b;});
+  var all=toArr(schedule).filter(Boolean);
+  var kept=all.filter(function(s){ return !rounds[s.round]; });
+  var oldFinals=all.filter(function(s){ return rounds[s.round] && !s.isBye && s.status==='final'; });
+  var used={}, carried=0;
+  var fresh=games.map(function(g){
+    if(g.isBye) return g;
+    var mi=-1;
+    oldFinals.forEach(function(s,i){ if(mi<0 && !used[i] && s.round===g.round && _schPairMatch(s,g)) mi=i; });
+    if(mi<0) return g;
+    used[mi]=true; carried++;
+    var m=oldFinals[mi], flip=!_schTeamsMatch(g.home,m.home);
+    g.homeScore=flip?m.awayScore:m.homeScore;
+    g.awayScore=flip?m.homeScore:m.awayScore;
+    g.status='final';
+    return g;
+  });
+  var replacedRows=all.length-kept.length;
+  if(!confirm('Replace '+(roundList.length>1?('weeks '+roundList[0]+'–'+roundList[roundList.length-1]):('week '+roundList[0]))+' of the schedule in '+CT_ACTIVE_LABEL+'?\n\n'
+    +'• '+replacedRows+' existing row(s) in those weeks are replaced by the '+fresh.length+' rows in your text\n'
+    +'• '+carried+' existing score(s) carried over onto the matching rows\n'
+    +'• All other weeks ('+kept.length+' row(s)) stay exactly as they are\n\n'
+    +'Next, it matches the remaining scores from your saved games. Continue?')) return;
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var combined=kept.concat(fresh).map(function(s,i){ return {s:s,i:i}; })
+    .sort(function(a,b){ return (a.s.round-b.s.round)||(a.i-b.i); })
+    .map(function(x){ return x.s; });
+  schedule=combined;
+  fbSet(ctPath('schedule'),schedule);
+  if(typeof renderSchedule==='function') renderSchedule();
+  closeBulkImportScheduleModal();
+  // Fill in whatever scores the old rows didn't have from Game History
+  rebuildScheduleFromGameHistory();
 }
 
 function resetTeams(){
@@ -4843,6 +4893,101 @@ function restoreSummer2026Standings(){
 // completely intact. This rebuilds minimal "final" Schedule entries
 // directly from Game History, which is the more reliable source since
 // it's written once per finished game and not touched by schedule edits.
+// ── CLEAN UP SCHEDULE ──
+// Repairs the schedule after an older "sync" overwrote real rows with the
+// game's own date text / names and appended unmatched games as extra rows
+// (landing in Week 1). Works in place, without needing the original import.
+function _schTeamsMatch(a,b){
+  var na=_nt(a), nb=_nt(b);
+  if(!na||!nb) return false;
+  if(na===nb) return true;
+  return na.length>=6 && nb.length>=6 && _fnLev(a,b)<=2;
+}
+function _schPairMatch(s,t){
+  return (_schTeamsMatch(s.home,t.home)&&_schTeamsMatch(s.away,t.away))||(_schTeamsMatch(s.home,t.away)&&_schTeamsMatch(s.away,t.home));
+}
+var _SCH_MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
+function _schMd(str){
+  var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
+  if(m) return (+m[1])+'-'+(+m[2]);
+  var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
+  return m2?((_SCH_MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
+}
+function _schCleanDate(str){ return /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/.test(str||''); }
+function _schOriented(row,t){   // t's score, oriented to row's home/away
+  var flip=!_schTeamsMatch(row.home,t.home);
+  return {hs:flip?t.awayScore:t.homeScore, as:flip?t.homeScore:t.awayScore};
+}
+
+function cleanUpScheduleRows(){
+  var rows=toArr(schedule).slice();
+  if(!rows.length){ alert('The schedule is empty.'); return; }
+
+  // 1) Stray duplicates: a finished row that is the same pairing, on the same
+  //    calendar day, as another row — the real one (still "upcoming", or
+  //    already holding the same score). Fold its score into the real row.
+  var strays=[];   // {from:index, into:index}
+  rows.forEach(function(f,fi){
+    if(!f || f.isBye || f.status!=='final') return;
+    var fd=_schMd(f.date); if(!fd) return;
+    for(var ui=0; ui<rows.length; ui++){
+      var u=rows[ui];
+      if(ui===fi || !u || u.isBye) continue;
+      if(!_schPairMatch(u,f) || _schMd(u.date)!==fd) continue;
+      if(u.status!=='final'){ strays.push({from:fi,into:ui,move:true}); break; }
+      var o=_schOriented(u,f);
+      if(o.hs===u.homeScore && o.as===u.awayScore){ strays.push({from:fi,into:ui,move:false}); break; }
+    }
+  });
+  var strayFrom={}; strays.forEach(function(s){ strayFrom[s.from]=true; });
+
+  // 2) Rows whose date became text ("Wednesday, September 23") on the SAME
+  //    calendar day as their week's normal date: restore the normal format
+  //    and the missing location from the rest of that week.
+  var fixes=[];
+  rows.forEach(function(r,ri){
+    if(!r || strayFrom[ri] || r.isBye) return;
+    if(_schCleanDate(r.date)) return;
+    var sibs=rows.filter(function(x,xi){ return xi!==ri && !strayFrom[xi] && x && x.round===r.round && _schCleanDate(x.date); });
+    var sameDay=sibs.filter(function(x){ return _schMd(x.date)===_schMd(r.date); });
+    if(!sameDay.length) return;
+    var loc=''; var counts={};
+    sibs.forEach(function(x){ if(x.location){ counts[x.location]=(counts[x.location]||0)+1; } });
+    Object.keys(counts).forEach(function(k){ if(!loc || counts[k]>counts[loc]) loc=k; });
+    fixes.push({idx:ri,date:sameDay[0].date,location:(!r.location&&loc)?loc:null});
+  });
+
+  if(!strays.length && !fixes.length){ alert('Nothing to clean up — no duplicate or misdated rows found.'); return; }
+
+  var lines=[];
+  strays.forEach(function(s){
+    var f=rows[s.from], u=rows[s.into], o=_schOriented(u,f);
+    lines.push('• '+(s.move?'Move':'Drop')+' extra row "'+f.home+' vs '+f.away+'" ('+f.date+') → real row '+u.home+' vs '+u.away+' '+u.date
+      +(s.move?(' — final '+o.hs+'–'+o.as):' — already has this score'));
+  });
+  fixes.slice(0,12).forEach(function(x){
+    var r=rows[x.idx];
+    lines.push('• Restore date on '+r.home+' vs '+r.away+': "'+r.date+'" → "'+x.date+'"'+(x.location?(' + location '+x.location):''));
+  });
+  if(fixes.length>12) lines.push('• …and '+(fixes.length-12)+' more date fixes');
+  if(!confirm('Clean up the schedule?\n\n'+strays.length+' extra row(s) will be removed; '+fixes.length+' row(s) get their date back in the normal format.\n\n'+lines.slice(0,24).join('\n')+'\n\nNothing else on the schedule changes. Continue?')) return;
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+
+  strays.forEach(function(s){
+    if(!s.move) return;
+    var f=rows[s.from], u=rows[s.into], o=_schOriented(u,f);
+    u.homeScore=o.hs; u.awayScore=o.as; u.status='final';
+  });
+  fixes.forEach(function(x){
+    var r=rows[x.idx]; r.date=x.date; if(x.location) r.location=x.location;
+  });
+  var result=rows.filter(function(r,i){ return !strayFrom[i]; });
+  schedule=result;
+  fbSet(ctPath('schedule'),schedule);
+  if(typeof renderSchedule==='function') renderSchedule();
+  alert('✅ Removed '+strays.length+' extra row(s) and fixed '+fixes.length+' date(s).\n\nNow run "Sync Finished Games into Schedule" once to confirm everything else lines up.');
+}
+
 // Matches finished games (Game History) to Schedule rows and marks those
 // rows final with the real score. Never wipes or reorders anything.
 //
