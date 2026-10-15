@@ -1074,7 +1074,7 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Rebuild Schedule from Game History</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Marks finished games as final (with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Merges in without touching anything else — future/upcoming weeks stay exactly as they are. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Marks finished games as final (with real scores) directly from Game History — the more reliable source, since it's untouched by schedule edits/imports. Matches games to schedule rows even if a team was spelled slightly differently when the game was played, shows you exactly what it will change before it changes anything, and leaves everything else — names, dates, future weeks — exactly as it is. Use this if MVP of the Week shows "No completed games yet" even though real games have been played, or after a Schedule got accidentally cleared.</p>
       <button class="btn" style="background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="rebuildScheduleFromGameHistory()">🔧 Sync Finished Games into Schedule</button>
 
       <hr style="border-color:#333;margin:18px 0;">
@@ -4843,69 +4843,132 @@ function restoreSummer2026Standings(){
 // completely intact. This rebuilds minimal "final" Schedule entries
 // directly from Game History, which is the more reliable source since
 // it's written once per finished game and not touched by schedule edits.
+// Matches finished games (Game History) to Schedule rows and marks those
+// rows final with the real score. Never wipes or reorders anything.
+//
+// Matching ignores capitalization and spaces and tolerates a small spelling
+// difference ("Fleet Work" / "Fleetwork", "Marksman" / "Marksmen"), because
+// a game keeps whatever spelling its team had the day it was played. A
+// matched row keeps its OWN team names, round, date, time and location —
+// only the score and "final" status are filled in. Shows what it will do
+// before changing anything.
 function rebuildScheduleFromGameHistory(){
   var hist=toArr(gameHistory);
-  if(!hist.length){
-    alert('No games found in Game History to rebuild the schedule from.');
-    return;
-  }
-  if(!confirm('This marks '+hist.length+' game(s) from Game History as final in the Schedule (with their real scores), merging into whatever\'s already there. Upcoming/future weeks are left untouched. Continue?')) return;
+  if(!hist.length){ alert('No games found in Game History to sync from.'); return; }
 
-  // MERGE, not replace — a full replace here previously wiped out every
-  // upcoming/future week's placeholder entries whenever this ran, since
-  // it only ever knew about games that have actually been played. Now it
-  // only touches entries for games that match something in Game
-  // History (marking them final with the real score), and leaves every
-  // other existing Schedule entry — including future weeks — exactly as
-  // it was.
-  // Known date → round mapping for games missing a week number and with
-  // no existing schedule match to inherit one from — without this, such
-  // a game silently defaulted to Week 1 regardless of its real date,
-  // which is exactly what dumped a July 8 game and three Aug 19 playoff
-  // games all into "Week 1" alongside the real Week 1 games.
+  function teamsMatch(a,b){
+    var na=_nt(a), nb=_nt(b);
+    if(!na||!nb) return false;
+    if(na===nb) return true;
+    return na.length>=6 && nb.length>=6 && _fnLev(a,b)<=2;   // short names must match exactly
+  }
+  function pairMatch(s,g){
+    return (teamsMatch(s.home,g.home)&&teamsMatch(s.away,g.away))||(teamsMatch(s.home,g.away)&&teamsMatch(s.away,g.home));
+  }
+  // month-day of "9/23/2026" or "Thursday, September 23", for breaking ties
+  var MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
+  function md(str){
+    var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
+    if(m) return (+m[1])+'-'+(+m[2]);
+    var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
+    return m2?((MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
+  }
+  // Known date → round for games with no matching row and no week number
   function resolveRoundFromDate(dateStr){
-    var d=(dateStr||'').toLowerCase();
-    if(d.indexOf('july 1')>=0||d.indexOf('jul 1,')>=0) return 1;
-    if(d.indexOf('july 8')>=0||d.indexOf('jul 8')>=0) return 2;
-    if(d.indexOf('august 19')>=0||d.indexOf('aug 19')>=0) return 9;
-    if(d.indexOf('august 26')>=0||d.indexOf('aug 26')>=0) return 10;
-    if(d.indexOf('september 2')>=0||d.indexOf('sep 2')>=0) return 11;
+    var dd=(dateStr||'').toLowerCase();
+    if(dd.indexOf('july 1')>=0||dd.indexOf('jul 1,')>=0) return 1;
+    if(dd.indexOf('july 8')>=0||dd.indexOf('jul 8')>=0) return 2;
+    if(dd.indexOf('august 19')>=0||dd.indexOf('aug 19')>=0) return 9;
+    if(dd.indexOf('august 26')>=0||dd.indexOf('aug 26')>=0) return 10;
+    if(dd.indexOf('september 2')>=0||dd.indexOf('sep 2')>=0) return 11;
     return null;
   }
 
   var existing=toArr(schedule).slice();
-  var matchedCount=0;
-  hist.forEach(function(g){
-    var gHome=(g.home||'').toLowerCase(), gAway=(g.away||'').toLowerCase();
-    var idx=existing.findIndex(function(s){
-      var sHome=(s.home||'').toLowerCase(), sAway=(s.away||'').toLowerCase();
-      return (sHome===gHome&&sAway===gAway)||(sHome===gAway&&sAway===gHome);
-    });
-    var dateBasedRound=resolveRoundFromDate(g.date);
-    var resolvedRound=(g.week||g.week===0)?g.week:(dateBasedRound!==null?dateBasedRound:(idx>=0?existing[idx].round:1));
-    var finalEntry={
-      home:g.home, away:g.away,
-      homeScore:g.homeScore, awayScore:g.awayScore,
-      date:g.date||(idx>=0?existing[idx].date:'') , time:g.time||(idx>=0?existing[idx].time:''),
-      location:g.location||(idx>=0?existing[idx].location:''),
-      round:resolvedRound,
-      isBye:false, isPlayoff:!!(resolvedRound>=9),
-      status:'final'
-    };
-    if(idx>=0) existing[idx]=finalEntry;
-    else existing.push(finalEntry);
-    matchedCount++;
+  var plan=[], already=0, skippedZero=0;
+  var taken={}; // schedule rows already claimed by an earlier game this run
+  var allStarId=(typeof allStarGameId!=='undefined')?allStarGameId:null;
+
+  hist.slice().reverse().forEach(function(g){          // oldest first
+    if(!g) return;
+    if(allStarId && g.id===allStarId) return;
+    if(((g.homeScore||0)+(g.awayScore||0))===0){ skippedZero++; return; }   // phantom/unplayed
+    var cands=[];
+    existing.forEach(function(s,i){ if(s && !s.isBye && !taken[i] && pairMatch(s,g)) cands.push(i); });
+
+    // 1) Already recorded? A finished row with this game's exact score means
+    // this game is done — it must not go on to claim a later rematch row.
+    var same=cands.filter(function(i){
+      var s=existing[i]; if(s.status!=='final') return false;
+      var flip=!teamsMatch(s.home,g.home);
+      return (flip?g.awayScore:g.homeScore)===s.homeScore && (flip?g.homeScore:g.awayScore)===s.awayScore;
+    })[0];
+    if(same!==undefined){ taken[same]=true; already++; return; }
+
+    // 2) Otherwise fill in an open row for this pairing (closest date wins)
+    var open=cands.filter(function(i){ return existing[i].status!=='final'; });
+    var gd=md(g.date), idx=-1;
+    if(open.length){
+      idx=open.filter(function(i){ return gd && md(existing[i].date)===gd; })[0];
+      if(idx===undefined) idx=open[0];
+    } else if(cands.length){
+      return;   // matching rows all have a different result — leave them alone
+    }
+    if(idx>=0){
+      taken[idx]=true;
+      plan.push({kind:'mark',idx:idx,g:g});
+    } else {
+      plan.push({kind:'add',g:g});
+    }
   });
 
-  schedule=existing;
+  var marks=plan.filter(function(p){ return p.kind==='mark'; });
+  var adds=plan.filter(function(p){ return p.kind==='add'; });
+  if(!marks.length && !adds.length){
+    alert('Nothing to change — '+already+' game(s) already show their final score'+(skippedZero?(', and '+skippedZero+' 0-0 game(s) were ignored'):'')+'.');
+    return;
+  }
+  var lines=marks.slice(0,14).map(function(p){
+    var s=existing[p.idx], flip=!teamsMatch(s.home,p.g.home);
+    var hs=flip?p.g.awayScore:p.g.homeScore, as=flip?p.g.homeScore:p.g.awayScore;
+    return '• '+(s.date||'')+'  '+s.home+' '+hs+' – '+as+' '+s.away;
+  });
+  if(marks.length>14) lines.push('• …and '+(marks.length-14)+' more');
+  if(!confirm((marks.length?('Mark '+marks.length+' schedule row(s) final with their real score:\n\n'+lines.join('\n')+'\n\n'):'')
+     +(adds.length?('Add '+adds.length+' finished game(s) that have no row on the schedule.\n\n'):'')
+     +'Names, dates, weeks and everything else on the schedule stay as they are. Continue?')) return;
+
   if(!_dataFullyLoaded){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
   }
-  fbSet(ctPath('schedule'), schedule);
-  alert('✅ Merged '+matchedCount+' finished game(s) into the Schedule. Upcoming weeks were left untouched.');
+  marks.forEach(function(p){
+    var s=existing[p.idx], flip=!teamsMatch(s.home,p.g.home);
+    s.homeScore=flip?p.g.awayScore:p.g.homeScore;
+    s.awayScore=flip?p.g.homeScore:p.g.awayScore;
+    s.status='final';
+  });
+  adds.forEach(function(p){
+    var g=p.g, rd=(g.week||g.week===0)?g.week:resolveRoundFromDate(g.date);
+    if(rd===null||rd===undefined) rd=1;
+    existing.push({home:g.home,away:g.away,homeScore:g.homeScore,awayScore:g.awayScore,
+      date:g.date||'',time:g.time||'',location:g.location||'',round:rd,isBye:false,isPlayoff:rd>=9,status:'final'});
+  });
+  schedule=existing;
+  fbSet(ctPath('schedule'),schedule);
   if(typeof renderSchedule==='function') renderSchedule();
+
+  // Rows whose date has passed but still have no result — these have no
+  // finished game in Game History, so no sync can fill them in.
+  var today=new Date(); today.setHours(0,0,0,0);
+  var overdue=existing.filter(function(s){
+    if(!s||s.isBye||s.status==='final') return false;
+    var dt=new Date(s.date); return !isNaN(dt) && dt<today;
+  }).slice(0,8).map(function(s){ return '• '+s.date+'  '+s.home+' vs '+s.away; });
+  alert('✅ Marked '+marks.length+' row(s) final'+(adds.length?(', added '+adds.length+' missing game(s)'):'')+'.'
+    +(overdue.length?('\n\nThese rows are past their date but still have no finished game in Game History:\n'+overdue.join('\n')+'\n\nIf a game was played, its box score may not have been saved.'):''));
 }
+
 
 // ── MERGE: fold an old/former jersey-number entry into a current player ──
 // Stats are stored per team + jersey number, so a number change leaves the
