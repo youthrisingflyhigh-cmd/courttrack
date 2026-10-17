@@ -442,6 +442,25 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="fixscore-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:94%;max-width:560px;max-height:88vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 6px;font-size:16px;">Correct a Game's Final Score</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;" id="fixscore-source"></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Game (⚠️ = box score doesn't add up to the final score)</label>
+    <select id="fixscore-game" onchange="onFixScoreSelected()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:13px;margin-bottom:12px;"></select>
+    <div id="fixscore-editor" style="display:none;">
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <div style="flex:1;"><label id="fixscore-home-lbl" style="display:block;font-size:11px;color:#888;margin-bottom:4px;"></label><input type="number" id="fixscore-home" min="0" oninput="previewFixScore()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:16px;font-weight:700;"></div>
+        <div style="flex:1;"><label id="fixscore-away-lbl" style="display:block;font-size:11px;color:#888;margin-bottom:4px;"></label><input type="number" id="fixscore-away" min="0" oninput="previewFixScore()" style="width:100%;padding:8px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:16px;font-weight:700;"></div>
+      </div>
+      <button id="fixscore-usebox" onclick="fixScoreUseBox()" style="display:none;width:100%;padding:8px;margin-bottom:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;"></button>
+      <div id="fixscore-preview" style="font-size:12px;color:var(--muted);white-space:pre-wrap;background:var(--dark3);border-radius:6px;padding:10px;margin-bottom:12px;line-height:1.5;"></div>
+      <button onclick="runFixScore()" style="width:100%;padding:10px;background:var(--orange);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;margin-bottom:8px;">Save Corrected Score</button>
+    </div>
+    <button onclick="closeFixScoreModal()" style="width:100%;padding:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:6px;font-weight:700;cursor:pointer;">Close</button>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -1131,6 +1150,12 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Correct a Game's Final Score</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Edit Box Score changes the player lines but not the final score. This changes the final score and carries it through everywhere: the saved game, the standings (points for/against, and wins/losses if the winner changes), and the schedule row. It also flags any game whose box score doesn't add up to its final score.</p>
+      <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openFixScoreModal()">🎯 Correct Final Score</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -3867,6 +3892,18 @@ function runBulkImportSchedule(){
 // nothing real is lost; whatever is still missing is then filled in from
 // Game History by the normal sync.
 function runReplaceScheduleWeeks(games){
+  // Snap every team name in the text to the exact name of the matching
+  // current team, so the schedule always uses the same spelling as the team
+  // list (a mismatch is what stops finished games from lining up with their
+  // rows). Names that don't match exactly one team are kept as typed.
+  var snapped={}, unknownNames={};
+  function canon(name){
+    var hits=teams.filter(function(t){ return _schTeamsMatch(t.name,name); });
+    if(hits.length===1){ if(hits[0].name!==name) snapped[name]=hits[0].name; return hits[0].name; }
+    unknownNames[name]=true; return name;
+  }
+  games.forEach(function(g){ g.home=canon(g.home); if(!g.isBye) g.away=canon(g.away); });
+
   var rounds={}; games.forEach(function(g){ rounds[g.round]=true; });
   var roundList=Object.keys(rounds).map(Number).sort(function(a,b){return a-b;});
   var all=toArr(schedule).filter(Boolean);
@@ -3889,8 +3926,10 @@ function runReplaceScheduleWeeks(games){
   if(!confirm('Replace '+(roundList.length>1?('weeks '+roundList[0]+'–'+roundList[roundList.length-1]):('week '+roundList[0]))+' of the schedule in '+CT_ACTIVE_LABEL+'?\n\n'
     +'• '+replacedRows+' existing row(s) in those weeks are replaced by the '+fresh.length+' rows in your text\n'
     +'• '+carried+' existing score(s) carried over onto the matching rows\n'
-    +'• All other weeks ('+kept.length+' row(s)) stay exactly as they are\n\n'
-    +'Next, it matches the remaining scores from your saved games. Continue?')) return;
+    +'• All other weeks ('+kept.length+' row(s)) stay exactly as they are\n'
+    +(Object.keys(snapped).length?('• Team names set to match your team list: '+Object.keys(snapped).map(function(k){ return k+' → '+snapped[k]; }).join(', ')+'\n'):'')
+    +(Object.keys(unknownNames).length?('• ⚠️ No matching team for: '+Object.keys(unknownNames).join(', ')+' (imported as typed)\n'):'')
+    +'\nNext, it matches the remaining scores from your saved games. Continue?')) return;
   if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
   var combined=kept.concat(fresh).map(function(s,i){ return {s:s,i:i}; })
     .sort(function(a,b){ return (a.s.round-b.s.round)||(a.i-b.i); })
@@ -4893,6 +4932,141 @@ function restoreSummer2026Standings(){
 // completely intact. This rebuilds minimal "final" Schedule entries
 // directly from Game History, which is the more reliable source since
 // it's written once per finished game and not touched by schedule edits.
+// ── CORRECT A GAME'S FINAL SCORE ──
+// Changes a saved game's final score and carries the change through the
+// standings (points for/against, and wins/losses if the winner flips) and
+// the schedule row, so nothing is left disagreeing with it.
+var _fsBox_cache=null;
+function _fsBox(g){
+  function sum(st){ var t=0; Object.keys(st||{}).forEach(function(k){ t+=(((st||{})[k]||{}).pts||0); }); return t; }
+  return {h:sum(g.hStats),a:sum(g.aStats)};
+}
+function _fsExcluded(g){
+  return (g.excludedFromStandings!=null) ? g.excludedFromStandings : ((g.week!=null) && g.week>=9);
+}
+function openFixScoreModal(){
+  document.getElementById('fixscore-source').textContent='Division: '+CT_ACTIVE_LABEL;
+  var hist=toArr(gameHistory);
+  var sel=document.getElementById('fixscore-game');
+  sel.innerHTML='<option value="">-- Choose a game --</option>'+hist.map(function(g,i){
+    if(!g) return '';
+    var b=_fsBox(g), has=(b.h+b.a)>0;
+    var mism=has && (b.h!==(g.homeScore||0) || b.a!==(g.awayScore||0));
+    return '<option value="'+i+'">'+(mism?'⚠️ ':'')+_dpEsc(g.date||'?')+' — '+_dpEsc(g.home)+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+_dpEsc(g.away)
+      +(mism?('   (box score adds to '+b.h+'–'+b.a+')'):'')+'</option>';
+  }).join('');
+  document.getElementById('fixscore-editor').style.display='none';
+  document.getElementById('fixscore-modal').style.display='flex';
+}
+function closeFixScoreModal(){ document.getElementById('fixscore-modal').style.display='none'; }
+function onFixScoreSelected(){
+  var v=document.getElementById('fixscore-game').value;
+  var ed=document.getElementById('fixscore-editor');
+  if(v===''){ ed.style.display='none'; return; }
+  var g=toArr(gameHistory)[parseInt(v)]; if(!g){ ed.style.display='none'; return; }
+  document.getElementById('fixscore-home-lbl').textContent=(g.home||'Home')+' (home)';
+  document.getElementById('fixscore-away-lbl').textContent=(g.away||'Away')+' (away)';
+  document.getElementById('fixscore-home').value=g.homeScore||0;
+  document.getElementById('fixscore-away').value=g.awayScore||0;
+  var b=_fsBox(g), btn=document.getElementById('fixscore-usebox');
+  if((b.h+b.a)>0 && (b.h!==(g.homeScore||0)||b.a!==(g.awayScore||0))){
+    btn.style.display='block'; btn.textContent='Use the box score totals ('+b.h+' – '+b.a+')';
+  } else btn.style.display='none';
+  ed.style.display='block';
+  previewFixScore();
+}
+function fixScoreUseBox(){
+  var g=toArr(gameHistory)[parseInt(document.getElementById('fixscore-game').value)]; if(!g) return;
+  var b=_fsBox(g);
+  document.getElementById('fixscore-home').value=b.h;
+  document.getElementById('fixscore-away').value=b.a;
+  previewFixScore();
+}
+// Works out exactly what a save would change (shared by the preview and the save)
+function _fsPlan(g,nh,na){
+  var oh=g.homeScore||0, oa=g.awayScore||0, plan={oh:oh,oa:oa,nh:nh,na:na,lines:[]};
+  var hk=Object.keys(standings||{}).filter(function(k){ return _fnLc(k)===_fnLc(g.home); })[0];
+  var ak=Object.keys(standings||{}).filter(function(k){ return _fnLc(k)===_fnLc(g.away); })[0];
+  plan.hk=hk; plan.ak=ak;
+  plan.excluded=_fsExcluded(g);
+  plan.flip=((oh>oa)!==(nh>na)) || ((oa>oh)!==(na>nh));
+  // schedule row currently holding this game's old score
+  var gd=_schMd(g.date);
+  var cands=toArr(schedule).filter(function(s){
+    if(!s||s.isBye||s.status!=='final'||!_schPairMatch(s,g)) return false;
+    var o=_schOriented(s,{home:g.home,away:g.away,homeScore:oh,awayScore:oa});
+    return s.homeScore===o.hs && s.awayScore===o.as;
+  });
+  plan.row=cands.filter(function(s){ return gd && _schMd(s.date)===gd; })[0]||cands[0]||null;
+  return plan;
+}
+function previewFixScore(){
+  var g=toArr(gameHistory)[parseInt(document.getElementById('fixscore-game').value)];
+  var out=document.getElementById('fixscore-preview'); if(!g){ out.textContent=''; return; }
+  var nh=parseInt(document.getElementById('fixscore-home').value), na=parseInt(document.getElementById('fixscore-away').value);
+  if(isNaN(nh)||isNaN(na)||nh<0||na<0){ out.textContent='Enter both scores.'; return; }
+  var p=_fsPlan(g,nh,na), d=function(n){ return (n>0?'+':'')+n; };
+  if(nh===p.oh && na===p.oa){ out.textContent='No change from the saved score.'; return; }
+  var L=[];
+  L.push(g.home+': '+p.oh+' → '+nh+(nh!==p.oh?'  ('+d(nh-p.oh)+')':''));
+  L.push(g.away+': '+p.oa+' → '+na+(na!==p.oa?'  ('+d(na-p.oa)+')':''));
+  L.push('');
+  if(p.excluded) L.push('Standings: this game is excluded from standings (playoff/all-star), so they won\'t change.');
+  else if(!p.hk||!p.ak) L.push('Standings: couldn\'t find a standings row for '+(!p.hk?g.home:g.away)+', so standings won\'t change. Run "Fix a Team Name" if the name is spelled differently there.');
+  else {
+    L.push('Standings:');
+    if(nh!==p.oh) L.push('  • '+g.home+' points for '+d(nh-p.oh)+',  '+g.away+' points against '+d(nh-p.oh));
+    if(na!==p.oa) L.push('  • '+g.away+' points for '+d(na-p.oa)+',  '+g.home+' points against '+d(na-p.oa));
+    if(p.flip) L.push('  • ⚠️ The winner changes, so wins and losses move too.');
+    else L.push('  • Winner stays the same, so wins and losses don\'t change.');
+  }
+  L.push(p.row?('Schedule: the '+p.row.home+' vs '+p.row.away+' row ('+p.row.date+') will show the new score.'):'Schedule: no matching row to update.');
+  if(CT_BASE===LEGACY_BASE) L.push('\nNote: Summer 2026\'s final standings are restored automatically when admin loads, so standings changes here may be reset.');
+  out.textContent=L.join('\n');
+}
+function runFixScore(){
+  var idx=parseInt(document.getElementById('fixscore-game').value);
+  var hist=toArr(gameHistory), g=hist[idx];
+  if(isNaN(idx)||!g){ alert('Choose a game first.'); return; }
+  var nh=parseInt(document.getElementById('fixscore-home').value), na=parseInt(document.getElementById('fixscore-away').value);
+  if(isNaN(nh)||isNaN(na)||nh<0||na<0){ alert('Enter both scores.'); return; }
+  var p=_fsPlan(g,nh,na);
+  if(nh===p.oh && na===p.oa){ alert('That\'s the same as the saved score — nothing to change.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  if(!confirm('Change '+g.home+' vs '+g.away+' ('+g.date+') from '+p.oh+'–'+p.oa+' to '+nh+'–'+na+'?\n\n'+document.getElementById('fixscore-preview').textContent+'\n\nContinue?')) return;
+
+  // saved game
+  g.homeScore=nh; g.awayScore=na; gameHistory=hist;
+
+  // standings (points for/against; wins/losses only if the winner changes)
+  var stChanged=false;
+  if(!p.excluded && p.hk && p.ak){
+    var hs=standings[p.hk], as=standings[p.ak];
+    hs.pf=Math.max(0,(hs.pf||0)+(nh-p.oh)); hs.pa=Math.max(0,(hs.pa||0)+(na-p.oa));
+    as.pf=Math.max(0,(as.pf||0)+(na-p.oa)); as.pa=Math.max(0,(as.pa||0)+(nh-p.oh));
+    if(p.flip){
+      if(p.oh>p.oa){ hs.w=Math.max(0,(hs.w||0)-1); as.l=Math.max(0,(as.l||0)-1); }
+      else if(p.oa>p.oh){ as.w=Math.max(0,(as.w||0)-1); hs.l=Math.max(0,(hs.l||0)-1); }
+      if(nh>na){ hs.w=(hs.w||0)+1; as.l=(as.l||0)+1; }
+      else if(na>nh){ as.w=(as.w||0)+1; hs.l=(hs.l||0)+1; }
+    }
+    stChanged=true;
+  }
+  // schedule row
+  if(p.row){
+    var o=_schOriented(p.row,{home:g.home,away:g.away,homeScore:nh,awayScore:na});
+    p.row.homeScore=o.hs; p.row.awayScore=o.as;
+  }
+  fbSet(ctPath('history'),gameHistory);
+  if(stChanged) fbSet(ctPath('standings'),standings);
+  if(p.row) fbSet(ctPath('schedule'),schedule);
+  ['renderStandings','renderSchedule','renderGamesTab','renderGameHistory','renderGames'].forEach(function(fn){
+    try{ if(typeof window[fn]==='function') window[fn](); }catch(e){}
+  });
+  closeFixScoreModal();
+  alert('✅ Final score corrected to '+nh+'–'+na+'.'+(stChanged?' Standings updated.':'')+(p.row?' Schedule row updated.':''));
+}
+
 // ── CLEAN UP SCHEDULE ──
 // Repairs the schedule after an older "sync" overwrote real rows with the
 // game's own date text / names and appended unmatched games as extra rows
