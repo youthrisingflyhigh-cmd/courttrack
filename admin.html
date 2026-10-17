@@ -1148,7 +1148,7 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals. If the new box score no longer adds up to the final score, it asks whether to update the final score, standings and schedule to match.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
 
       <hr style="border-color:#333;margin:18px 0;">
@@ -5024,21 +5024,14 @@ function previewFixScore(){
   if(CT_BASE===LEGACY_BASE) L.push('\nNote: Summer 2026\'s final standings are restored automatically when admin loads, so standings changes here may be reset.');
   out.textContent=L.join('\n');
 }
-function runFixScore(){
-  var idx=parseInt(document.getElementById('fixscore-game').value);
-  var hist=toArr(gameHistory), g=hist[idx];
-  if(isNaN(idx)||!g){ alert('Choose a game first.'); return; }
-  var nh=parseInt(document.getElementById('fixscore-home').value), na=parseInt(document.getElementById('fixscore-away').value);
-  if(isNaN(nh)||isNaN(na)||nh<0||na<0){ alert('Enter both scores.'); return; }
+// Applies a new final score to a saved game and carries it through the
+// standings (points for/against, and wins/losses only if the winner flips)
+// and the schedule row. Computes what to change from the game's CURRENT
+// (old) score first, so call it before the game's score is overwritten.
+// Callers do the saving. Returns what changed.
+function _applyFinalScoreChange(g,nh,na){
   var p=_fsPlan(g,nh,na);
-  if(nh===p.oh && na===p.oa){ alert('That\'s the same as the saved score — nothing to change.'); return; }
-  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
-  if(!confirm('Change '+g.home+' vs '+g.away+' ('+g.date+') from '+p.oh+'–'+p.oa+' to '+nh+'–'+na+'?\n\n'+document.getElementById('fixscore-preview').textContent+'\n\nContinue?')) return;
-
-  // saved game
-  g.homeScore=nh; g.awayScore=na; gameHistory=hist;
-
-  // standings (points for/against; wins/losses only if the winner changes)
+  g.homeScore=nh; g.awayScore=na;
   var stChanged=false;
   if(!p.excluded && p.hk && p.ak){
     var hs=standings[p.hk], as=standings[p.ak];
@@ -5052,19 +5045,33 @@ function runFixScore(){
     }
     stChanged=true;
   }
-  // schedule row
   if(p.row){
     var o=_schOriented(p.row,{home:g.home,away:g.away,homeScore:nh,awayScore:na});
     p.row.homeScore=o.hs; p.row.awayScore=o.as;
   }
+  return {stChanged:stChanged,row:p.row,plan:p};
+}
+function runFixScore(){
+  var idx=parseInt(document.getElementById('fixscore-game').value);
+  var hist=toArr(gameHistory), g=hist[idx];
+  if(isNaN(idx)||!g){ alert('Choose a game first.'); return; }
+  var nh=parseInt(document.getElementById('fixscore-home').value), na=parseInt(document.getElementById('fixscore-away').value);
+  if(isNaN(nh)||isNaN(na)||nh<0||na<0){ alert('Enter both scores.'); return; }
+  var p=_fsPlan(g,nh,na);
+  if(nh===p.oh && na===p.oa){ alert('That\'s the same as the saved score — nothing to change.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  if(!confirm('Change '+g.home+' vs '+g.away+' ('+g.date+') from '+p.oh+'–'+p.oa+' to '+nh+'–'+na+'?\n\n'+document.getElementById('fixscore-preview').textContent+'\n\nContinue?')) return;
+
+  var res=_applyFinalScoreChange(g,nh,na);
+  gameHistory=hist;
   fbSet(ctPath('history'),gameHistory);
-  if(stChanged) fbSet(ctPath('standings'),standings);
-  if(p.row) fbSet(ctPath('schedule'),schedule);
+  if(res.stChanged) fbSet(ctPath('standings'),standings);
+  if(res.row) fbSet(ctPath('schedule'),schedule);
   ['renderStandings','renderSchedule','renderGamesTab','renderGameHistory','renderGames'].forEach(function(fn){
     try{ if(typeof window[fn]==='function') window[fn](); }catch(e){}
   });
   closeFixScoreModal();
-  alert('✅ Final score corrected to '+nh+'–'+na+'.'+(stChanged?' Standings updated.':'')+(p.row?' Schedule row updated.':''));
+  alert('✅ Final score corrected to '+nh+'–'+na+'.'+(res.stChanged?' Standings updated.':'')+(res.row?' Schedule row updated.':''));
 }
 
 // ── CLEAN UP SCHEDULE ──
@@ -7804,6 +7811,23 @@ function saveStatCorrection(){
     return;
   }
 
+  // The box score's player points should add up to the final score. If they
+  // no longer do, offer to bring the final score — and the standings and
+  // schedule row with it — in line, so editing a box score never silently
+  // leaves them disagreeing. (Only asks when BOTH teams have points entered,
+  // so a half-filled box score for a game added with just a final score
+  // doesn't trigger it.)
+  var sumPts=function(st){ var t=0; Object.keys(st||{}).forEach(function(k){ t+=((st[k]||{}).pts||0); }); return t; };
+  var nbH=sumPts(hStats), nbA=sumPts(aStats), oldH=g.homeScore||0, oldA=g.awayScore||0;
+  var mismatch=(nbH>0 && nbA>0 && (nbH!==oldH || nbA!==oldA));
+  var syncScore=false;
+  if(mismatch){
+    syncScore=confirm('The box score now adds up to '+nbH+' – '+nbA+', but the final score says '+oldH+' – '+oldA+'.\n\nOK = also change the final score to '+nbH+' – '+nbA+' (and update the standings and schedule to match)\nCancel = keep the final score as it is');
+  }
+
+  var sc=null;
+  if(syncScore) sc=_applyFinalScoreChange(g,nbH,nbA);   // reads the old score first, then sets the new one
+
   g.hStats=hStats;
   g.aStats=aStats;
   g.homePlayers=homeRoster;
@@ -7811,12 +7835,17 @@ function saveStatCorrection(){
   gameHistory=hist;
 
   fbSet(ctPath('history'), gameHistory);
+  if(sc && sc.stChanged) fbSet(ctPath('standings'), standings);
+  if(sc && sc.row) fbSet(ctPath('schedule'), schedule);
   playerStats = computeRebuiltPlayerStats(gameHistory);
   fbSet(ctPath('playerStats'), playerStats);
 
-  alert('✅ Box score saved and player totals resynced!');
+  alert('✅ Box score saved and player totals resynced!'
+    +(syncScore?('\n\nFinal score updated to '+nbH+' – '+nbA+(sc.stChanged?', standings updated':'')+(sc.row?', schedule row updated':'')+'.')
+      :(mismatch?('\n\nNote: the final score still says '+oldH+' – '+oldA+' while the box score adds to '+nbH+' – '+nbA+'. Use Settings → Correct Final Score if you want to change it.'):'')));
   closeStatsCorrectionModal();
   if(typeof renderPlayerStats==='function') renderPlayerStats();
+  if(typeof renderStandings==='function') renderStandings();
   if(typeof renderSchedule==='function') renderSchedule();
 }
 </script>
