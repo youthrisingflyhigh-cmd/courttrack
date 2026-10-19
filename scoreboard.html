@@ -96,6 +96,14 @@ body{
   letter-spacing:2px;
 }
 .team-fouls span{color:#FF4500;font-weight:700;}
+.team-timeouts{
+  font-size:clamp(28px, 4vw, 52px);
+  color:#888;
+  letter-spacing:2px;
+  margin-top:clamp(2px,0.6vh,8px);
+}
+.team-timeouts .to-on{color:#4FC3F7;}
+.team-timeouts .to-off{color:#444;}
 
 .bonus-light{
   margin-top:14px;
@@ -295,13 +303,14 @@ body{
         </div>
       </div>
       <div class="team-fouls">FOULS: <span id="sb-home-fouls">0</span></div>
+      <div class="team-timeouts">TIMEOUTS: <span id="sb-home-timeouts"><span class="to-on">●</span> <span class="to-on">●</span></span></div>
     </div>
 
     <!-- Center -->
     <div class="center-block">
       <div class="shotclock-unit">
         <div class="shotclock-label">SHOT CLOCK</div>
-        <div class="shotclock-num" id="sb-shotclock">30</div>
+        <div class="shotclock-num" id="sb-shotclock">24</div>
       </div>
       <div class="half-badge" id="sb-half">H1</div>
     </div>
@@ -318,6 +327,7 @@ body{
         </div>
       </div>
       <div class="team-fouls">FOULS: <span id="sb-away-fouls">0</span></div>
+      <div class="team-timeouts">TIMEOUTS: <span id="sb-away-timeouts"><span class="to-on">●</span> <span class="to-on">●</span></span></div>
     </div>
   </div>
 </div>
@@ -471,7 +481,7 @@ function stopHorn(){
 // second-by-second countdown and the exact 0:00 horn firing happen in
 // tickLocalClocks() below, driven by this screen's own local timer.
 var localClock = {secs:0, running:false};
-var localShot = {secs:30, running:false, off:false};
+var localShot = {secs:24, running:false, off:false};
 var _clockZeroFired = false;
 var _shotZeroFired = false;
 
@@ -621,6 +631,19 @@ db.ref(ctPath('game')).on('value', function(s){
   var aFouls = game.aHalfTeamFouls || 0;
   document.getElementById('sb-home-fouls').textContent = hFouls;
   document.getElementById('sb-away-fouls').textContent = aFouls;
+
+  // Timeouts left (2 per half): a lit dot for each one still available,
+  // a dim dot once it's been used — so players don't have to ask.
+  function toDots(used){
+    used = Math.min(2, used || 0);
+    var out = '';
+    for(var i = 1; i <= 2; i++){
+      out += '<span class="' + (i <= used ? 'to-off' : 'to-on') + '">' + (i <= used ? '○' : '●') + '</span>' + (i < 2 ? ' ' : '');
+    }
+    return out;
+  }
+  document.getElementById('sb-home-timeouts').innerHTML = toDots(game.hTimeoutsUsed);
+  document.getElementById('sb-away-timeouts').innerHTML = toDots(game.aTimeoutsUsed);
 
   // Bonus indicator lights next to score — opposite team gets bonus when other team has 7+ fouls
   // 7-9 fouls = 1 light, 10+ fouls = 2 lights (double bonus)

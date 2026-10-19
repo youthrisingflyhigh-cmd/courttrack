@@ -702,7 +702,7 @@ BYE: Ohana, AIM
         <button id="mini-clock-btn" onclick="toggleMiniTimer()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
       </div>
       <div style="text-align:center;min-width:44px;">
-        <div id="mini-shotclock" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#FF4500;line-height:1;">30</div>
+        <div id="mini-shotclock" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#FF4500;line-height:1;">24</div>
         <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">SHOT</div>
         <div style="display:flex;gap:4px;justify-content:center;">
           <button id="mini-shotclock-btn" onclick="toggleMiniShotClock()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
@@ -757,7 +757,7 @@ BYE: Ohana, AIM
 
     <!-- SHOT CLOCK -->
     <div style="flex:1;min-width:160px;text-align:center;background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;padding:16px;">
-      <div id="shot-clock-display" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(64px, 12vw, 120px);font-weight:900;color:#FF4500;letter-spacing:2px;line-height:1;">30</div>
+      <div id="shot-clock-display" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(64px, 12vw, 120px);font-weight:900;color:#FF4500;letter-spacing:2px;line-height:1;">24</div>
       <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">SHOT CLOCK</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;">
         <button onclick="shotClockStart()" id="shot-clock-start-btn" style="padding:10px 16px;border-radius:8px;background:#FF4500;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;min-height:44px;flex:1;">▶</button>
@@ -826,6 +826,28 @@ BYE: Ohana, AIM
         <div class="quarter-btns">
           <button class="q-btn active" onclick="setQ(1)">H1</button>
           <button class="q-btn" onclick="setQ(2)">H2</button>
+        </div>
+
+        <div style="margin-top:20px;">
+          <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:8px;">RESET SHOT CLOCK</div>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <button onclick="shotClockQuickReset(24)" title="Reset the shot clock to 24" style="min-width:92px;min-height:64px;border-radius:12px;background:#FF4500;color:#fff;border:none;font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;cursor:pointer;line-height:1;">↺ 24</button>
+            <button onclick="shotClockQuickReset(14)" title="Reset the shot clock to 14 (after a foul, etc.)" style="min-width:92px;min-height:64px;border-radius:12px;background:#eab308;color:#000;border:none;font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;cursor:pointer;line-height:1;">↺ 14</button>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:8px;">TIMEOUTS LEFT</div>
+          <div style="display:flex;gap:26px;justify-content:center;">
+            <div onclick="toggleTimeout('home')" title="Tap to use a timeout (tap again to undo)" style="cursor:pointer;text-align:center;">
+              <div id="ct-home-name" style="font-size:12px;font-weight:800;letter-spacing:1px;color:#fff;text-transform:uppercase;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">HOME</div>
+              <div id="ct-home-to" style="font-size:34px;line-height:1.15;letter-spacing:6px;"><span style="color:#4FC3F7;">●</span> <span style="color:#4FC3F7;">●</span></div>
+            </div>
+            <div onclick="toggleTimeout('away')" title="Tap to use a timeout (tap again to undo)" style="cursor:pointer;text-align:center;">
+              <div id="ct-away-name" style="font-size:12px;font-weight:800;letter-spacing:1px;color:#fff;text-transform:uppercase;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">AWAY</div>
+              <div id="ct-away-to" style="font-size:34px;line-height:1.15;letter-spacing:6px;"><span style="color:#4FC3F7;">●</span> <span style="color:#4FC3F7;">●</span></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="team-block">
@@ -1148,7 +1170,7 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals. If the new box score no longer adds up to the final score, it asks whether to update the final score, standings and schedule to match.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals. You can also fix a player's name right in the box score, or add a player who's missing (＋ Add player). If the new box score no longer adds up to the final score, it asks whether to update the final score, standings and schedule to match.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
 
       <hr style="border-color:#333;margin:18px 0;">
@@ -1383,8 +1405,8 @@ var timerRunning = false;
 
 // ── SHOT CLOCK ──
 var shotClockInterval = null;
-var shotClockSeconds = 30;
-var shotClockDefault = 30; // last preset picked (30/24/20/14) — Reset returns to this
+var shotClockSeconds = 24;
+var shotClockDefault = 24; // last preset picked (30/24/20/14) — the ↺ Reset returns to this; starts at the standard 24
 var shotClockRunning = false;
 var shotClockOff = false;
 
@@ -1477,6 +1499,21 @@ function shotClockSet(secs){
   shotClockSeconds = secs;
   shotClockUpdate();
   shotClockStart();
+}
+
+// One-tap reset to 24 or 14 (the two big buttons in the middle of the live
+// screen), for after a foul, violation or made basket. Follows the game
+// clock the same way the rest of the clock controls do: if the game clock
+// is running, the shot clock resets and keeps running; if the game clock is
+// stopped (dead ball), it resets and HOLDS, then starts on its own when the
+// game clock is started. It doesn't change the ↺ default, so a 14 after a
+// foul doesn't turn the next possession's reset into 14.
+function shotClockQuickReset(secs){
+  if(shotClockOff){ shotClockOff=false; updateShotClockOffUI(); }
+  shotClockStop();
+  shotClockSeconds = secs;
+  shotClockUpdate();
+  if(timerRunning) shotClockStart();
 }
 
 // Turns the shot clock off entirely — for when it's not being tracked for
@@ -2784,6 +2821,7 @@ fbListen(ctPath('game'), function(v){
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi]?teams[game.hi].name:'Home';
       document.getElementById('away-lbl').textContent=teams[game.ai]?teams[game.ai].name:'Away';
+      renderTimeouts();
       document.getElementById('home-pts').style.color='#fff';
       document.getElementById('away-pts').style.color='#fff';
       document.getElementById('home-pts').textContent=game.homeScore||0;
@@ -5546,6 +5584,9 @@ function setQ(q){
   if(q===2){
     game.hHalfTeamFouls=0;
     game.aHalfTeamFouls=0;
+    // Timeouts are 2 per half too — fresh two each for the second half.
+    game.hTimeoutsUsed=0;
+    game.aTimeoutsUsed=0;
     // Reset the game clock to a fresh 20:00 for the new half — doesn't
     // auto-start, matches every other "set the clock" action here, since
     // the ref still needs to actually blow the whistle to begin play.
@@ -5560,6 +5601,7 @@ function setQ(q){
   saveLiveGame();
   document.querySelectorAll('.q-btn').forEach(function(b,i){b.classList.toggle('active',i+1===q);});
   renderDualChips();
+  renderTimeouts();
 }
 
 
@@ -5589,6 +5631,23 @@ function renderTimeouts(){
   }
   document.getElementById('home-timeouts-display').innerHTML=hDisplay;
   document.getElementById('away-timeouts-display').innerHTML=aDisplay;
+
+  // Big display in the middle of the screen: team name + a dot per timeout
+  // still available (✕ once used), readable from across the court.
+  function bigDots(used){
+    var s='';
+    for(var i=1;i<=2;i++){
+      s+=(i<=used?'<span style="color:#555;">✕</span>':'<span style="color:#4FC3F7;">●</span>');
+      if(i<2) s+=' ';
+    }
+    return s;
+  }
+  var cth=document.getElementById('ct-home-to'), cta=document.getElementById('ct-away-to');
+  if(cth) cth.innerHTML=bigDots(hUsed);
+  if(cta) cta.innerHTML=bigDots(aUsed);
+  var cnh=document.getElementById('ct-home-name'), cna=document.getElementById('ct-away-name');
+  if(cnh) cnh.textContent=(teams[game.hi]&&teams[game.hi].name)||'Home';
+  if(cna) cna.textContent=(teams[game.ai]&&teams[game.ai].name)||'Away';
 }
 
 // ── DRAG-TO-SUB (On Court ↔ Bench) ──
@@ -7366,6 +7425,7 @@ function showPage(p){
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi].name;
       document.getElementById('away-lbl').textContent=teams[game.ai].name;
+      renderTimeouts();
       document.getElementById('home-pts').style.color='#fff';
       document.getElementById('away-pts').style.color='#fff';
       document.getElementById('home-pts').textContent=game.homeScore;
@@ -7712,6 +7772,25 @@ function populateGamesList(){
 }
 
 var _boxEditGameIdx=null;
+var _boxNewRowSeq=0;
+function _boxAttr(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+var _BOX_STAT_STYLE='width:42px;padding:6px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:13px;text-align:center;';
+function _boxStatInput(side,num,stat,val){
+  return '<input type="text" inputmode="numeric" pattern="[0-9]*" data-side="'+side+'" data-num="'+num+'" data-stat="'+stat+'" value="'+(val||0)+'" onfocus="this.select()" onchange="this.value=(parseInt(this.value)||0)" style="'+_BOX_STAT_STYLE+'">';
+}
+// Adds a blank row to one team's box score for a player who isn't listed
+// (name + jersey number + stats). Saved with the rest of the box score.
+function addBoxPlayerRow(side){
+  var tb=document.getElementById('box-tbody-'+side); if(!tb) return;
+  var id='n'+(++_boxNewRowSeq);
+  var tinp='background:var(--dark3);border:1px solid #555;color:#fff;border-radius:4px;font-size:12px;padding:5px 6px;';
+  var tr=document.createElement('tr');
+  tr.innerHTML='<td style="padding:2px 4px;"><input type="text" inputmode="numeric" placeholder="#" data-newrow="'+id+'" data-newside="'+side+'" data-newfield="num" style="width:44px;text-align:center;'+tinp+'"></td>'
+    +'<td style="padding:2px 4px;"><input type="text" placeholder="New player name" data-newrow="'+id+'" data-newside="'+side+'" data-newfield="name" style="width:130px;'+tinp+'"></td>'
+    +['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].map(function(st){ return '<td>'+_boxStatInput(side,id,st,0)+'</td>'; }).join('');
+  tb.appendChild(tr);
+  var first=tr.querySelector('input'); if(first&&first.focus) first.focus();
+}
 
 function loadGamePlayers(){
   var select=document.getElementById('stats-game-select');
@@ -7737,19 +7816,15 @@ function loadGamePlayers(){
   var hStats=g.hStats||{};
   var aStats=g.aStats||{};
 
-  function inp(side,num,stat,val){
-    return '<input type="text" inputmode="numeric" pattern="[0-9]*" data-side="'+side+'" data-num="'+num+'" data-stat="'+stat+'" value="'+(val||0)+'" onfocus="this.select()" onchange="this.value=(parseInt(this.value)||0)" style="width:42px;padding:6px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:13px;text-align:center;">';
-  }
+  function inp(side,num,stat,val){ return _boxStatInput(side,num,stat,val); }
 
   function buildTeamTable(teamLabel,color,roster,statsObj,side){
-    if(!roster.length){
-      return '<div style="color:var(--muted);font-size:12px;padding:8px 0;">No roster found for '+teamLabel+' — add players to this team first.</div>';
-    }
+    var emptyNote=roster.length?'':'<div style="color:var(--muted);font-size:12px;padding:8px 0;">No players saved for '+teamLabel+' in this game — use “Add player” below.</div>';
     var rows=roster.map(function(p){
       var s=statsObj[p.num]||{};
       return '<tr>'
         +'<td style="padding:4px 6px;color:'+color+';font-size:11px;font-weight:700;white-space:nowrap;">#'+p.num+'</td>'
-        +'<td style="padding:4px 8px;font-size:12px;color:#fff;white-space:nowrap;">'+p.name+'</td>'
+        +'<td style="padding:2px 4px;"><input type="text" data-nside="'+side+'" data-nnum="'+p.num+'" value="'+_boxAttr(p.name)+'" title="Edit the name shown in this box score" style="width:130px;padding:5px 6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;"></td>'
         +'<td>'+inp(side,p.num,'pts',s.pts)+'</td>'
         +'<td>'+inp(side,p.num,'reb',s.reb)+'</td>'
         +'<td>'+inp(side,p.num,'ast',s.ast)+'</td>'
@@ -7763,10 +7838,13 @@ function loadGamePlayers(){
     }).join('');
     return '<div style="overflow-x:auto;margin-bottom:14px;">'
       +'<div style="color:'+color+';font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">'+teamLabel+'</div>'
+      +emptyNote
       +'<table style="border-collapse:collapse;width:100%;">'
       +'<thead><tr style="color:var(--muted);font-size:10px;text-align:center;">'
       +'<th></th><th style="text-align:left;">Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      +'</tr></thead><tbody id="box-tbody-'+side+'">'+rows+'</tbody></table>'
+      +'<button onclick="addBoxPlayerRow(\''+side+'\')" style="margin-top:8px;padding:7px 12px;background:var(--dark3);color:#fff;border:1px dashed #666;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">＋ Add player</button>'
+      +'</div>';
   }
 
   var rosterWarning='';
@@ -7806,6 +7884,50 @@ function saveStatCorrection(){
     target[num][stat]=val;
   });
 
+  // ---- names edited on existing rows, and players added to this box score ----
+  var clean=function(s){ return (s||'').replace(/\s+/g,' ').trim(); };
+  var nameEdits={home:{},away:{}};
+  document.querySelectorAll('#stats-editor input[data-nside]').forEach(function(el){
+    var nm=clean(el.value);
+    if(nm) nameEdits[el.getAttribute('data-nside')][el.getAttribute('data-nnum')]=nm;
+  });
+  var newRowsById={};
+  document.querySelectorAll('#stats-editor input[data-newrow]').forEach(function(el){
+    var id=el.getAttribute('data-newrow');
+    var r=newRowsById[id]||(newRowsById[id]={id:id,side:el.getAttribute('data-newside')});
+    r[el.getAttribute('data-newfield')]=clean(el.value);
+  });
+  // Work on copies so a game that fell back to the live roster never renames
+  // the real team roster by accident.
+  homeRoster=homeRoster.map(function(p){ return Object.assign({},p); });
+  awayRoster=awayRoster.map(function(p){ return Object.assign({},p); });
+  var taken={home:{},away:{}};
+  homeRoster.forEach(function(p){ taken.home[String(p.num)]=true; });
+  awayRoster.forEach(function(p){ taken.away[String(p.num)]=true; });
+  var addedList=[], problem=null;
+  Object.keys(newRowsById).forEach(function(id){
+    if(problem) return;
+    var r=newRowsById[id], tgt=(r.side==='home'?hStats:aStats), st=tgt[id]||{};
+    var anyStat=Object.keys(st).some(function(k){ return st[k]; });
+    if(!r.num && !r.name && !anyStat){ delete tgt[id]; return; }      // blank row left untouched
+    var num=parseInt(r.num,10);
+    if(!r.name){ problem='Enter a name for each player you add.'; return; }
+    if(isNaN(num)||num<0){ problem='Enter a jersey number for '+r.name+'.'; return; }
+    if(taken[r.side][String(num)]){ problem='#'+num+' is already in this box score for that team — pick a different number.'; return; }
+    taken[r.side][String(num)]=true;
+    tgt[String(num)]=tgt[id]; delete tgt[id];
+    (r.side==='home'?homeRoster:awayRoster).push({num:num,name:r.name});
+    addedList.push(r.name);
+  });
+  if(problem){ alert(problem); return; }
+  var renamedList=[];
+  [['home',homeRoster],['away',awayRoster]].forEach(function(pair){
+    pair[1].forEach(function(p){
+      var nn=nameEdits[pair[0]][String(p.num)];
+      if(nn && nn!==p.name){ renamedList.push({side:pair[0],num:p.num,from:p.name,to:nn}); p.name=nn; }
+    });
+  });
+
   if(!_dataFullyLoaded){
     alert('⚠️ Refused to save — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again once connected.');
     return;
@@ -7832,6 +7954,12 @@ function saveStatCorrection(){
   g.aStats=aStats;
   g.homePlayers=homeRoster;
   g.awayPlayers=awayRoster;
+  // Carry renamed players into this game's play-by-play too
+  renamedList.forEach(function(rn){
+    toArr(g.playLog).forEach(function(e){
+      if(e && e.side===rn.side && String(e.num)===String(rn.num)) e.playerName=rn.to;
+    });
+  });
   gameHistory=hist;
 
   fbSet(ctPath('history'), gameHistory);
@@ -7841,6 +7969,8 @@ function saveStatCorrection(){
   fbSet(ctPath('playerStats'), playerStats);
 
   alert('✅ Box score saved and player totals resynced!'
+    +(renamedList.length?('\n\nRenamed: '+renamedList.map(function(r){ return r.from+' → '+r.to; }).join(', ')+'.'):'')
+    +(addedList.length?('\n\nAdded: '+addedList.join(', ')+'.'):'')
     +(syncScore?('\n\nFinal score updated to '+nbH+' – '+nbA+(sc.stChanged?', standings updated':'')+(sc.row?', schedule row updated':'')+'.')
       :(mismatch?('\n\nNote: the final score still says '+oldH+' – '+oldA+' while the box score adds to '+nbH+' – '+nbA+'. Use Settings → Correct Final Score if you want to change it.'):'')));
   closeStatsCorrectionModal();
