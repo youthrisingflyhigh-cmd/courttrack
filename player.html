@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CourtTrack — Player View</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -120,6 +123,12 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .score-name{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
 .score-num{font-family:var(--font-mono);font-size:52px;font-weight:700;}
 .score-vs{display:flex;align-items:center;font-family:'Barlow Condensed',sans-serif;font-size:28px;color:#333;font-weight:900;}
+.live-clock-wrap{text-align:center;background:var(--dark2);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px 12px;margin:-0.75rem auto 2rem;max-width:340px;}
+.live-clock-label{font-size:11px;font-weight:700;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;}
+.live-clock{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(60px,18vw,92px);line-height:1;letter-spacing:2px;color:var(--white);margin:2px 0 4px;}
+.live-clock.warning{color:#eab308;}
+.live-clock.urgent{color:#ef4444;}
+.live-clock-state{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;min-height:14px;}
 .highlights{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem;}
 @media(max-width:700px){.highlights{grid-template-columns:repeat(2,1fr)!important;}.lb-two{grid-template-columns:1fr!important;}.home-split{grid-template-columns:1fr!important;}.potw-stats{flex-wrap:wrap;gap:12px!important;}#home-league-leaders{grid-template-columns:repeat(3,1fr)!important;}}
 .stat-card{background:var(--dark2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:1.25rem;}
@@ -746,6 +755,7 @@ db.ref(ctPath('allStarGameId')).on('value',function(s){
 
 db.ref(ctPath('game')).on('value',function(s){
   game=s.val()||null;
+  syncLiveClock();
   if(_ready&&currentTab==='live') renderLive();
   if(_ready) buildTicker();
 });
@@ -1480,7 +1490,49 @@ document.addEventListener('click',function(e){
 });
 
 // ── LIVE ──
+// ── LIVE GAME CLOCK (Live tab) ──
+// The admin screen saves the game clock (seconds left + whether it's running)
+// with the live game. This keeps its own once-a-second countdown between
+// those updates — same idea as the scoreboard — so the clock stays smooth if
+// the connection lags, and snaps back to the real value whenever a fresh
+// update arrives (pauses, timeouts, manual edits all stay accurate).
+var _liveClock={secs:null,running:false};
+function fmtLiveClock(sec){
+  var m=Math.floor(sec/60), s=sec%60;
+  return m+':'+(s<10?'0':'')+s;
+}
+function syncLiveClock(){
+  var c=game&&game.clock;
+  if(c && c.seconds!=null){
+    _liveClock.secs=Math.max(0,parseInt(c.seconds,10)||0);
+    _liveClock.running=!!c.running;
+  } else {
+    _liveClock.secs=null; _liveClock.running=false;
+  }
+}
+function paintLiveClock(){
+  var el=document.getElementById('live-clock');
+  if(!el) return;
+  var st=document.getElementById('live-clock-state');
+  if(_liveClock.secs===null){
+    el.textContent='—'; el.className='live-clock';
+    if(st) st.textContent='';
+    return;
+  }
+  var s=_liveClock.secs;
+  el.textContent=fmtLiveClock(s);
+  el.className='live-clock'+(s<=30?' urgent':(s<=60?' warning':''));
+  if(st){
+    st.textContent = s===0 ? ((game&&game.q>=2)?'End of game':'End of 1st half')
+                  : (_liveClock.running ? '● Clock running' : '⏸ Clock stopped');
+  }
+}
+setInterval(function(){
+  if(_liveClock.running && _liveClock.secs>0){ _liveClock.secs--; paintLiveClock(); }
+},1000);
+
 function renderLive(){
+  syncLiveClock();
   var el=document.getElementById('tab-live');
   if(!game){
     el.innerHTML='<div class="no-game"><div style="font-size:48px;margin-bottom:16px;">🏀</div><h2>No game in progress</h2><p>Check back when a game has started.</p></div>';
@@ -1514,6 +1566,7 @@ function renderLive(){
     +'<div class="score-vs">vs</div>'
     +'<div class="score-box"><div class="score-name">'+at.name+'</div><div class="score-num" style="color:var(--white)">'+game.awayScore+'</div></div>'
     +'</div>'
+    +'<div class="live-clock-wrap"><div class="live-clock-label">H'+game.q+' · Time left</div><div id="live-clock" class="live-clock">'+(_liveClock.secs===null?'—':fmtLiveClock(_liveClock.secs))+'</div><div id="live-clock-state" class="live-clock-state"></div></div>'
     +'<div class="highlights">'
     +'<div class="stat-card hl"><div class="sc-label">Points Leader</div><div class="sc-val">'+(byPts[0]?byPts[0].st.pts||0:0)+'</div><div class="sc-name">'+(byPts[0]?byPts[0].name:'—')+'</div></div>'
     +'<div class="stat-card"><div class="sc-label">Reb Leader</div><div class="sc-val">'+(byReb[0]?byReb[0].st.reb||0:0)+'</div><div class="sc-name">'+(byReb[0]?byReb[0].name:'—')+'</div></div>'
@@ -1529,6 +1582,7 @@ function renderLive(){
     +allS.map(function(p){return '<tr><td><span style="color:'+p.color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(p.st.pts||0)+'</td><td>'+(p.st.reb||0)+'</td><td>'+(p.st.ast||0)+'</td><td>'+(p.st.stl||0)+'</td><td>'+(p.st.to||0)+'</td></tr>';}).join('')
     +'</tbody></table></div></div></div>'
     +'<div class="footer-bar"><span class="live-dot"></span>Stats update automatically in real time</div>';
+  paintLiveClock();
 }
 
 // ── SCORES (game history) ──
