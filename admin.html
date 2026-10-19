@@ -2992,7 +2992,7 @@ function openPlayerLookupModal(){
 }
 function closePlayerLookupModal(){ document.getElementById('player-lookup-modal').style.display='none'; }
 var _lookupFix=[];
-function _nt(s){ return (s||'').toString().toLowerCase().replace(/[^a-z0-9]/g,''); }
+function _nt(s){ return (s||'').toString().toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,''); }   // "Old & Slow" and "Old and Slow" are the same team
 var _LK_STAT=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'];
 function _lkFirst(n){ return ((n||'').trim().split(/\s+/)[0]||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
 // Finds the log entry for a game under a given jersey number, across every

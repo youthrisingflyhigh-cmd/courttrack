@@ -1300,9 +1300,64 @@ function renderHomeRecentScores(){
   }).join('');
 }
 
+// ── Saved result for a schedule row (display only) ──
+// A schedule row is only marked Final when the game gets matched to it by
+// team name the moment it's finished. If a team is spelled a little
+// differently ("Old & Slow" vs "OLD AND SLOW"), the game is saved fine but
+// its row stays on "Upcoming" with no score. This pairs each still-Upcoming
+// row with the saved game for the same two teams on the same day, so the
+// final score shows anyway. Nothing is written back to the data.
+function _schNorm(s){ return (s||'').toString().toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,''); }
+function _schLev(a,b){
+  var m=[],i,j;
+  for(i=0;i<=b.length;i++) m[i]=[i];
+  for(j=0;j<=a.length;j++) m[0][j]=j;
+  for(i=1;i<=b.length;i++) for(j=1;j<=a.length;j++){
+    m[i][j]=b.charAt(i-1)===a.charAt(j-1)?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+  }
+  return m[b.length][a.length];
+}
+function _schTeamsMatch(a,b){
+  var na=_schNorm(a), nb=_schNorm(b);
+  if(!na||!nb) return false;
+  if(na===nb) return true;
+  return na.length>=6 && nb.length>=6 && _schLev(na,nb)<=2;    // short names must match exactly
+}
+var _SCH_MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
+function _schMd(str){
+  var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
+  if(m) return (+m[1])+'-'+(+m[2]);
+  var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
+  return m2?((_SCH_MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
+}
+// Returns {rowIndex: {homeScore, awayScore}} for rows still showing Upcoming
+// that have a saved game (same two teams, same day). Scores are oriented to
+// the schedule row's home/away. A saved game is used for at most one row.
+function buildScheduleResults(){
+  var map={}, used={};
+  var hist=toArr(gameHistory).filter(function(g){ return g && ((g.homeScore||0)+(g.awayScore||0))>0; });
+  toArr(schedule).forEach(function(row,i){
+    if(!row||row.isBye||row.status==='final') return;
+    var rd=_schMd(row.date); if(!rd) return;
+    for(var k=0;k<hist.length;k++){
+      if(used[k]) continue;
+      var g=hist[k];
+      if(_schMd(g.date)!==rd) continue;
+      var direct=_schTeamsMatch(row.home,g.home)&&_schTeamsMatch(row.away,g.away);
+      var flipped=!direct&&_schTeamsMatch(row.home,g.away)&&_schTeamsMatch(row.away,g.home);
+      if(!direct&&!flipped) continue;
+      used[k]=true;
+      map[i]={homeScore:direct?g.homeScore:g.awayScore, awayScore:direct?g.awayScore:g.homeScore};
+      break;
+    }
+  });
+  return map;
+}
+
 function renderHomeUpcoming(){
   var el=document.getElementById('home-upcoming-schedule');
-  var upcoming=schedule.filter(function(g){return g&&!g.isBye&&g.status!=='final';});
+  var _homeRes=buildScheduleResults();
+  var upcoming=schedule.filter(function(g,i){return g&&!g.isBye&&g.status!=='final'&&!_homeRes[i];});
   if(!upcoming.length){
     var past=schedule.filter(function(g){return g&&!g.isBye;});
     if(!past.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">No games scheduled yet.</div>';return;}
@@ -1667,6 +1722,7 @@ function renderSchedule(){
   schedule.forEach(function(g,i){var r=g.round||1;if(!_isThursdayLeagueForFilter&&(g.isPlayoff||r>=9))return;if(!rounds[r])rounds[r]=[];rounds[r].push({g:g,i:i});});
   var html='';
   var weeksHtml='';
+  var _schRes=buildScheduleResults();   // saved results for rows still marked Upcoming
   Object.keys(rounds).sort(function(a,b){return a-b;}).forEach(function(r){
     weeksHtml+='<div class="schedule-week"><div class="schedule-week-header">Week '+r+'</div>';
     rounds[r].forEach(function(item){
@@ -1678,8 +1734,10 @@ function renderSchedule(){
           +'<span class="sgr-location">📍 '+g.location+'</span>'
           +'<span class="sgr-status" style="background:rgba(136,136,136,0.1);color:var(--muted);">Bye</span></div>';
       } else {
-        var isFinal=g.status==='final';
-        var resultHtml=isFinal?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--white);">'+g.homeScore+'–'+g.awayScore+'</span>':'';
+        var _rv=_schRes[item.i];
+        var isFinal=g.status==='final'||!!_rv;
+        var _hs=_rv?_rv.homeScore:g.homeScore, _as=_rv?_rv.awayScore:g.awayScore;
+        var resultHtml=isFinal?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--white);">'+_hs+'–'+_as+'</span>':'';
         weeksHtml+='<div class="schedule-game-row">'
           +'<span class="sgr-date">'+g.date+'</span><span class="sgr-time">'+g.time+'</span>'
           +'<span class="sgr-teams"><span style="color:var(--white);font-weight:700;">'+g.home+'</span> <span style="color:var(--muted);">vs</span> <span style="color:var(--white);font-weight:700;">'+g.away+'</span></span>'
