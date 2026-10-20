@@ -1830,13 +1830,13 @@ function renderSchedule(){
   // placeholder instead of falling through to the frozen Summer 2026
   // bracket. Dates stay TBD unless it's the 35+ league, which has its own.
   var isNewDivisionBlank=(CT_BASE!==LEGACY_BASE) && !isThursdayLeague;
-  var blankSemiDate=isFall2026ThirtyFive?'11/25':'TBD';
-  var blankEventDate=isFall2026ThirtyFive?'12/2':'TBD';
+  var blankSemiDate=isFall2026ThirtyFive?'12/2':'TBD';
+  var blankEventDate=isFall2026ThirtyFive?'12/9':'TBD';
 
   if(isNewDivisionBlank){
     // Fall 2026 · 35+ Men's League — brand new division, no standings
     // yet, so this stays fully blank (Seed 1-4 placeholders, no team
-    // names guessed). Semifinals on 11/25, then a full event day
+    // names guessed). Semifinals on 12/2, then a full event day on 12/9
     // (3-Point Shootout → All-Star → Championship) on 12/2.
     function f26Card(rows,timeLabel){
       var body=rows.map(function(r){

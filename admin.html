@@ -484,6 +484,23 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="lbd-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:480px;max-height:88vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">Change Locations by Date</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;" id="lbd-source"></div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:10px;">Tick the dates, type the new location, and every game and bye on those dates gets it. Only the location changes — teams, times, scores and everything else stay as they are.</div>
+    <div id="lbd-dates" style="max-height:240px;overflow-y:auto;border:1px solid #333;border-radius:8px;padding:6px 10px;margin-bottom:12px;background:var(--dark3);"></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">New location</label>
+    <input type="text" id="lbd-location" list="lbd-location-list" placeholder="e.g. Oak Grove Small Gym" oninput="previewLocationsByDate()" style="width:100%;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:15px;margin-bottom:10px;">
+    <datalist id="lbd-location-list"></datalist>
+    <div id="lbd-preview" style="font-size:12px;color:var(--muted);min-height:16px;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeLocationsByDateModal()" style="flex:1;padding:11px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:8px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="applyLocationsByDate()" style="flex:1;padding:11px;background:var(--orange);color:#000;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
+    </div>
+  </div>
+</div>
+
 <div id="bulk-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:10px;padding:24px;width:92%;max-width:600px;max-height:85vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 12px;font-size:16px;">Bulk Import Teams &amp; Rosters</h3>
@@ -639,6 +656,7 @@ BYE: Ohana, AIM
     </div>
     <button class="btn-red" id="clear-schedule-btn" style="display:none;border:1px solid var(--red);padding:6px 14px;border-radius:7px;" onclick="clearSchedule()">Clear Schedule</button>
     <button class="btn-orange" style="padding:6px 14px;border-radius:7px;font-size:13px;" onclick="openBulkImportScheduleModal()">📋 Bulk Import Schedule</button>
+    <button class="btn-ghost" style="padding:6px 14px;border-radius:7px;font-size:13px;" onclick="openLocationsByDateModal()">📍 Change Locations by Date</button>
   </div>
   <div class="card" id="schedule-generator-card">
     <div class="card-header"><h3>Generate Schedule</h3></div>
@@ -5135,6 +5153,85 @@ function runFixScore(){
   alert('✅ Final score corrected to '+nh+'–'+na+'.'+(res.stChanged?' Standings updated.':'')+(res.row?' Schedule row updated.':''));
 }
 
+// ── CHANGE LOCATIONS BY DATE ──
+// Sets the location on every schedule row (games AND byes) that falls on the
+// dates you tick. Changes only the location. Dates are grouped by calendar
+// day, so "11/4/2026" and "Wednesday, November 4" count as the same day.
+var _lbdGroups=[];
+function _lbdBuildGroups(){
+  var by={};
+  toArr(schedule).forEach(function(r,i){
+    if(!r) return;
+    var md=_schMd(r.date); if(!md) return;
+    var g=by[md]||(by[md]={md:md,idx:[],labels:{},locs:{},rounds:{}});
+    g.idx.push(i);
+    var lab=_schCleanDate(r.date)?r.date:null; if(lab) g.labels[lab]=(g.labels[lab]||0)+1;
+    var loc=(r.location||'').trim()||'(no location)'; g.locs[loc]=(g.locs[loc]||0)+1;
+    g.rounds[r.round]=true;
+  });
+  var list=Object.keys(by).map(function(k){
+    var g=by[k];
+    g.label=Object.keys(g.labels).sort(function(x,y){ return g.labels[y]-g.labels[x]; })[0] || (toArr(schedule)[g.idx[0]].date);
+    return g;
+  });
+  var order=function(g){ var p=g.md.split('-'); return (+p[0])*100+(+p[1]); };
+  list.sort(function(a,b){ return order(a)-order(b); });
+  return list;
+}
+function openLocationsByDateModal(){
+  document.getElementById('lbd-source').textContent='Division: '+CT_ACTIVE_LABEL;
+  _lbdGroups=_lbdBuildGroups();
+  var box=document.getElementById('lbd-dates');
+  if(!_lbdGroups.length){
+    box.innerHTML='<div style="color:#888;font-size:13px;padding:8px 0;font-style:italic;">The schedule has no dated rows yet.</div>';
+  } else {
+    box.innerHTML=_lbdGroups.map(function(g,i){
+      var cur=Object.keys(g.locs).map(function(l){ return l+(Object.keys(g.locs).length>1?' ('+g.locs[l]+')':''); }).join(', ');
+      var wk=Object.keys(g.rounds).length===1?(' · Week '+Object.keys(g.rounds)[0]):'';
+      return '<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #2a2a2a;cursor:pointer;">'
+        +'<input type="checkbox" class="lbd-check" value="'+i+'" onchange="previewLocationsByDate()" style="margin-top:3px;width:17px;height:17px;flex-shrink:0;">'
+        +'<span style="font-size:13px;color:#fff;"><strong>'+_dpEsc(g.label)+'</strong><span style="color:#888;">'+wk+' · '+g.idx.length+' rows</span><br><span style="font-size:11px;color:#888;">now: '+_dpEsc(cur)+'</span></span></label>';
+    }).join('');
+  }
+  // suggestions: every location already used on the schedule + saved venues
+  var seen={}, opts=[];
+  toArr(schedule).forEach(function(r){ if(r&&r.location&&!seen[r.location]){ seen[r.location]=1; opts.push(r.location); } });
+  ((typeof appSettings!=='undefined'&&appSettings&&appSettings.locations)||[]).forEach(function(l){ if(l&&l.name&&!seen[l.name]){ seen[l.name]=1; opts.push(l.name); } });
+  document.getElementById('lbd-location-list').innerHTML=opts.map(function(o){ return '<option value="'+_dpEsc(o)+'">'; }).join('');
+  document.getElementById('lbd-location').value='';
+  document.getElementById('lbd-preview').textContent='';
+  document.getElementById('lbd-modal').style.display='flex';
+}
+function closeLocationsByDateModal(){ document.getElementById('lbd-modal').style.display='none'; }
+function _lbdChecked(){
+  return Array.prototype.slice.call(document.querySelectorAll('.lbd-check')).filter(function(c){ return c.checked; }).map(function(c){ return _lbdGroups[parseInt(c.value)]; }).filter(Boolean);
+}
+function previewLocationsByDate(){
+  var loc=(document.getElementById('lbd-location').value||'').replace(/\s+/g,' ').trim();
+  var picked=_lbdChecked(), rows=0, changing=0;
+  picked.forEach(function(g){ g.idx.forEach(function(i){ rows++; if(((toArr(schedule)[i].location)||'').trim()!==loc) changing++; }); });
+  document.getElementById('lbd-preview').textContent=picked.length
+    ? (rows+' rows on '+picked.length+' date'+(picked.length>1?'s':'')+(loc?(' → "'+loc+'" ('+changing+' will change)'):''))
+    : 'Tick one or more dates.';
+}
+function applyLocationsByDate(){
+  var loc=(document.getElementById('lbd-location').value||'').replace(/\s+/g,' ').trim();
+  var picked=_lbdChecked();
+  if(!picked.length){ alert('Tick at least one date.'); return; }
+  if(!loc){ alert('Type the new location.'); return; }
+  if(loc.length>80){ alert('Location is too long.'); return; }
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var rows=toArr(schedule).slice(), changed=0, total=0;
+  picked.forEach(function(g){ g.idx.forEach(function(i){ total++; if((rows[i].location||'').trim()!==loc){ rows[i].location=loc; changed++; } }); });
+  if(!changed){ alert('Those dates already have that location — nothing to change.'); return; }
+  if(!confirm('Set the location to "'+loc+'" for '+total+' rows on '+picked.map(function(g){ return g.label; }).join(', ')+'?\n\nOnly the location changes.')) return;
+  schedule=rows;
+  fbSet(ctPath('schedule'),schedule);
+  if(typeof renderSchedule==='function') renderSchedule();
+  closeLocationsByDateModal();
+  alert('✅ Location updated on '+changed+' row'+(changed>1?'s':'')+'.');
+}
+
 // ── CLEAN UP SCHEDULE ──
 // Repairs the schedule after an older "sync" overwrote real rows with the
 // game's own date text / names and appended unmatched games as extra rows
@@ -6715,13 +6812,13 @@ function findPlayoffWinner(nameA,nameB,week){
 
 // Fall 2026 · 35+ Men's League — brand new division, no standings yet,
 // so this stays fully blank (Seed 1-4 placeholders, no team names
-// guessed). Semifinals on 11/25, then a full event day (3-Point
+// guessed). Semifinals on 12/2, then a full event day on 12/9 (3-Point
 // Shootout → All-Star → Championship) on 12/2, same format as the
 // Thursday League and the original Summer 2026 championship day.
 function renderFall2026Bracket(container){
   // Dates are specific to the 35+ league; any other new division stays TBD.
   var is35=CT_BASE.indexOf('35-men-s-league')!==-1;
-  var semiDate=is35?'11/25':'TBD', eventDate=is35?'12/2':'TBD';
+  var semiDate=is35?'12/2':'TBD', eventDate=is35?'12/9':'TBD';
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
   html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
 
