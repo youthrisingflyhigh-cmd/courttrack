@@ -796,7 +796,7 @@ function buildTicker(){
     var topLine='';
     var top=getGameTopScorer(g);
     if(top) topLine='  ·  🏀 '+top.name+' ('+top.teamName+') '+top.pts+' PTS';
-    items.push('<span>FINAL</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner+topLine);
+    items.push('<span>'+(g.isPlayoff?'PLAYOFF FINAL':'FINAL')+'</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner+topLine);
   });
   // Top scorer (from recent games only) — was reading game.playerStats,
   // a field that's never actually set (games are saved with hStats/
@@ -1364,6 +1364,22 @@ function buildScheduleResults(){
   return map;
 }
 
+// Team names for playoff seeds 1..n, straight from the live standings (same
+// order as the standings table). A slot shows a real team only once at least
+// 4 teams have played a game; until then it stays "Seed n" so a bracket
+// never shows teams that haven't really earned a spot yet. Rows for teams
+// that no longer exist (old spellings) are ignored.
+function bracketSeedNames(n){
+  var rows=getSeededStandings().filter(function(e){
+    if(e.gp<=0) return false;
+    if(teams && teams.length && !teams.some(function(t){ return _schNorm(t.name)===_schNorm(e.name); })) return false;
+    return true;
+  });
+  var out=[];
+  for(var i=0;i<n;i++) out.push(rows.length>=4 && rows[i] ? rows[i].name : null);
+  return out;
+}
+
 function renderHomeUpcoming(){
   var el=document.getElementById('home-upcoming-schedule');
   var _homeRes=buildScheduleResults();
@@ -1613,7 +1629,7 @@ function renderScores(){
     var logHtml=log.length?log.map(function(e){
       return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:var(--white);font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+' · '+(e.clock||'')+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -1667,7 +1683,7 @@ function renderFilm(){
         +'<div style="font-size:13px;"><span style="color:var(--white);font-weight:700;">'+(g.home||'')+'</span>'
         +' <span style="color:var(--muted);">'+(g.homeScore||0)+'–'+(g.awayScore||0)+'</span> '
         +'<span style="color:var(--white);font-weight:700;">'+(g.away||'')+'</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+(g.date||'')+' · W: <span style="color:var(--white);font-weight:700;">'+winner+'</span></div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+' · W: <span style="color:var(--white);font-weight:700;">'+winner+'</span></div>'
       +'</div>'
     +'</div>';
   }
@@ -1677,6 +1693,8 @@ function renderFilm(){
   // backfill week by matching the final schedule entry for that matchup,
   // and fall back to the active season name.
   function resolveWeek(g){
+    // Playoff games (flagged at game time) get their own group at the end.
+    if(g && g.isPlayoff===true && !(Number(g.week)>=9)) return 99;
     // Hardcoded fix: Aug 19 Round 1 and Aug 26 Round 2 playoff games —
     // checked BEFORE trusting any stored g.week, since these specific
     // games' records were saved with a stale/wrong week number that
@@ -1715,6 +1733,18 @@ function renderFilm(){
       return s.status==='final' &&
         ((sHome===gHome&&sAway===gAway)||(sHome===gAway&&sAway===gHome));
     });
+    if(!match){
+      // Spelling-tolerant fallback ("Old & Slow" = "OLD AND SLOW"): a game saved
+      // without a week can still be placed by finding the schedule row for the
+      // same two teams on the same day, whatever that row's status is.
+      var gmd=_schMd(g.date);
+      if(gmd){
+        match=schedule.find(function(s){
+          if(!s||s.isBye||_schMd(s.date)!==gmd) return false;
+          return (_schTeamsMatch(s.home,g.home)&&_schTeamsMatch(s.away,g.away))||(_schTeamsMatch(s.home,g.away)&&_schTeamsMatch(s.away,g.home));
+        });
+      }
+    }
     return match?match.round:null;
   }
   // Playoff weeks get a proper label instead of a generic "Week 9".
@@ -1726,6 +1756,7 @@ function renderFilm(){
     if(n===9) return 'Playoff Round 1';
     if(n===10) return 'Semifinals';
     if(n===11) return 'Championship Day';
+    if(n===99) return '🏆 Playoffs';
     return 'Week '+wk;
   }
 
@@ -1841,7 +1872,7 @@ function renderSchedule(){
     // (3-Point Shootout → All-Star → Championship) on 12/2.
     function f26Card(rows,timeLabel){
       var body=rows.map(function(r){
-        return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
+        return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:28px;">'+(r.seed||'')+'</span><span title="'+r.name+'" style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">'+r.name+'</span></div>';
       }).join('');
       return '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
         +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
@@ -1850,8 +1881,8 @@ function renderSchedule(){
     html += '<div style="display:flex;flex-direction:column;gap:0;">';
     html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · '+blankSemiDate+'</div>';
     html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 '+blankLocation+'</div>';
-    html += f26Card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'TBD');
-    html += f26Card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'TBD');
+    html += f26Card([{seed:'#1',name:bracketSeedNames(4)[0]||'Seed 1',border:true},{seed:'#4',name:bracketSeedNames(4)[3]||'Seed 4'}],'TBD');
+    html += f26Card([{seed:'#2',name:bracketSeedNames(4)[1]||'Seed 2',border:true},{seed:'#3',name:bracketSeedNames(4)[2]||'Seed 3'}],'TBD');
     html += '</div>';
     html += '<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
     html += '<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
@@ -1874,7 +1905,7 @@ function renderSchedule(){
       +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">TBD · WINNER: SEMI 1 vs SEMI 2</div></div>';
     html += '</div>';
     html += '</div></div>';
-    html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
+    html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeds follow the standings · Playoff games don\'t count toward them</div>';
   } else if(isThursdayLeague){
     // Back to all 8 teams — Quarterfinals AND Semifinals both on Oct 22
     // now (previously split across two separate days), fully seed-based
@@ -1882,7 +1913,7 @@ function renderSchedule(){
     // event day (3-Point Shootout → All-Star → Championship).
     function tlCard(rows,timeLabel){
       var body=rows.map(function(r){
-        return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
+        return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:28px;">'+(r.seed||'')+'</span><span title="'+r.name+'" style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">'+r.name+'</span></div>';
       }).join('');
       return '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
         +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
@@ -1891,8 +1922,8 @@ function renderSchedule(){
     html += '<div style="display:flex;flex-direction:column;gap:0;">';
     html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 22</div>';
     html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-    html += tlCard([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'6:30 PM');
-    html += tlCard([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'7:25 PM');
+    html += tlCard([{seed:'#1',name:bracketSeedNames(4)[0]||'Seed 1',border:true},{seed:'#4',name:bracketSeedNames(4)[3]||'Seed 4'}],'6:30 PM');
+    html += tlCard([{seed:'#2',name:bracketSeedNames(4)[1]||'Seed 2',border:true},{seed:'#3',name:bracketSeedNames(4)[2]||'Seed 3'}],'7:25 PM');
     html += '</div>';
     html += '<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
     html += '<div style="position:absolute;top:32px;left:0;right:0;height:2px;background:#333;"></div>';
@@ -1918,7 +1949,7 @@ function renderSchedule(){
       +'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:25 PM · WINNER: SEMI 1 vs SEMI 2</div></div>';
     html += '</div>';
     html += '</div></div>';
-    html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
+    html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeds follow the standings · Playoff games don\'t count toward them</div>';
   } else {
 
   // Playoff Bracket — same tiebreak logic as the standings table above.
@@ -2041,6 +2072,11 @@ function headToHeadRecord(nameA,nameB){
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   hist.forEach(function(g){
     if(!g) return;
+    // Playoff games are not part of the regular-season record, so they never
+    // count toward head-to-head tiebreakers either. (Not applied to the
+    // archived Summer 2026 league, whose final order was settled using its
+    // own manual overrides.)
+    if(CT_BASE!==LEGACY_BASE && (g.isPlayoff===true || g.excludedFromStandings===true)) return;
     var isMatchup=(g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA);
     if(!isMatchup) return;
     var winner=g.homeScore>g.awayScore?g.home:(g.awayScore>g.homeScore?g.away:null);

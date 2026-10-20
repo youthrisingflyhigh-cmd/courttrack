@@ -890,6 +890,11 @@ BYE: Ohana, AIM
             </div>
           </div>
         </div>
+
+        <div style="margin-top:22px;">
+          <button id="playoff-toggle-btn" onclick="togglePlayoffGame()" title="Mark this as a playoff game so it doesn't count toward the regular-season standings" style="padding:10px 16px;border-radius:99px;border:1px solid #555;background:var(--dark3);color:#ccc;font-weight:800;font-size:12px;letter-spacing:1px;cursor:pointer;">🏆 PLAYOFF GAME: OFF</button>
+          <div id="playoff-toggle-note" style="font-size:11px;color:#888;margin:6px auto 0;max-width:230px;line-height:1.35;">Regular-season game — counts in the standings</div>
+        </div>
       </div>
       <div class="team-block">
         <div class="team-name-lbl" id="away-lbl">Away</div>
@@ -4347,6 +4352,9 @@ function confirmStartGame(){
     hLineup:homeSelSnap,aLineup:awaySelSnap,
     q:1,playLog:[],hTeamFoulAdj:0,aTeamFoulAdj:0,hBenchTech:0,aBenchTech:0,
     date:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})};
+  game.isPlayoff=_isKnownPlayoffDay(game.date);
+  renderPlayoffToggle();
+  if(game.isPlayoff) setTimeout(function(){ alert('🏆 Today is a playoff day, so this game is set as a PLAYOFF GAME — it will not count in the regular-season standings or tiebreakers.\n\nIf it\'s actually a regular-season game, switch the 🏆 button in the middle of the live screen to OFF.'); },300);
   // Log the starting lineups into the play-by-play (informational only — not undoable)
   teams[hi].players.forEach(function(p){
     if(homeSelSnap.indexOf(p.num)!==-1){
@@ -4572,6 +4580,50 @@ window.retryPendingFinish = function(){
   attemptFinishSave(payload, payload.hn, payload.an, payload.hs, payload.as_);
 };
 
+// Team names for playoff seeds 1..n from the live standings. A slot shows a
+// real team only once at least 4 teams have played; until then it stays
+// "Seed n". Rows for teams that no longer exist are ignored.
+function bracketSeedNames(n){
+  var rows=getSeededStandings().filter(function(e){
+    if(e.gp<=0) return false;
+    if(teams && teams.length && !teams.some(function(t){ return _nt(t.name)===_nt(e.name); })) return false;
+    return true;
+  });
+  var out=[];
+  for(var i=0;i<n;i++) out.push(rows.length>=4 && rows[i] ? rows[i].name : null);
+  return out;
+}
+
+// ── PLAYOFF GAMES ──
+// A playoff game must not feed the regular-season standings (wins, losses,
+// points for/against) or head-to-head tiebreakers. The fall brackets aren't
+// on the schedule, so nothing could tell a playoff game from a regular one —
+// it's now an explicit switch on the live screen, saved with the game. It
+// switches itself ON when the game is played on one of a division's known
+// playoff days, so it can't be forgotten.
+function _isKnownPlayoffDay(dateStr){
+  var md=_schMd(dateStr); if(!md) return false;
+  var days={'6-2-under':['10-22','10-29'],'35-men-s-league':['12-2','12-9']};
+  return Object.keys(days).some(function(k){ return CT_BASE.indexOf(k)!==-1 && days[k].indexOf(md)!==-1; });
+}
+function renderPlayoffToggle(){
+  var b=document.getElementById('playoff-toggle-btn'), n=document.getElementById('playoff-toggle-note');
+  if(!b||!n) return;
+  var on=!!(game && game.isPlayoff);
+  b.textContent='🏆 PLAYOFF GAME: '+(on?'ON':'OFF');
+  b.style.background=on?'#eab308':'var(--dark3)';
+  b.style.color=on?'#000':'#ccc';
+  b.style.borderColor=on?'#eab308':'#555';
+  n.textContent=on?"Playoff game — won't count in the regular-season standings or tiebreakers":'Regular-season game — counts in the standings';
+}
+function togglePlayoffGame(){
+  if(!game) return;
+  if(!isActiveSession){ alert('This tab is read-only because another tab or device took over as the active session. Click "Use This Tab Instead" first.'); return; }
+  game.isPlayoff=!game.isPlayoff;
+  saveLiveGame();
+  renderPlayoffToggle();
+}
+
 function finishGame(){
   if(!game)return;
   if(_finishingGame)return;
@@ -4607,6 +4659,8 @@ function finishGame(){
     var matchedWeek=null;
     for(var sw=0;sw<schedule.length;sw++){
       if(schedule[sw].status!=='upcoming') continue;
+      // a flagged playoff game must never claim a regular-season row
+      if(game.isPlayoff && !(schedule[sw].isPlayoff || (schedule[sw].round||0)>=9)) continue;
       var swHome=(schedule[sw].home||'').toLowerCase(), swAway=(schedule[sw].away||'').toLowerCase();
       var hnLower=(hn||'').toLowerCase(), anLower=(an||'').toLowerCase();
       if((swHome===hnLower&&swAway===anLower)||(swHome===anLower&&swAway===hnLower)){
@@ -4625,7 +4679,7 @@ function finishGame(){
     // separate calendars (a brand new division's regular season games
     // played after Aug 19 are NOT playoff games just because that date
     // has passed in real time).
-    var isPlayoffGame=(matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
+    var isPlayoffGame=!!game.isPlayoff || (matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
     // Only create a brand-new standings row for a team that doesn't
     // already have one if this game actually counts toward the regular
     // season. Otherwise an excluded game (a playoff game, or an
@@ -4654,6 +4708,7 @@ function finishGame(){
     // casing than the team's real (usually ALL CAPS) stored name.
     for(var s=0;s<schedule.length;s++){
       if(schedule[s].status!=='upcoming') continue;
+      if(game.isPlayoff && !(schedule[s].isPlayoff || (schedule[s].round||0)>=9)) continue;
       var sHome=(schedule[s].home||'').toLowerCase(), sAway=(schedule[s].away||'').toLowerCase();
       var hnL=(hn||'').toLowerCase(), anL=(an||'').toLowerCase();
       if(sHome===hnL&&sAway===anL){
@@ -4706,6 +4761,7 @@ function finishGame(){
       // and doesn't always parse), so the actual decision made right now
       // (when today's real date is known) is captured here instead.
       excludedFromStandings:isPlayoffGame,
+      isPlayoff:!!game.isPlayoff,
       season:appSettings.season||'',
       hLineup:game.hLineup||[],aLineup:game.aLineup||[]
     };
@@ -4777,18 +4833,25 @@ function backfillGameWeeks(){
   hist.forEach(function(g){
     if(!g || !g.home || !g.away) return;
     if(g.week || g.week===0) return; // already has a week, nothing to do
-    var match=null;
+    if(g.isPlayoff) return;          // a playoff game must not be pinned to a regular-season week/row
+    // Same two teams in either order, spelling-tolerant ("Old & Slow" = "OLD AND
+    // SLOW"). If the pair meets more than once, prefer the row on the game's own
+    // day, then a row that's still upcoming, so a rematch never takes the
+    // earlier meeting's week.
+    var gmd=_schMd(g.date), cands=[];
     for(var s=0;s<schedule.length;s++){
       var sc=schedule[s];
-      if((sc.home===g.home&&sc.away===g.away)||(sc.home===g.away&&sc.away===g.home)){
-        match=sc; break;
-      }
+      if(!sc||sc.isBye) continue;
+      if((_schTeamsMatch(sc.home,g.home)&&_schTeamsMatch(sc.away,g.away))||(_schTeamsMatch(sc.home,g.away)&&_schTeamsMatch(sc.away,g.home))) cands.push(sc);
     }
+    var match=cands.filter(function(sc){ return gmd && _schMd(sc.date)===gmd; })[0]
+           || cands.filter(function(sc){ return sc.status==='upcoming'; })[0]
+           || cands[0] || null;
     if(!match){ skippedNoMatch++; return; }
     g.week=match.round||null;
     if(match.status==='upcoming'){
       match.status='final';
-      if(match.home===g.home){ match.homeScore=g.homeScore; match.awayScore=g.awayScore; }
+      if(_schTeamsMatch(match.home,g.home)){ match.homeScore=g.homeScore; match.awayScore=g.awayScore; }
       else { match.homeScore=g.awayScore; match.awayScore=g.homeScore; }
     }
     fixed++;
@@ -5736,6 +5799,7 @@ function toggleTimeout(team){
 }
 
 function renderTimeouts(){
+  renderPlayoffToggle();
   if(!game)return;
   var hUsed=game.hTimeoutsUsed||0, aUsed=game.aTimeoutsUsed||0;
   // Show: ● ● (0 used), ✕ ● (1 used), ✕ ✕ (2 used)
@@ -6753,6 +6817,11 @@ function headToHeadRecord(nameA,nameB){
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
   hist.forEach(function(g){
     if(!g) return;
+    // Playoff games are not part of the regular-season record, so they never
+    // count toward head-to-head tiebreakers either. (Not applied to the
+    // archived Summer 2026 league, whose final order was settled using its
+    // own manual overrides.)
+    if(CT_BASE!==LEGACY_BASE && (g.isPlayoff===true || g.excludedFromStandings===true)) return;
     var isMatchup=(g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA);
     if(!isMatchup) return;
     var winner=g.homeScore>g.awayScore?g.home:(g.awayScore>g.homeScore?g.away:null);
@@ -6825,7 +6894,7 @@ function renderFall2026Bracket(container){
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
-      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:28px;">'+(r.seed||'')+'</span><span title="'+r.name+'" style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">'+r.name+'</span></div>';
     }).join('');
     return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
@@ -6834,8 +6903,8 @@ function renderFall2026Bracket(container){
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
   html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · '+semiDate+'</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 '+bracketLoc+'</div>';
-  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'TBD');
-  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'TBD');
+  html+=card([{seed:'#1',name:bracketSeedNames(4)[0]||'Seed 1',border:true},{seed:'#4',name:bracketSeedNames(4)[3]||'Seed 4'}],'TBD');
+  html+=card([{seed:'#2',name:bracketSeedNames(4)[1]||'Seed 2',border:true},{seed:'#3',name:bracketSeedNames(4)[2]||'Seed 3'}],'TBD');
   html+='</div>';
 
   html+='<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
@@ -6861,7 +6930,7 @@ function renderFall2026Bracket(container){
   html+='</div>';
 
   html+='</div></div>';
-  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeds follow the standings · Playoff games don\'t count toward them</div>';
 
   container.innerHTML=html;
 }
@@ -6877,7 +6946,7 @@ function renderThursdayLeagueBracket(container){
 
   function card(rows,timeLabel){
     var body=rows.map(function(r){
-      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:56px;">'+(r.seed||'')+'</span><span style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;">'+r.name+'</span></div>';
+      return '<div style="padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;'+(r.border?'border-bottom:1px solid #1a1a1a;':'')+'"><span style="color:'+(r.seedColor||'#FF4500')+';font-size:11px;font-weight:700;min-width:28px;">'+(r.seed||'')+'</span><span title="'+r.name+'" style="color:'+(r.dim?'#888':'#ddd')+';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">'+r.name+'</span></div>';
     }).join('');
     return '<div style="background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">'+body
       +'<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+timeLabel+'</div></div>';
@@ -6890,8 +6959,8 @@ function renderThursdayLeagueBracket(container){
   html+='<div style="display:flex;flex-direction:column;gap:0;">';
   html+='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">SEMIFINALS · OCT 22</div>';
   html+='<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 Pioneer High</div>';
-  html+=card([{seed:'#1',name:'Seed 1',border:true},{seed:'#4',name:'Seed 4'}],'6:30 PM');
-  html+=card([{seed:'#2',name:'Seed 2',border:true},{seed:'#3',name:'Seed 3'}],'7:25 PM');
+  html+=card([{seed:'#1',name:bracketSeedNames(4)[0]||'Seed 1',border:true},{seed:'#4',name:bracketSeedNames(4)[3]||'Seed 4'}],'6:30 PM');
+  html+=card([{seed:'#2',name:bracketSeedNames(4)[1]||'Seed 2',border:true},{seed:'#3',name:bracketSeedNames(4)[2]||'Seed 3'}],'7:25 PM');
   html+='</div>';
 
   html+='<div style="position:relative;width:40px;height:200px;flex-shrink:0;">';
@@ -6920,7 +6989,7 @@ function renderThursdayLeagueBracket(container){
 
   html+='</div></div>';
 
-  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeding from final standings</div>';
+  html+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 4 seeds make playoffs · Seeds follow the standings · Playoff games don\'t count toward them</div>';
 
   container.innerHTML=html;
 }
