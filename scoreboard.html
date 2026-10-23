@@ -133,6 +133,24 @@ body{
   50%{box-shadow:0 0 30px 8px rgba(245,158,11,0.85), 0 0 58px 18px rgba(245,158,11,0.38);}
 }
 
+/* BONUS sign under the timeouts: dim "BONUS" until the other team reaches 7 fouls,
+   then it lights up amber with "1 & 1" (10+ fouls: double bonus). */
+.bonus-sign{
+  margin-top:clamp(6px, 1vh, 14px);
+  padding:clamp(4px, 0.8vh, 10px) clamp(18px, 2.4vw, 40px);
+  font-size:clamp(24px, 3.2vw, 48px);        /* about the size of the timeouts line, so it reads from across the gym */
+  letter-spacing:3px;
+  white-space:nowrap;
+  max-width:100%;
+}
+.bonus-sign.pop{animation:bonusPop 0.9s ease-out 1, bonusGlow 1.4s ease-in-out 0.9s infinite;}
+@keyframes bonusPop{
+  0%{transform:scale(0.7);}
+  35%{transform:scale(1.18);}
+  60%{transform:scale(0.96);}
+  100%{transform:scale(1);}
+}
+
 /* ── CENTER ── */
 .center-block{
   display:flex;
@@ -307,6 +325,7 @@ body{
       </div>
       <div class="team-fouls">FOULS: <span id="sb-home-fouls">0</span></div>
       <div class="team-timeouts">TIMEOUTS: <span id="sb-home-timeouts"><span class="to-on">●</span> <span class="to-on">●</span></span></div>
+      <div class="bonus-light bonus-sign" id="sb-home-bonus-sign">BONUS</div>
     </div>
 
     <!-- Center -->
@@ -331,6 +350,7 @@ body{
       </div>
       <div class="team-fouls">FOULS: <span id="sb-away-fouls">0</span></div>
       <div class="team-timeouts">TIMEOUTS: <span id="sb-away-timeouts"><span class="to-on">●</span> <span class="to-on">●</span></span></div>
+      <div class="bonus-light bonus-sign" id="sb-away-bonus-sign">BONUS</div>
     </div>
   </div>
 </div>
@@ -376,6 +396,32 @@ var db = firebase.database();
 // courtside device for a given division's game just needs that division's
 // URL with the right ?ct= param — no dropdown needed on this screen.
 var LEGACY_BASE='ct';
+// ── BONUS (team fouls) ──
+// A team shoots free throws when the OTHER team has 7+ fouls in the half:
+// 7–9 = bonus (1 & 1), 10+ = double bonus (2 shots). Team fouls reset at the half.
+var SB_BONUS_AT = 7, SB_DOUBLE_BONUS_AT = 10;
+var _sbPrevBonus = {home:0, away:0};
+function bonusLevel(oppFouls){
+  return oppFouls >= SB_DOUBLE_BONUS_AT ? 2 : (oppFouls >= SB_BONUS_AT ? 1 : 0);
+}
+function updateBonusSigns(hFouls, aFouls){
+  var lv = {home: bonusLevel(aFouls), away: bonusLevel(hFouls)};
+  ['home','away'].forEach(function(side){
+    var l = lv[side];
+    document.getElementById('sb-'+side+'-bonus-dot-1').style.display = l >= 1 ? 'block' : 'none';
+    document.getElementById('sb-'+side+'-bonus-dot-2').style.display = l >= 2 ? 'block' : 'none';
+    var sign = document.getElementById('sb-'+side+'-bonus-sign');
+    sign.textContent = l === 2 ? 'DOUBLE BONUS · 2 FT' : (l === 1 ? 'BONUS · 1 & 1' : 'BONUS');
+    sign.classList.toggle('active', l > 0);
+    if(l > _sbPrevBonus[side]){            // just lit up: pop it so the gym notices
+      sign.classList.remove('pop'); void sign.offsetWidth; sign.classList.add('pop');
+    } else if(l === 0){
+      sign.classList.remove('pop');
+    }
+    _sbPrevBonus[side] = l;
+  });
+}
+
 function getUrlParam(name){
   try{ return new URLSearchParams(window.location.search).get(name); }catch(e){ return null; }
 }
@@ -648,18 +694,8 @@ db.ref(ctPath('game')).on('value', function(s){
   document.getElementById('sb-home-timeouts').innerHTML = toDots(game.hTimeoutsUsed);
   document.getElementById('sb-away-timeouts').innerHTML = toDots(game.aTimeoutsUsed);
 
-  // Bonus indicator lights next to score — opposite team gets bonus when other team has 7+ fouls
-  // 7-9 fouls = 1 light, 10+ fouls = 2 lights (double bonus)
-  var BONUS_THRESHOLD = 7;
-  var DOUBLE_BONUS_THRESHOLD = 10;
-  
-  // Home team bonus lights (show when away team has fouls)
-  document.getElementById('sb-home-bonus-dot-1').style.display = aFouls >= BONUS_THRESHOLD ? 'block' : 'none';
-  document.getElementById('sb-home-bonus-dot-2').style.display = aFouls >= DOUBLE_BONUS_THRESHOLD ? 'block' : 'none';
-  
-  // Away team bonus lights (show when home team has fouls)
-  document.getElementById('sb-away-bonus-dot-1').style.display = hFouls >= BONUS_THRESHOLD ? 'block' : 'none';
-  document.getElementById('sb-away-bonus-dot-2').style.display = hFouls >= DOUBLE_BONUS_THRESHOLD ? 'block' : 'none';
+  // Bonus: the sign under the timeouts + the lights next to the score
+  updateBonusSigns(hFouls, aFouls);
 
   // Clock — resync the local predictive clock; tickLocalClocks() owns the
   // actual countdown display + horn firing (see LOCAL PREDICTIVE CLOCK above).
