@@ -8,7 +8,13 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://court-track-39271-default-rtdb.firebaseio.com" crossorigin>
+<!-- Fonts load without blocking the first paint (text shows in a fallback font until they arrive). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap"></noscript>
 <style>
 :root{
   --orange:#FF5C00;--gold:#C9A84C;
@@ -372,6 +378,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 <div class="ticker-bar" id="ticker-bar" style="display:none;">
   <div class="ticker-inner" id="ticker-inner"></div>
 </div>
+<div id="data-loading" style="display:none;background:#1a1a1a;color:var(--muted);text-align:center;font-size:12px;padding:6px 10px;border-bottom:1px solid var(--line);letter-spacing:0.5px;">⏳ Loading latest games &amp; stats…</div>
 
 <!-- ── PAGES ── -->
 
@@ -387,6 +394,15 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="home-search" id="home-search" placeholder="Search players, teams..." oninput="homeSearch()" autocomplete="off"/>
     <div class="home-search-results" id="home-search-results"></div>
+  </div>
+
+  <!-- GAME DAY MVPs: winning team's MVP from each game of the most recent game day -->
+  <div class="top-scorers-card" id="gameday-mvps-card" style="display:none;">
+    <div class="tsc-header">
+      <span id="gameday-mvps-title">🏅 Game Day MVPs</span>
+      <a onclick="showTab('scores')">All games →</a>
+    </div>
+    <div id="gameday-mvps" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--line);"></div>
   </div>
 
   <!-- POTW -->
@@ -645,14 +661,24 @@ function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
 })();
 
 function populateSeasonDivisionSelector(){
-  db.ref('ctIndex/seasons').once('value',function(snap){
-    var list=toArr(snap.val());
+  var KEY='ct_division_list_v1';
+  function paint(list){
     var sel=document.getElementById('season-division-select');
     if(!sel||!list.length)return;
     sel.innerHTML=list.filter(function(entry){ return entry && (!entry.archived || entry.base===CT_BASE); }).map(function(entry){
       var selected=(entry.base===CT_BASE)?' selected':'';
       return '<option value="'+entry.base+'"'+selected+'>'+entry.label+(entry.archived?' (archived)':'')+'</option>';
     }).join('');
+  }
+  // 1) straight away, from the last copy this device saw — so the options are
+  //    there to tap before the network has answered anything
+  try{ var cached=JSON.parse(localStorage.getItem(KEY)||'null'); if(Array.isArray(cached)&&cached.length) paint(cached); }catch(e){}
+  // 2) then refresh from the database and remember it for next time
+  db.ref('ctIndex/seasons').once('value',function(snap){
+    var list=toArr(snap.val());
+    if(!list.length)return;
+    paint(list);
+    try{ localStorage.setItem(KEY,JSON.stringify(list)); }catch(e){}
   });
 }
 function switchSeasonDivisionPublic(){
@@ -722,25 +748,38 @@ function toTeamArr(v){
 }
 
 // ── LOAD ──
-var _loaded=0, _booted=false;
-function _check(){if(++_loaded>=4 && !_booted){_booted=true;_ready=true;populateSeasonDivisionSelector();showTab('home');}}
-setTimeout(function(){if(!_booted){_booted=true;_ready=true;showTab('home');}},2500);
+// Everything below shares ONE connection and the answers come back in the
+// order they were asked for. The saved games (every game with its full
+// play-by-play) are by far the biggest piece — around a megabyte — so they
+// are asked for LAST. Asked for in the middle, they held up the small pieces
+// behind them (like the schedule) and the page waited for all of it before
+// drawing anything. Now the first screen draws as soon as teams, standings
+// and the schedule are in, and the saved games and player stats fill in
+// when they arrive (a slim "Loading…" strip shows until then).
+var _booted=false, _histLoaded=false, _psLoaded=false, _got={teams:false,standings:false,schedule:false};
+function updateLoadingBanner(){
+  var b=document.getElementById('data-loading');
+  if(b) b.style.display=(_booted && !(_histLoaded&&_psLoaded))?'block':'none';
+}
+function _boot(){
+  if(_booted) return;
+  _booted=true; _ready=true;
+  showTab('home');
+  updateLoadingBanner();
+}
+function _mark(k){ _got[k]=true; if(_got.teams&&_got.standings&&_got.schedule) _boot(); }
+setTimeout(_boot,2500);   // safety net: never wait longer than this
 // Auto-show league overlay on first load
 if(document.getElementById('league-overlay') && !localStorage.getItem('sbh_league')){
   document.getElementById('league-overlay').style.display='flex';
 }
-db.ref(ctPath('teams')).once('value').then(function(s){teams=toTeamArr(s.val());_check();}).catch(function(){_check();});
-db.ref(ctPath('standings')).on('value',function(s){standings=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref(ctPath('history')).on('value',function(s){
-  gameHistory=toArr(s.val());
-  if(_booted)renderAll();else _check();
-  if(_ready) buildTicker();
-});
-db.ref(ctPath('playerStats')).on('value',function(s){playerStats=s.val()||{};if(_booted)renderAll();else _check();});
-db.ref(ctPath('schedule')).on('value',function(s){schedule=toArr(s.val());if(_booted)renderAll();else _check();});
+populateSeasonDivisionSelector();   // the division dropdown: tiny request, asked for first
+db.ref(ctPath('teams')).once('value').then(function(s){teams=toTeamArr(s.val());_mark('teams');}).catch(function(){_mark('teams');});
+db.ref(ctPath('standings')).on('value',function(s){standings=s.val()||{};if(_booted)scheduleRenderAll();else _mark('standings');});
+db.ref(ctPath('schedule')).on('value',function(s){schedule=toArr(s.val());if(_booted)scheduleRenderAll();else _mark('schedule');});
 // Manual head-to-head overrides — not part of the boot gate since
 // they're optional (only needed when a real game record is missing).
-db.ref(ctPath('h2hOverrides')).on('value',function(s){h2hOverrides=toArr(s.val());if(_booted)renderAll();});
+db.ref(ctPath('h2hOverrides')).on('value',function(s){h2hOverrides=toArr(s.val());if(_booted)scheduleRenderAll();});
 db.ref(ctPath('threePointContest')).on('value',function(s){
   var v=s.val();
   threePointContest=v||{participants:[],currentId:null,timerSeconds:45,timerRunning:false};
@@ -753,11 +792,38 @@ db.ref(ctPath('allStarGameId')).on('value',function(s){
   if(currentTab==='film') renderFilm();
 });
 
-db.ref(ctPath('game')).on('value',function(s){
-  game=s.val()||null;
+// The admin screen saves the clock and shot clock into the live game about
+// once a second each. The clock is drawn by its own local countdown, so an
+// update where ONLY the clocks moved needs nothing redrawn — rebuilding the
+// whole Live tab and the ticker twice a second made the page lag and kept
+// restarting the scrolling ticker. Anything else (score, stats, fouls,
+// timeouts, subs, half) changes the signature and redraws as before.
+var _lastGameSigPub=null;
+function gameSigNoClocks(v){
+  return JSON.stringify(v,function(k,val){ return ((k==='clock'||k==='shotClock')&&this===v)?undefined:val; });
+}
+function handleGameUpdate(v){
+  game=v||null;
   syncLiveClock();
+  var sig=gameSigNoClocks(game);
+  if(_ready && sig===_lastGameSigPub){ paintLiveClock(); return; }
+  if(_ready) _lastGameSigPub=sig;
   if(_ready&&currentTab==='live') renderLive();
   if(_ready) buildTicker();
+}
+db.ref(ctPath('game')).on('value',function(s){ handleGameUpdate(s.val()||null); });
+
+// The two big pieces, deliberately last (see the note above the loader).
+db.ref(ctPath('history')).on('value',function(s){
+  gameHistory=toArr(s.val());
+  _histLoaded=true; updateLoadingBanner();
+  if(_booted)scheduleRenderAll();
+  if(_ready) buildTicker();
+});
+db.ref(ctPath('playerStats')).on('value',function(s){
+  playerStats=s.val()||{};
+  _psLoaded=true; updateLoadingBanner();
+  if(_booted)scheduleRenderAll();
 });
 
 // ── TICKER ──
@@ -833,7 +899,10 @@ function buildTicker(){
   var inner=document.getElementById('ticker-inner');
   // Duplicate for seamless loop
   var content=items.map(function(i){return '<span class="ticker-item">'+i+'</span>';}).join('');
-  inner.innerHTML=content+content;
+  if(inner._lastContent!==content){          // unchanged -> leave it scrolling
+    inner._lastContent=content;
+    inner.innerHTML=content+content;
+  }
   bar.style.display='flex';
 }
 
@@ -843,7 +912,83 @@ function buildTicker(){
 // active, so this no longer needs its own dynamic text.
 
 // ── HOME PAGE ──
+// ── GAME DAY MVPs (top of Home) ──
+// For the most recent day games were played: one card per game showing the
+// MVP of the WINNING team — name, jersey number and stat line. "MVP" is the
+// same Efficiency formula used everywhere else on the site
+// (PTS + REB + AST + STL + BLK − TO), taken only from the winning team's
+// players in that game. Tied games and games with no recorded stats are skipped.
+function gdEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Saved-game ids end with the time the game was saved ("game_1760000000000"),
+// which is the reliable way to tell which game is newest.
+function _gdStamp(g){ var m=String((g&&g.id)||'').match(/(\d{12,})/); return m?Number(m[1]):0; }
+function _gdOrdinal(g){ var md=_schMd(g&&g.date); if(!md) return 0; var p=md.split('-'); return (+p[0])*100+(+p[1]); }
+function _gdTextOn(hex){
+  var m=/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(hex||'').trim()); if(!m) return '#000';
+  var h=m[1]; if(h.length===3) h=h.replace(/(.)/g,'$1$1');
+  var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  return (0.299*r+0.587*g+0.114*b)>150?'#000':'#fff';
+}
+function computeWinningTeamMVP(g){
+  var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0;
+  if(hs===as) return null;
+  var homeWon=hs>as;
+  var stats=(homeWon?g.hStats:g.aStats)||{};
+  var teamName=homeWon?g.home:g.away;
+  var roster=toArr(homeWon?g.homePlayers:g.awayPlayers);
+  var team=(teams||[]).filter(function(t){ return normTeam(t.name)===normTeam(teamName); })[0];
+  if(!roster.length && team) roster=team.players||[];      // older games saved without a roster
+  var color=(homeWon?g.homeColor:g.awayColor)||(team&&team.color)||'#FF5C00';
+  var best=null;
+  Object.keys(stats).forEach(function(num){
+    var s=stats[num]||{};
+    var n=function(k){ return Number(s[k])||0; };
+    if(!(n('pts')+n('reb')+n('ast')+n('stl')+n('blk')+n('to')+n('fgm')+n('3pm')+n('ftm'))) return;   // didn't play
+    var eff=n('pts')+n('reb')+n('ast')+n('stl')+n('blk')-n('to');
+    var p=roster.filter(function(x){ return String(x.num)===String(num); })[0];
+    if(!best || eff>best.eff || (eff===best.eff && n('pts')>(Number(best.s.pts)||0)))
+      best={name:(p&&p.name)?p.name:('#'+num), num:num, teamName:teamName, color:color, s:s, eff:eff};
+  });
+  return best;
+}
+function renderGameDayMVPs(){
+  var card=document.getElementById('gameday-mvps-card'), box=document.getElementById('gameday-mvps');
+  if(!card||!box) return;
+  var hist=toArr(gameHistory).filter(function(g){ return g && g.home && g.away; });
+  if(!hist.length){ card.style.display='none'; return; }
+  // newest game = latest save time; for old data with no time in the id, the latest calendar date
+  var newest=null, best=0;
+  hist.forEach(function(g){ var st=_gdStamp(g); if(st>best){ best=st; newest=g; } });   // a game with no save time never counts as "newest"
+  if(!newest){ var bo=-1; hist.forEach(function(g){ var o=_gdOrdinal(g); if(o>bo){ bo=o; newest=g; } }); }
+  if(!newest) newest=hist[0];
+  var md=_schMd(newest.date);
+  var day=hist.filter(function(g){ return md ? _schMd(g.date)===md : g===newest; });
+  day.sort(function(a,b){ return _gdStamp(a)-_gdStamp(b); });          // in the order they were played
+  var items=day.map(function(g){ var m=computeWinningTeamMVP(g); return m?{g:g,m:m}:null; }).filter(Boolean);
+  if(!items.length){ card.style.display='none'; return; }
+  document.getElementById('gameday-mvps-title').textContent='🏅 Game Day MVPs · '+(newest.date||'');
+  box.innerHTML=items.map(function(it){
+    var g=it.g, m=it.m, s=m.s, n=function(k){ return Number(s[k])||0; };
+    var hWin=(Number(g.homeScore)||0)>(Number(g.awayScore)||0);
+    var big=function(v,l){ return '<div style="text-align:center;min-width:44px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:30px;font-weight:900;line-height:1;color:var(--white);">'+v+'</div><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);">'+l+'</div></div>'; };
+    var extra=[]; if(n('stl')) extra.push(n('stl')+' STL'); if(n('blk')) extra.push(n('blk')+' BLK'); if(n('3pm')) extra.push(n('3pm')+' 3PM');
+    return '<div style="background:var(--dark2);padding:16px 18px;">'
+      +'<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Final'+(g.isPlayoff?' · <span style="color:#eab308;">🏆 Playoff</span>':'')+'</div>'
+      +'<div style="font-size:13px;margin:3px 0 14px;color:var(--white);"><span style="font-weight:700;">'+gdEsc(g.home)+'</span> <span class="'+(hWin?'win-score':'lose-score')+'">'+(Number(g.homeScore)||0)+'</span> <span style="color:#444;">–</span> <span class="'+(hWin?'lose-score':'win-score')+'">'+(Number(g.awayScore)||0)+'</span> <span style="font-weight:700;">'+gdEsc(g.away)+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:12px;">'
+        +'<div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:'+gdEsc(m.color)+';color:'+_gdTextOn(m.color)+';font-family:\'Barlow Condensed\',sans-serif;font-size:19px;font-weight:900;">#'+gdEsc(m.num)+'</div>'
+        +'<div style="min-width:0;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:900;line-height:1.05;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+gdEsc(m.name)+'</div>'
+        +'<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--orange);text-transform:uppercase;">⭐ MVP · '+gdEsc(m.teamName)+'</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:18px;margin-top:14px;">'+big(n('pts'),'PTS')+big(n('reb'),'REB')+big(n('ast'),'AST')+'</div>'
+      +(extra.length?'<div style="font-size:12px;color:var(--muted);margin-top:8px;">'+extra.join(' · ')+'</div>':'')
+    +'</div>';
+  }).join('');
+  card.style.display='block';
+}
+
 function renderHome(){
+  renderGameDayMVPs();
   renderPOTW();
   renderHomeLeagueLeaders();
   renderHomeRecentScores();
@@ -1291,7 +1436,7 @@ function renderHomeRecentScores(){
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   hist=hist.filter(Boolean);
-  if(!hist.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">No completed games yet.</div>';return;}
+  if(!hist.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">'+(_histLoaded?'No completed games yet.':'Loading latest results…')+'</div>';return;}
   var recent=hist.slice(-5).reverse();
   el.innerHTML=recent.map(function(g){
     var hWin=(g.homeScore||0)>(g.awayScore||0);
@@ -1403,6 +1548,10 @@ function renderHomeLeagueLeaders(){
   var el=document.getElementById('home-league-leaders');
   if(!el)return;
   var allP=getAllPlayers().filter(function(r){return (r.s.gp||0)>0;});
+  if(!allP.length && !_psLoaded){
+    el.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;font-style:italic;background:var(--dark2);">Loading league leaders…</div>';
+    return;
+  }
   if(!allP.length){
     el.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;font-style:italic;background:var(--dark2);">No stats yet — check back once games are underway.</div>';
     return;
@@ -1434,7 +1583,7 @@ function renderHomeTopScorers(){
   
   // Get stats from recent games only (last 5)
   var recent=hist.slice(-5);
-  if(!recent.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">No stats yet.</div>';return;}
+  if(!recent.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">'+(_histLoaded?'No stats yet.':'Loading…')+'</div>';return;}
   
   // Aggregate stats from recent games per player
   var playerStats={};
@@ -2499,6 +2648,14 @@ function clearStream(){
 }
 
 // ── TAB NAV ──
+// Several listeners (standings, history, player stats, schedule, head-to-head)
+// usually fire within a moment of each other, especially while the page
+// loads. Merge them into a single redraw of the open tab.
+var _renderAllTimer=null;
+function scheduleRenderAll(){
+  if(_renderAllTimer) return;
+  _renderAllTimer=setTimeout(function(){ _renderAllTimer=null; renderAll(); },60);
+}
 function renderAll(){
   if(currentTab==='home')        renderHome();
   if(currentTab==='live')        renderLive();

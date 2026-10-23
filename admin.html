@@ -2855,8 +2855,22 @@ fbListen(ctPath('threePointContest'), function(v){
     renderTpcUI();
   }
 });
-fbListen(ctPath('game'), function(v){
+// The clock and shot clock are saved into the live game about once a second
+// each, and every one of those writes fires this listener. Redrawing every
+// player chip, stat button and the whole box score each time made the
+// scorekeeping screen lag (and could rebuild a chip in the middle of a tap).
+// The clocks have their own listeners below, so an update where ONLY the
+// clocks moved is skipped; any real change (score, stats, fouls, subs,
+// timeouts, half, playoff switch) still redraws exactly as before.
+var _lastGameSigAdm=null;
+function gameSigNoClocks(v){
+  return JSON.stringify(v,function(k,val){ return ((k==='clock'||k==='shotClock')&&this===v)?undefined:val; });
+}
+function handleGameUpdate(v){
   game=v||null;
+  var sig=gameSigNoClocks(game);
+  if(sig===_lastGameSigAdm) return;
+  _lastGameSigAdm=sig;
   // If already on track tab, refresh it
   var trackPage = document.getElementById('page-track');
   if(trackPage && trackPage.classList.contains('active')){
@@ -2881,7 +2895,8 @@ fbListen(ctPath('game'), function(v){
       renderDualChips(); renderDualStatBtns(); renderBox();
     }
   }
-});
+}
+fbListen(ctPath('game'), handleGameUpdate);
 
 // Keep the game clock and shot clock in sync across devices. If THIS
 // device isn't the one actively counting down (i.e. you didn't press
