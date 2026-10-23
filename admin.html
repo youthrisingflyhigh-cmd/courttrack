@@ -1217,7 +1217,7 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Edit / Add a Box Score</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals. You can also fix a player's name right in the box score, or add a player who's missing (＋ Add player). If the new box score no longer adds up to the final score, it asks whether to update the final score, standings and schedule to match.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">For any saved game — including ones added manually with just a final score — type in each player's stats directly. Saving updates that game's box score and automatically resyncs everyone's season totals. You can also fix a player's name right in the box score, correct their minutes on the court (MIN), or add a player who's missing (＋ Add player). If the new box score no longer adds up to the final score, it asks whether to update the final score, standings and schedule to match.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openStatsCorrectionModal()">✎ Edit Box Score</button>
 
       <hr style="border-color:#333;margin:18px 0;">
@@ -1225,6 +1225,12 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Correct a Game's Final Score</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Edit Box Score changes the player lines but not the final score. This changes the final score and carries it through everywhere: the saved game, the standings (points for/against, and wins/losses if the winner changes), and the schedule row. It also flags any game whose box score doesn't add up to its final score.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openFixScoreModal()">🎯 Correct Final Score</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Playing Time for Saved Games</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">New games work out minutes on the court by themselves, from the subs and the game clock. This does the same for games you saved earlier that have no minutes yet. They're estimates, and you can correct any of them in Edit Box Score.</p>
+      <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="calcMinutesForSavedGames()">⏱ Calculate Playing Time</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -4663,6 +4669,95 @@ function togglePlayoffGame(){
   renderPlayoffToggle();
 }
 
+// ── PLAYING TIME ──
+// Worked out from the substitutions already logged in the play-by-play: a
+// player is "on the court" from the moment they start / enter the game until
+// they're subbed or marked out (or the game ends), measured on the GAME clock
+// — so stoppages and halftime don't count, only game time. Needs the game
+// clock to have been run and subs to have been tapped.
+function _ptClockSecs(c){ var m=/^(\d+):(\d{2})$/.exec(String(c==null?'':c).trim()); return m?(+m[1])*60+(+m[2]):null; }
+function _ptFmt(sec){ sec=Math.max(0,Math.round(sec||0)); return Math.floor(sec/60)+':'+(sec%60<10?'0':'')+(sec%60); }
+// "18:30" -> 1110, "18" -> 1080 (whole minutes), "" or junk -> null
+function _ptParse(v){
+  v=String(v==null?'':v).trim(); if(!v) return null;
+  var m=/^(\d{1,3}):([0-5]\d)$/.exec(v); if(m) return (+m[1])*60+(+m[2]);
+  if(/^\d{1,3}(\.\d+)?$/.test(v)) return Math.round(parseFloat(v)*60);
+  return null;
+}
+// endHalf/endRemaining = where the clock stands as the game ends. For older
+// saved games that isn't known: pass assumeEnd=true to estimate it.
+function computePlayingTime(playLog, endHalf, endRemaining, assumeEnd){
+  var log=toArr(playLog).filter(Boolean), halfLen=0, maxHalf=1, lastEl=null;
+  log.forEach(function(e){ var c=_ptClockSecs(e.clock); if(c!==null&&c>halfLen) halfLen=c; if((e.half||1)>maxHalf) maxHalf=e.half; });
+  if(!halfLen) return {usable:false,reason:'no-clock'};
+  function el(half,rem){ return ((half||1)-1)*halfLen+(halfLen-Math.min(halfLen,Math.max(0,rem))); }
+  var ev=log.filter(function(e){ return e.key==='sub' && (e.label==='Starting Lineup'||e.label==='Entered Game'||e.label==='Subbed Out'||e.label==='Marked Out'); });
+  if(!ev.length) return {usable:false,reason:'no-subs'};
+  log.forEach(function(e){ var c=_ptClockSecs(e.clock); if(c!==null){ var t=el(e.half,c); if(lastEl===null||t>lastEl) lastEl=t; } });
+  var endEl;
+  if(endHalf!=null && endRemaining!=null) endEl=el(endHalf,endRemaining);
+  else if(assumeEnd){                                     // older games: the final clock wasn't saved
+    var full=maxHalf*halfLen; endEl=(lastEl!==null && lastEl>=full-120)?full:(lastEl||0);
+  } else endEl=lastEl||0;
+  var on={home:{},away:{}}, tot={home:{},away:{}}, lastT={home:0,away:0};
+  ev.forEach(function(e){
+    var rem=_ptClockSecs(e.clock); if(rem===null||!on[e.side]) return;
+    var t=Math.max(lastT[e.side]||0,el(e.half,rem)); lastT[e.side]=t;   // never run backwards (checked per team)
+    var n=String(e.num);
+    if(e.label==='Starting Lineup'||e.label==='Entered Game'){
+      if(on[e.side][n]===undefined) on[e.side][n]=t;
+      if(tot[e.side][n]===undefined) tot[e.side][n]=0;
+    } else {
+      if(on[e.side][n]!==undefined){ tot[e.side][n]=(tot[e.side][n]||0)+(t-on[e.side][n]); delete on[e.side][n]; }
+      else if(tot[e.side][n]===undefined) tot[e.side][n]=0;
+    }
+  });
+  endEl=Math.max(endEl,lastT.home,lastT.away);
+  ['home','away'].forEach(function(sd){ Object.keys(on[sd]).forEach(function(n){ tot[sd][n]=(tot[sd][n]||0)+(endEl-on[sd][n]); }); });
+  if(endEl<=0) return {usable:false,reason:'clock-not-used'};     // clock never moved: every stretch is 0:00
+  return {usable:true,halfLen:halfLen,periods:maxHalf,total:endEl,home:tot.home,away:tot.away};
+}
+// Sanity check: with 5 players on the court the team's minutes should add up to
+// 5 x the game length. Far from that means a sub was missed or double-tapped.
+function playingTimeCheck(pt, teamNames, hStats, aStats){
+  var lines=[], expect=5*pt.total;
+  [['home',pt.home,hStats],['away',pt.away,aStats]].forEach(function(x,i){
+    var sum=0; Object.keys(x[1]).forEach(function(n){ sum+=x[1][n]; });
+    var ratio=expect?sum/expect:1;
+    if(ratio<0.97||ratio>1.03) lines.push('• '+teamNames[i]+': player minutes add up to '+_ptFmt(sum)+', but 5 players × '+_ptFmt(pt.total)+' = '+_ptFmt(expect)+' — '+(ratio<1?'a sub was probably missed (fewer than 5 marked IN at times).':'more than 5 were marked IN at times.'));
+    var none=[]; Object.keys(x[2]||{}).forEach(function(n){
+      var s=x[2][n]||{}, did=(s.pts||0)+(s.reb||0)+(s.ast||0)+(s.stl||0)+(s.blk||0)+(s.to||0)+(s.fgm||0)+(s['3pm']||0)+(s.ftm||0);
+      if(did && !(x[1][n]>0)) none.push('#'+n);
+    });
+    if(none.length) lines.push('• '+teamNames[i]+': stats but no time on the court for '+none.join(', ')+'.');
+  });
+  return lines;
+}
+
+// Settings → Playing Time for Saved Games. Fills in minutes for games saved
+// before this existed (only games with no minutes yet; never overwrites).
+function calcMinutesForSavedGames(){
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var hist=toArr(gameHistory), todo=[], have=0, noData=0, odd=[];
+  hist.forEach(function(g){
+    if(!g) return;
+    if(g.minutes){ have++; return; }
+    var pt=computePlayingTime(g.playLog,null,null,true);
+    if(!pt.usable){ noData++; return; }
+    todo.push({g:g,pt:pt});
+    if(playingTimeCheck(pt,[g.home,g.away],g.hStats,g.aStats).length) odd.push((g.date||'?')+' · '+g.home+' vs '+g.away);
+  });
+  if(!todo.length){ alert('Nothing to calculate.\n\n'+have+' game(s) already have playing time.\n'+noData+' saved game(s) can\'t be worked out (no game clock or no subs were recorded).'); return; }
+  var msg='Playing time can be worked out for '+todo.length+' saved game'+(todo.length>1?'s':'')+'.\n\n'+have+' already have it (left alone) · '+noData+' can\'t be worked out (no clock or subs recorded).\n\nThese are ESTIMATES: older games don\'t have the exact end-of-game clock saved.';
+  if(odd.length) msg+='\n\nThese look off (a sub was probably missed) — fix them in Edit Box Score afterwards:\n• '+odd.slice(0,8).join('\n• ')+(odd.length>8?'\n…and '+(odd.length-8)+' more':'');
+  msg+='\n\nSave playing time to these games?';
+  if(!confirm(msg)) return;
+  todo.forEach(function(t){ t.g.minutes={home:t.pt.home,away:t.pt.away}; t.g.halfSec=t.pt.halfLen; t.g.minutesEst=true; });
+  gameHistory=hist;
+  fbSet(ctPath('history'),gameHistory);
+  alert('✅ Playing time saved for '+todo.length+' game'+(todo.length>1?'s':'')+'.');
+}
+
 function finishGame(){
   if(!game)return;
   if(_finishingGame)return;
@@ -4683,7 +4778,15 @@ function finishGame(){
     }
   }
   
-  if(!confirm('Finish this game and save results?'))return;
+  // Playing time (from the subs + game clock) — tell the scorekeeper now, while it can still be fixed
+  var _pt=computePlayingTime(game.playLog, game.q, timerSeconds), _ptNote='';
+  if(_pt.usable){
+    var _ptIssues=playingTimeCheck(_pt,[teams[game.hi].name,teams[game.ai].name],game.hStats,game.aStats);
+    _ptNote=_ptIssues.length?('\n\n⏱ Playing time looks off:\n'+_ptIssues.join('\n')+'\n(You can correct minutes later in Settings → Edit Box Score.)'):'\n\n⏱ Playing time tracked.';
+  } else if(_pt.reason==='clock-not-used'){
+    _ptNote='\n\n⏱ Playing time can\'t be tracked for this game — the game clock was never run.';
+  }
+  if(!confirm('Finish this game and save results?'+_ptNote))return;
   _finishingGame=true;
   try{
     var hn=teams[game.hi].name, an=teams[game.ai].name;
@@ -4804,6 +4907,7 @@ function finishGame(){
       season:appSettings.season||'',
       hLineup:game.hLineup||[],aLineup:game.aLineup||[]
     };
+    if(_pt.usable){ gameRecord.minutes={home:_pt.home,away:_pt.away}; gameRecord.halfSec=_pt.halfLen; }   // seconds on court, by jersey number
     // Save per-player game logs
     function savePlayerGameLogs(teamName,players,statsObj,lineupArr){
       players.forEach(function(p){
@@ -8108,6 +8212,10 @@ function populateGamesList(){
 
 var _boxEditGameIdx=null;
 var _boxNewRowSeq=0;
+// Minutes on the court for the box score editor ("m:ss"). Blank = no entry.
+function _boxMinInput(side,key,sec){
+  return '<input type="text" inputmode="numeric" placeholder="m:ss" data-minside="'+side+'" data-minnum="'+key+'" value="'+(typeof sec==='number'?_ptFmt(sec):'')+'" onfocus="this.select()" style="width:58px;padding:6px 3px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:13px;text-align:center;">';
+}
 function _boxAttr(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 var _BOX_STAT_STYLE='width:42px;padding:6px 2px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:13px;text-align:center;';
 function _boxStatInput(side,num,stat,val){
@@ -8122,6 +8230,7 @@ function addBoxPlayerRow(side){
   var tr=document.createElement('tr');
   tr.innerHTML='<td style="padding:2px 4px;"><input type="text" inputmode="numeric" placeholder="#" data-newrow="'+id+'" data-newside="'+side+'" data-newfield="num" style="width:44px;text-align:center;'+tinp+'"></td>'
     +'<td style="padding:2px 4px;"><input type="text" placeholder="New player name" data-newrow="'+id+'" data-newside="'+side+'" data-newfield="name" style="width:130px;'+tinp+'"></td>'
+    +'<td>'+_boxMinInput(side,id,null)+'</td>'
     +['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].map(function(st){ return '<td>'+_boxStatInput(side,id,st,0)+'</td>'; }).join('');
   tb.appendChild(tr);
   var first=tr.querySelector('input'); if(first&&first.focus) first.focus();
@@ -8157,9 +8266,11 @@ function loadGamePlayers(){
     var emptyNote=roster.length?'':'<div style="color:var(--muted);font-size:12px;padding:8px 0;">No players saved for '+teamLabel+' in this game — use “Add player” below.</div>';
     var rows=roster.map(function(p){
       var s=statsObj[p.num]||{};
+      var mn=g.minutes&&g.minutes[side]?g.minutes[side][p.num]:undefined;
       return '<tr>'
         +'<td style="padding:4px 6px;color:'+color+';font-size:11px;font-weight:700;white-space:nowrap;">#'+p.num+'</td>'
         +'<td style="padding:2px 4px;"><input type="text" data-nside="'+side+'" data-nnum="'+p.num+'" value="'+_boxAttr(p.name)+'" title="Edit the name shown in this box score" style="width:130px;padding:5px 6px;background:var(--dark3);border:1px solid #333;color:#fff;border-radius:4px;font-size:12px;"></td>'
+        +'<td>'+_boxMinInput(side,p.num,mn)+'</td>'
         +'<td>'+inp(side,p.num,'pts',s.pts)+'</td>'
         +'<td>'+inp(side,p.num,'reb',s.reb)+'</td>'
         +'<td>'+inp(side,p.num,'ast',s.ast)+'</td>'
@@ -8176,7 +8287,7 @@ function loadGamePlayers(){
       +emptyNote
       +'<table style="border-collapse:collapse;width:100%;">'
       +'<thead><tr style="color:var(--muted);font-size:10px;text-align:center;">'
-      +'<th></th><th style="text-align:left;">Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th>'
+      +'<th></th><th style="text-align:left;">Player</th><th title="Minutes on the court (m:ss)">MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th>'
       +'</tr></thead><tbody id="box-tbody-'+side+'">'+rows+'</tbody></table>'
       +'<button onclick="addBoxPlayerRow(\''+side+'\')" style="margin-top:8px;padding:7px 12px;background:var(--dark3);color:#fff;border:1px dashed #666;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">＋ Add player</button>'
       +'</div>';
@@ -8219,6 +8330,16 @@ function saveStatCorrection(){
     target[num][stat]=val;
   });
 
+  // ---- minutes on the court ("m:ss", or whole minutes); blank = no entry ----
+  var newMinutes={home:{},away:{}}, badMin=null;
+  document.querySelectorAll('#stats-editor input[data-minside]').forEach(function(el){
+    var raw=(el.value||'').trim(); if(!raw) return;
+    var sec=_ptParse(raw);
+    if(sec===null){ if(!badMin) badMin=raw; return; }
+    newMinutes[el.getAttribute('data-minside')][el.getAttribute('data-minnum')]=sec;
+  });
+  if(badMin){ alert('Minutes should look like 18:30 (minutes:seconds) or just 18. "'+badMin+'" isn\'t one of those.'); return; }
+
   // ---- names edited on existing rows, and players added to this box score ----
   var clean=function(s){ return (s||'').replace(/\s+/g,' ').trim(); };
   var nameEdits={home:{},away:{}};
@@ -8244,13 +8365,15 @@ function saveStatCorrection(){
     if(problem) return;
     var r=newRowsById[id], tgt=(r.side==='home'?hStats:aStats), st=tgt[id]||{};
     var anyStat=Object.keys(st).some(function(k){ return st[k]; });
-    if(!r.num && !r.name && !anyStat){ delete tgt[id]; return; }      // blank row left untouched
+    var anyMin=newMinutes[r.side][id]!==undefined;
+    if(!r.num && !r.name && !anyStat && !anyMin){ delete tgt[id]; return; }      // blank row left untouched
     var num=parseInt(r.num,10);
     if(!r.name){ problem='Enter a name for each player you add.'; return; }
     if(isNaN(num)||num<0){ problem='Enter a jersey number for '+r.name+'.'; return; }
     if(taken[r.side][String(num)]){ problem='#'+num+' is already in this box score for that team — pick a different number.'; return; }
     taken[r.side][String(num)]=true;
     tgt[String(num)]=tgt[id]; delete tgt[id];
+    if(anyMin){ newMinutes[r.side][String(num)]=newMinutes[r.side][id]; delete newMinutes[r.side][id]; }
     (r.side==='home'?homeRoster:awayRoster).push({num:num,name:r.name});
     addedList.push(r.name);
   });
@@ -8289,6 +8412,8 @@ function saveStatCorrection(){
   g.aStats=aStats;
   g.homePlayers=homeRoster;
   g.awayPlayers=awayRoster;
+  if(Object.keys(newMinutes.home).length||Object.keys(newMinutes.away).length){ g.minutes=newMinutes; delete g.minutesEst; }   // typed by a person = no longer an estimate
+  else { delete g.minutes; delete g.minutesEst; }
   // Carry renamed players into this game's play-by-play too
   renamedList.forEach(function(rn){
     toArr(g.playLog).forEach(function(e){

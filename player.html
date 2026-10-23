@@ -271,20 +271,22 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .hsr-name{font-size:14px;font-weight:600;color:var(--white);}
 .hsr-sub{font-size:11px;color:var(--muted);}
 
-/* ── POTW ── */
-.potw-card{background:var(--dark2);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:1.5rem;}
-.potw-header{padding:12px 20px;border-bottom:1px solid var(--line);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;}
-.potw-body{padding:20px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-.potw-avatar{width:56px;height:56px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:#fff;flex-shrink:0;}
-.potw-info{flex:1;}
-.potw-name{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--white);}
-.potw-team{font-size:12px;color:var(--muted);margin-top:2px;}
-.potw-game{font-size:11px;color:var(--muted);margin-top:4px;}
-.potw-stats{display:flex;gap:24px;margin-left:auto;}
-.potw-stat{text-align:center;}
-.potw-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--orange);}
-.potw-stat-val.sec{color:var(--white);}
-.potw-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+/* ── MVP OF THE WEEK: one card per game, side by side (swipes sideways if there are many) ── */
+.mvpw-row{display:flex;gap:1px;background:var(--line);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+.mvpw-card{flex:1 0 0;min-width:112px;background:var(--dark2);padding:14px 6px 14px;text-align:center;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;}
+.mvpw-final{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.mvpw-score{font-size:13px;font-weight:700;color:var(--white);margin-top:3px;}
+.mvpw-vs{font-size:10px;color:var(--muted);margin:1px 0 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.mvpw-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;flex-shrink:0;position:relative;}
+.mvpw-avatar.has-photo{background:none;}
+.mvpw-avatar img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);box-sizing:border-box;display:block;background:#222;}
+.mvpw-num{position:absolute;right:-7px;bottom:-3px;background:#0d0d0d;color:var(--white);border:2px solid var(--dark2);border-radius:99px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:900;line-height:1;padding:2px 5px;}
+.mvpw-name{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:900;line-height:1.05;color:var(--white);margin-top:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.mvpw-team{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--orange);text-transform:uppercase;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.mvpw-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin-top:12px;}
+.mvpw-stat b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:25px;font-weight:900;line-height:1;color:var(--white);}
+.mvpw-stat span{display:block;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px;}
+.mvpw-extra{font-size:11px;color:var(--muted);margin-top:8px;min-height:15px;}
 
 /* ── HOME SPLIT ── */
 .home-split{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
@@ -430,21 +432,13 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <div class="home-search-results" id="home-search-results"></div>
   </div>
 
-  <!-- GAME DAY MVPs: winning team's MVP from each game of the most recent game day -->
+  <!-- MVP OF THE WEEK: winning team's MVP from each game of the most recent game day, side by side -->
   <div class="top-scorers-card" id="gameday-mvps-card" style="display:none;">
     <div class="tsc-header">
-      <span id="gameday-mvps-title">🏅 Game Day MVPs</span>
+      <div style="min-width:0;"><span id="gameday-mvps-title">🏅 MVP of the Week</span><div id="gameday-mvps-date" style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);margin-top:3px;"></div></div>
       <a onclick="showTab('scores')">All games →</a>
     </div>
-    <div id="gameday-mvps" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--line);"></div>
-  </div>
-
-  <!-- POTW -->
-  <div class="potw-card" id="potw-card">
-    <div class="potw-header">⭐ Player of the Week</div>
-    <div class="potw-body" id="potw-body">
-      <div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div>
-    </div>
+    <div id="gameday-mvps" class="mvpw-row"></div>
   </div>
 
   <!-- LEAGUE LEADERS -->
@@ -563,6 +557,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="stat-tab" onclick="setStatTab('stl')">Steals</button>
     <button class="stat-tab" onclick="setStatTab('blk')">Blocks</button>
     <button class="stat-tab" onclick="setStatTab('to')">Turnovers</button>
+    <button class="stat-tab" onclick="setStatTab('mpg')">Minutes</button>
   </div>
   <div class="stats-card">
     <table><thead><tr>
@@ -578,6 +573,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
       <th id="th-blk" onclick="setStatTab('blk')" style="cursor:pointer;">BLK</th>
       <th id="th-to" onclick="setStatTab('to')" style="cursor:pointer;">TO</th>
       <th>GP</th>
+      <th id="th-mpg" onclick="setStatTab('mpg')" style="cursor:pointer;" title="Minutes per game, from games where playing time was tracked">MPG</th>
     </tr></thead>
     <tbody id="p-body"></tbody></table>
   </div>
@@ -963,6 +959,25 @@ function _gdTextOn(hex){
   var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
   return (0.299*r+0.587*g+0.114*b)>150?'#000':'#fff';
 }
+// ── PLAYER PHOTOS ──
+// player-photos.js (one small file made by the photo tool) holds a photo per
+// player keyed "<team>-<name>". A player with a photo gets it in their MVP
+// circle instead of the jersey number. Loaded after the page is up, so it
+// never slows the first draw.
+var playerPhotos={};
+function _photoSlug(s){ return String(s==null?'':s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function playerPhoto(team,name){
+  var t=_photoSlug(team), full=_photoSlug(name), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
+  var uri=playerPhotos[t+'-'+full]||playerPhotos[t+'-'+first]||null;     // exact name first, then first name only
+  return (uri && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri))?uri:null;
+}
+function loadPlayerPhotos(){
+  var s=document.createElement('script');
+  s.src='player-photos.js?v='+Math.floor(Date.now()/300000);               // fresh within ~5 minutes of an upload
+  s.onload=function(){ playerPhotos=window.PLAYER_PHOTOS||{}; if(typeof _booted!=='undefined'&&_booted) scheduleRenderAll(); };
+  s.onerror=function(){};                                                   // no file yet = no photos, nothing breaks
+  document.head.appendChild(s);
+}
 function computeWinningTeamMVP(g){
   var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0;
   if(hs===as) return null;
@@ -1000,22 +1015,28 @@ function renderGameDayMVPs(){
   day.sort(function(a,b){ return _gdStamp(a)-_gdStamp(b); });          // in the order they were played
   var items=day.map(function(g){ var m=computeWinningTeamMVP(g); return m?{g:g,m:m}:null; }).filter(Boolean);
   if(!items.length){ card.style.display='none'; return; }
-  document.getElementById('gameday-mvps-title').textContent='🏅 Game Day MVPs · '+(newest.date||'');
+  document.getElementById('gameday-mvps-title').textContent='🏅 MVP of the Week';
+  var dEl=document.getElementById('gameday-mvps-date'); if(dEl) dEl.textContent=newest.date||'';
   box.innerHTML=items.map(function(it){
     var g=it.g, m=it.m, s=m.s, n=function(k){ return Number(s[k])||0; };
-    var hWin=(Number(g.homeScore)||0)>(Number(g.awayScore)||0);
-    var big=function(v,l){ return '<div style="text-align:center;min-width:44px;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:30px;font-weight:900;line-height:1;color:var(--white);">'+v+'</div><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);">'+l+'</div></div>'; };
+    var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0, hWin=hs>as;
+    var oppName=hWin?g.away:g.home;
+    var numTxt='#'+m.num, fs=String(m.num).length>=3?16:(String(m.num).length===2?21:24);
+    var photo=playerPhoto(m.teamName,m.name);
+    var avatar=photo
+      ? '<div class="mvpw-avatar has-photo"><img src="'+photo+'" alt="'+gdEsc(m.name)+'" style="border-color:'+gdEsc(m.color)+';"><span class="mvpw-num">'+gdEsc(numTxt)+'</span></div>'
+      : '<div class="mvpw-avatar" style="background:'+gdEsc(m.color)+';color:'+_gdTextOn(m.color)+';font-size:'+fs+'px;">'+gdEsc(numTxt)+'</div>';
+    var stat=function(v,l){ return '<div class="mvpw-stat"><b>'+v+'</b><span>'+l+'</span></div>'; };
     var extra=[]; if(n('stl')) extra.push(n('stl')+' STL'); if(n('blk')) extra.push(n('blk')+' BLK'); if(n('3pm')) extra.push(n('3pm')+' 3PM');
-    return '<div style="background:var(--dark2);padding:16px 18px;">'
-      +'<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Final'+(g.isPlayoff?' · <span style="color:#eab308;">🏆 Playoff</span>':'')+'</div>'
-      +'<div style="font-size:13px;margin:3px 0 14px;color:var(--white);"><span style="font-weight:700;">'+gdEsc(g.home)+'</span> <span class="'+(hWin?'win-score':'lose-score')+'">'+(Number(g.homeScore)||0)+'</span> <span style="color:#444;">–</span> <span class="'+(hWin?'lose-score':'win-score')+'">'+(Number(g.awayScore)||0)+'</span> <span style="font-weight:700;">'+gdEsc(g.away)+'</span></div>'
-      +'<div style="display:flex;align-items:center;gap:12px;">'
-        +'<div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:'+gdEsc(m.color)+';color:'+_gdTextOn(m.color)+';font-family:\'Barlow Condensed\',sans-serif;font-size:19px;font-weight:900;">#'+gdEsc(m.num)+'</div>'
-        +'<div style="min-width:0;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:26px;font-weight:900;line-height:1.05;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+gdEsc(m.name)+'</div>'
-        +'<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--orange);text-transform:uppercase;">⭐ MVP · '+gdEsc(m.teamName)+'</div></div>'
-      +'</div>'
-      +'<div style="display:flex;gap:18px;margin-top:14px;">'+big(n('pts'),'PTS')+big(n('reb'),'REB')+big(n('ast'),'AST')+'</div>'
-      +(extra.length?'<div style="font-size:12px;color:var(--muted);margin-top:8px;">'+extra.join(' · ')+'</div>':'')
+    return '<div class="mvpw-card">'
+      +'<div class="mvpw-final">Final'+(g.isPlayoff?' · <span style="color:#eab308;">🏆</span>':'')+'</div>'
+      +'<div class="mvpw-score">'+Math.max(hs,as)+' – '+Math.min(hs,as)+'</div>'
+      +'<div class="mvpw-vs" title="'+gdEsc(m.teamName)+' vs '+gdEsc(oppName)+'">vs '+gdEsc(oppName)+'</div>'
+      +avatar
+      +'<div class="mvpw-name" title="'+gdEsc(m.name)+'">'+gdEsc(m.name)+'</div>'
+      +'<div class="mvpw-team">⭐ '+gdEsc(m.teamName)+'</div>'
+      +'<div class="mvpw-stats">'+stat(n('pts'),'PTS')+stat(n('reb'),'REB')+stat(n('ast'),'AST')+'</div>'
+      +'<div class="mvpw-extra">'+(extra.length?extra.map(function(x){ return '<span style="white-space:nowrap;">'+x.replace(' ','&nbsp;')+'</span>'; }).join(' · '):'')+'</div>'
     +'</div>';
   }).join('');
   card.style.display='block';
@@ -1023,7 +1044,6 @@ function renderGameDayMVPs(){
 
 function renderHome(){
   renderGameDayMVPs();
-  renderPOTW();
   renderHomeLeagueLeaders();
   renderHomeRecentScores();
   renderHomeUpcoming();
@@ -1186,7 +1206,14 @@ function getMergedPlayerRows(){
         if(!row) return;
         LOGK.forEach(function(k){ row.s[k]=(row.s[k]||0)+(ge[k]||0); logSums[k]+=(ge[k]||0); });
         row.s.gp=(row.s.gp||0)+1;
-        row.s.games.push(ge);
+        // minutes on the court for this game, if it has them (by the number worn that game)
+        var gm=histById[ge.gameId], secG=null;
+        if(gm && gm.minutes){
+          var sd=normTeam(gm.home)===tn?'home':(normTeam(gm.away)===tn?'away':null);
+          var mm=sd?gm.minutes[sd]:null;
+          if(mm && typeof mm[numKey]==='number') secG=mm[numKey];
+        }
+        row.s.games.push(secG===null?ge:Object.assign({},ge,{sec:secG}));
       });
 
       // 2) Whatever the season totals include that the game log doesn't
@@ -1216,6 +1243,7 @@ function getMergedPlayerRows(){
       (row.s.games||[]).forEach(function(g){
         if(g && g.gameId!=null && byId[g.gameId]){
           ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm'].forEach(function(k){ byId[g.gameId][k]=(byId[g.gameId][k]||0)+(g[k]||0); });
+          if(typeof g.sec==='number') byId[g.gameId].sec=(byId[g.gameId].sec||0)+g.sec;     // two numbers in one game: add their time
           dup++;
         } else {
           var copy=Object.assign({},g);
@@ -1224,6 +1252,9 @@ function getMergedPlayerRows(){
         }
       });
       row.s.games=out;
+      // season minutes + how many games they were tracked in (older games have none, so they don't drag the average down)
+      var secSum=0, secGames=0; out.forEach(function(g){ if(g && typeof g.sec==='number'){ secSum+=g.sec; secGames++; } });
+      row.s.sec=secSum; row.s.minGP=secGames;
       row.s.gp=Math.max(0,(row.s.gp||0)-dup);
       ['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'].forEach(function(k){ row.s[k]=Math.max(0,row.s[k]||0); });
       merged.push(row);
@@ -1243,226 +1274,6 @@ function getAllPlayers(){
 // their contribution stays visible instead of just vanishing from the total.
 function getFormerPlayers(){
   return getMergedPlayerRows().filter(function(r){ return !r.isCurrent; });
-}
-
-function renderPOTW(){
-  var card=document.getElementById('potw-card');
-  if(!card)return;
-  loadPotwGallery(card);
-}
-
-// Upload posters to the repo root as sequential numbered files —
-// potw-1.jpg or potw-1.png, potw-2.jpg or potw-2.png, etc. (either
-// extension works). The site probes upward from 1 until a number is
-// missing, so you never have to edit any code or list — just drop in the
-// next number and keep the older ones in place.
-function probeImage(src){
-  return new Promise(function(resolve){
-    var img=new Image();
-    img.onload=function(){resolve(true);};
-    img.onerror=function(){resolve(false);};
-    img.src=src;
-  });
-}
-function probePotwSlot(n,v){
-  // Scoped to a per-division folder (potw/<division-slug>/...) — without
-  // this, an uploaded poster would show up on every division's page
-  // instead of just the one it's actually for, since there was no
-  // division awareness here at all before.
-  var folder='potw/'+(CT_BASE.split('/').pop()||'ct');
-  var jpg=folder+'/potw-'+n+'.jpg?v='+v;
-  var png=folder+'/potw-'+n+'.png?v='+v;
-  return probeImage(jpg).then(function(ok){
-    if(ok) return jpg;
-    return probeImage(png).then(function(ok2){ return ok2?png:null; });
-  });
-}
-// Same idea, scoped per-week instead of a flat running number — up to 3
-// photos per week. Checks the new per-division folder first
-// (potw/<division>/w<week>-<i>.jpg), then falls back to the older
-// global path (images/mvp/w<week>-<i>.PNG) that Summer 2026's
-// already-uploaded photos live at from before this folder convention
-// existed — without this fallback, those real existing photos would
-// silently stop showing the moment the new convention was introduced.
-function probeWeekSlot(week,i,v){
-  var folder='potw/'+(CT_BASE.split('/').pop()||'ct');
-  var jpg=folder+'/w'+week+'-'+i+'.jpg?v='+v;
-  var png=folder+'/w'+week+'-'+i+'.png?v='+v;
-  return probeImage(jpg).then(function(ok){
-    if(ok) return jpg;
-    return probeImage(png).then(function(ok2){
-      if(ok2) return png;
-      // The legacy global path (images/mvp/...) is a single SHARED
-      // folder with no division scoping at all — it only holds Summer
-      // 2026's real pre-existing photos. Checking it for any other
-      // division would find those same photos and wrongly treat them as
-      // belonging to that division too (exactly what happened here:
-      // Summer 2026's real Week 3/4 photos got picked up as if they were
-      // 6'2"'s). Only ever check it for the legacy division itself.
-      if(CT_BASE!=='ct') return null;
-      var legacy='images/mvp/w'+week+'-'+i+'.PNG?v='+v;
-      return probeImage(legacy).then(function(ok3){ return ok3?legacy:null; });
-    });
-  });
-}
-function loadPotwGallery(card){
-  // Always goes straight to the week-based navigator now (3 photos per
-  // week, with prev/next) — this used to check for an older flat
-  // potw-1.jpg/-2.jpg numbering scheme first, but that's a different
-  // convention than the per-week one actually in use, and having both
-  // meant an old flat-numbered upload would silently take priority and
-  // hide the week-based photos entirely.
-  displayMVPNavigator(card);
-}
-function renderPOTWGallery(card,srcs){
-  var thumbs=srcs.slice().reverse(); // newest (highest number) first
-  var html='<div class="potw-header">⭐ MVP of the Week</div>'
-    +'<div style="padding:20px;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:16px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;">';
-  thumbs.forEach(function(src){
-    html+='<div onclick="openPotwLightbox(\''+src+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;width:180px;flex-shrink:0;scroll-snap-align:start;">'
-      +'<img src="'+src+'" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover;" loading="lazy">'
-    +'</div>';
-  });
-  html+='</div>';
-  card.innerHTML=html;
-}
-function openPotwLightbox(src){
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;';
-  ov.onclick=function(){ov.remove();};
-  ov.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.6);">';
-  document.body.appendChild(ov);
-}
-
-// Picks the standout performer from one finished game — same Efficiency
-// formula used for the season-long Overall ranking (PTS+REB+AST+STL+BLK−TO),
-// just scoped to a single game's box score instead of season totals.
-function computeGameMVP(g){
-  var candidates=[];
-  function addSide(teamName,teamColor,players,statsObj){
-    (players||[]).forEach(function(p){
-      var s=(statsObj&&statsObj[p.num])||{};
-      var eff=(s.pts||0)+(s.reb||0)+(s.ast||0)+(s.stl||0)+(s.blk||0)-(s.to||0);
-      candidates.push({p:p,teamName:teamName,teamColor:teamColor,s:s,eff:eff});
-    });
-  }
-  addSide(g.home,g.homeColor,g.homePlayers,g.hStats);
-  addSide(g.away,g.awayColor,g.awayPlayers,g.aStats);
-  if(!candidates.length) return null;
-  candidates.sort(function(a,b){ return b.eff-a.eff; });
-  return candidates[0];
-}
-
-// No poster uploaded → auto-pick an MVP for each recent game instead of
-// just one season-wide stat card, so there's always something here and it
-// updates itself the moment a game is finished.
-// Season-long statistical leaders (top scorer, rebounder, assist man) —
-// shown in the same carousel as the per-game MVPs, using season totals
-// instead of one game's box score.
-function computeSeasonLeaders(){
-  var allP=getAllPlayers().filter(function(r){ return (r.s.gp||0)>0; });
-  if(!allP.length) return [];
-  var cats=[
-    {key:'pts',label:'Scoring Leader',icon:'🔥'},
-    {key:'reb',label:'Rebounding Leader',icon:'🧱'},
-    {key:'ast',label:'Assists Leader',icon:'🎯'}
-  ];
-  return cats.map(function(c){
-    var leader=allP.slice().sort(function(a,b){ return (b.s[c.key]||0)-(a.s[c.key]||0); })[0];
-    if(!leader || !(leader.s[c.key]>0)) return null;
-    return {p:leader.p, teamName:leader.teamName, teamColor:leader.teamColor, s:leader.s, statKey:c.key, statLabel:c.label, icon:c.icon};
-  }).filter(Boolean);
-}
-
-var mvpNavIdx=0;
-function displayMVPNavigator(el){
-  if(!el) return;
-  el.innerHTML='<div class="potw-header">⭐ MVP of the Week</div><div id="mvp-nav-display" style="padding:20px;display:flex;align-items:center;justify-content:center;gap:20px;min-height:300px;">'
-    +'<div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
-  var display=document.getElementById('mvp-nav-display');
-  var v=Date.now(); // per-load, not per-day — a date-only cache-buster meant repeat testing within the same day could still serve a stale cached image even after the real file was corrected
-
-  // Fully decoupled from game data now — no Schedule, no Game History,
-  // no week numbers on any game record. This just checks, week by week,
-  // whether any photos were actually uploaded for it, and only offers
-  // navigation to weeks that have at least one. Simple and predictable:
-  // upload a photo for a week, it becomes navigable; don't, and it's
-  // skipped entirely.
-  var MAX_WEEKS=20; // safety cap, not tied to any real season length
-  function weekHasAnyPhoto(week){
-    return Promise.all([1,2,3].map(function(i){ return probeWeekSlot(week,i,v); }))
-      .then(function(urls){ return urls.some(Boolean); });
-  }
-  function checkWeek(week,foundWeeks){
-    if(week>MAX_WEEKS) return Promise.resolve(foundWeeks);
-    return weekHasAnyPhoto(week).then(function(has){
-      if(has) foundWeeks.push(week);
-      return checkWeek(week+1,foundWeeks);
-    });
-  }
-
-  checkWeek(1,[]).then(function(weeksWithPhotos){
-    if(!weeksWithPhotos.length){
-      display.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No photos uploaded yet.</div>';
-      return;
-    }
-    if(mvpNavIdx>=weeksWithPhotos.length) mvpNavIdx=weeksWithPhotos.length-1;
-    var currentWeek=weeksWithPhotos[mvpNavIdx];
-
-    Promise.all([1,2,3].map(function(i){ return probeWeekSlot(currentWeek,i,v); })).then(function(urls){
-    var found=urls.filter(Boolean);
-    var cardsHtml = found.length
-      ? found.map(function(src){
-          return '<img onclick="openPotwLightbox(\''+src+'\')" src="'+src+'" style="cursor:pointer;width:clamp(110px,28vw,180px);height:auto;max-height:min(50vh,320px);object-fit:contain;border-radius:8px;flex-shrink:0;background:#000;" />';
-        }).join('')
-      : '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:20px;">No photos uploaded for this week yet.</div>';
-
-    var prevBtn='<button onclick="mvpNavIdx=Math.max(0,mvpNavIdx-1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx>0?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx>0?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx>0?'1':'0.5')+';padding:0 4px;flex-shrink:0;">‹</button>';
-    var nextBtn='<button onclick="mvpNavIdx=Math.min('+weeksWithPhotos.length+'-1,mvpNavIdx+1);displayMVPNavigator(document.querySelector(\'.potw-card\'))" style="background:none;border:none;font-size:clamp(20px,5vw,28px);color:'+(mvpNavIdx<weeksWithPhotos.length-1?'var(--orange)':'#666')+';cursor:'+(mvpNavIdx<weeksWithPhotos.length-1?'pointer':'not-allowed')+';opacity:'+(mvpNavIdx<weeksWithPhotos.length-1?'1':'0.5')+';padding:0 4px;flex-shrink:0;">›</button>';
-
-    display.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">'+prevBtn+'<div style="display:flex;gap:8px;overflow-x:auto;">'+cardsHtml+'</div>'+nextBtn+'</div><div style="text-align:center;font-size:clamp(12px,3vw,16px);color:var(--orange);font-weight:700;margin-top:8px;">Week '+currentWeek+'</div>';
-    });
-  });
-}
-
-function renderPOTWFallback(card){
-  card.innerHTML='<div class="potw-header">⭐ Player of the Week</div>'
-    +'<div class="potw-body" id="potw-body"><div style="color:var(--muted);font-size:13px;font-style:italic;">Loading…</div></div>';
-  var el=document.getElementById('potw-body');
-  var allP=getAllPlayers();
-  // Find the player with the best single game (use pts as proxy from season totals / gp)
-  // Best: highest single-game pts is approximated by pts/gp if >1 game, else raw pts
-  var best=null;
-  allP.forEach(function(r){
-    var gp=r.s.gp||0; if(!gp)return;
-    var ppg=(r.s.pts||0)/gp;
-    if(!best||ppg>(best.s.pts||0)/(best.s.gp||1)) best=r;
-  });
-  if(!best){
-    el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:4px 0;">Play some games first — top performer will appear here.</div>';
-    return;
-  }
-  var gp=best.s.gp||1;
-  var ppg=((best.s.pts||0)/gp).toFixed(1);
-  var rpg=((best.s.reb||0)/gp).toFixed(1);
-  var apg=((best.s.ast||0)/gp).toFixed(1);
-  var spg=((best.s.stl||0)/gp).toFixed(1);
-  var bpg=((best.s.blk||0)/gp).toFixed(1);
-  var ini=best.p.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-  el.innerHTML=
-    '<div class="potw-avatar" style="background:var(--orange);">'+ini+'</div>'
-    +'<div class="potw-info">'
-      +'<div class="potw-name">'+best.p.name+'</div>'
-      +'<div class="potw-team">'+best.teamName+' · #'+best.p.num+'</div>'
-      +'<div class="potw-game">'+gp+' game'+(gp!==1?'s':'')+' played this season</div>'
-    +'</div>'
-    +'<div class="potw-stats">'
-      +'<div class="potw-stat"><div class="potw-stat-val">'+ppg+'</div><div class="potw-stat-lbl">PPG</div></div>'
-      +'<div class="potw-stat"><div class="potw-stat-val sec">'+rpg+'</div><div class="potw-stat-lbl">RPG</div></div>'
-      +'<div class="potw-stat"><div class="potw-stat-val sec">'+apg+'</div><div class="potw-stat-lbl">APG</div></div>'
-      +'<div class="potw-stat"><div class="potw-stat-val sec">'+spg+'</div><div class="potw-stat-lbl">SPG</div></div>'
-      +'<div class="potw-stat"><div class="potw-stat-val sec">'+bpg+'</div><div class="potw-stat-lbl">BPG</div></div>'
-    +'</div>';
 }
 
 function renderHomeRecentScores(){
@@ -1557,6 +1368,15 @@ function bracketSeedNames(n){
   var out=[];
   for(var i=0;i<n;i++) out.push(rows.length>=4 && rows[i] ? rows[i].name : null);
   return out;
+}
+
+// m:ss for minutes on the court (box scores, player pop-up)
+function _mmss(sec){ sec=Math.max(0,Math.round(sec||0)); return Math.floor(sec/60)+':'+(sec%60<10?'0':'')+(sec%60); }
+// One team's minutes-by-jersey-number for a saved game, or null if that game has none
+function _gameMins(g,side){
+  var m=g&&g.minutes&&g.minutes[side]; if(!m) return null;
+  var any=false; Object.keys(m).forEach(function(k){ if(typeof m[k]==='number') any=true; });
+  return any?m:null;
 }
 
 function renderHomeUpcoming(){
@@ -1811,23 +1631,25 @@ function renderScores(){
     if(!g)return '';
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
-    function makeRows(pl,st,color){
+    function makeRows(pl,st,color,mins){
       if(!pl||!st)return '';
-      var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0;
+      var tP=0,tR=0,tA=0,tS=0,tB=0,tT=0,tM=0,anyM=false;
       var rows=(Array.isArray(pl)?pl:Object.values(pl)).map(function(p){
         var s=(typeof st==='object'?st[p.num]:{})||{};
         tP+=s.pts||0;tR+=s.reb||0;tA+=s.ast||0;tS+=s.stl||0;tB+=s.blk||0;tT+=s.to||0;
-        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
+        var sec=(mins&&typeof mins[p.num]==='number')?mins[p.num]:null; if(sec!==null){ tM+=sec; anyM=true; }
+        return '<tr><td><span style="color:'+color+'">#'+p.num+'</span></td><td>'+p.name+'</td>'+(mins?'<td>'+(sec===null?'—':_mmss(sec))+'</td>':'')+'<td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td><td>'+(s.fgm||0)+'</td><td>'+(s['3pm']||0)+'</td><td>'+(s.ftm||0)+'</td></tr>';
       }).join('');
-      rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
+      rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td>'+(mins?'<td>'+(anyM?_mmss(tM):'')+'</td>':'')+'<td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
       return rows;
     }
     _flowGames[gi]=g;
+    var hMins=_gameMins(g,'home'), aMins=_gameMins(g,'away');
     var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
     var logHtml=log.length?log.map(function(e){
       return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:var(--white);font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+' · '+(e.clock||'')+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button><button class="game-tab" id="gtab-'+gi+'-flow" onclick="switchGameTab('+gi+',\'flow\')">📈 Game Flow</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div><div class="game-tab-panel" id="gpanel-'+gi+'-flow"><div id="gflow-'+gi+'"></div></div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button><button class="game-tab" id="gtab-'+gi+'-flow" onclick="switchGameTab('+gi+',\'flow\')">📈 Game Flow</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th>'+(hMins?'<th title="Minutes on the court">MIN</th>':'')+'<th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)',hMins)+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th>'+(aMins?'<th title="Minutes on the court">MIN</th>':'')+'<th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)',aMins)+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div><div class="game-tab-panel" id="gpanel-'+gi+'-flow"><div id="gflow-'+gi+'"></div></div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -2489,7 +2311,8 @@ function showPlayerModal(player){
           +'<span>vs '+g.opp+'</span>'
           +'<span style="color:'+(g.result==='W'?'var(--orange)':'#666')+';">'+g.result+'</span>'
           +'</div>'
-          +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;font-size:10px;color:var(--muted);">'
+          +'<div style="display:grid;grid-template-columns:repeat('+(typeof g.sec==='number'?6:5)+',1fr);gap:6px;font-size:10px;color:var(--muted);">'
+          +(typeof g.sec==='number'?'<div><span style="color:#fff;font-weight:700;">'+_mmss(g.sec)+'</span> MIN</div>':'')
           +'<div><span style="color:#fff;font-weight:700;">'+g.pts+'</span> PTS</div>'
           +'<div><span style="color:#fff;font-weight:700;">'+g.reb+'</span> REB</div>'
           +'<div><span style="color:#fff;font-weight:700;">'+g.ast+'</span> AST</div>'
@@ -2512,7 +2335,9 @@ function showPlayerModal(player){
     +'<div style="font-size:20px;font-weight:700;color:var(--white);margin-bottom:18px;">'+player.teamName+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">EFF</div><div style="font-size:28px;font-weight:900;color:var(--orange);">'+Math.round(player.eff)+'</div></div>'
-    +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">GP</div><div style="font-size:28px;font-weight:900;color:#fff;">'+(player.s.gp||0)+'</div></div></div></div></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">GP</div><div style="font-size:28px;font-weight:900;color:#fff;">'+(player.s.gp||0)+'</div></div>'
+    +(player.s.minGP>0?'<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">MPG</div><div style="font-size:28px;font-weight:900;color:#fff;">'+((player.s.sec||0)/player.s.minGP/60).toFixed(1)+'</div></div>':'')
+    +'</div></div></div>'
     +'<div style="border-top:2px solid var(--line);padding-top:20px;">'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;">SEASON STATS</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
@@ -2554,11 +2379,11 @@ function showTeamModal(teamName){
 function setStatTab(key){
   currentStatTab=key;
   document.querySelectorAll('.stat-tab').forEach(function(b){b.classList.remove('active');});
-  var map={eff:0,pts:1,reb:2,ast:3,stl:4,blk:5,to:6};
+  var map={eff:0,pts:1,reb:2,ast:3,stl:4,blk:5,to:6,mpg:7};
   var tabs=document.querySelectorAll('.stat-tab');
   if(tabs[map[key]]) tabs[map[key]].classList.add('active');
   // Highlight active column header
-  ['eff','pts','reb','ast','stl','blk','to'].forEach(function(k){
+  ['eff','pts','reb','ast','stl','blk','to','mpg'].forEach(function(k){
     var th=document.getElementById('th-'+k);
     if(th) th.style.color=k===key?'var(--orange)':'';
   });
@@ -2572,11 +2397,12 @@ function renderPlayerStats(){
   // Efficiency: a simple, standard composite — PTS + REB + AST + STL + BLK − TO
   rows.forEach(function(r){
     r.eff = (r.s.pts||0)+(r.s.reb||0)+(r.s.ast||0)+(r.s.stl||0)+(r.s.blk||0)-(r.s.to||0);
+    r.mpg = (r.s.minGP>0) ? (r.s.sec||0)/r.s.minGP/60 : 0;          // minutes per game, only over games with tracked time
   });
   var key=currentStatTab;
   rows.sort(function(a,b){
-    var av = key==='eff' ? a.eff : (a.s[key]||0);
-    var bv = key==='eff' ? b.eff : (b.s[key]||0);
+    var av = key==='eff' ? a.eff : (key==='mpg' ? a.mpg : (a.s[key]||0));
+    var bv = key==='eff' ? b.eff : (key==='mpg' ? b.mpg : (b.s[key]||0));
     return bv-av;
   });
   var medals=['🥇','🥈','🥉'];
@@ -2596,8 +2422,9 @@ function renderPlayerStats(){
       +'<td'+(key==='blk'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.blk||0)+'</td>'
       +'<td'+(key==='to'?' style="color:var(--orange);font-weight:700;"':'')+'>'+( r.s.to||0)+'</td>'
       +'<td>'+(r.s.gp||0)+'</td>'
+      +'<td'+(key==='mpg'?' style="color:var(--orange);font-weight:700;"':'')+' title="'+(r.s.minGP>0?('tracked in '+r.s.minGP+' game'+(r.s.minGP>1?'s':'')):'no playing time tracked yet')+'">'+(r.s.minGP>0?r.mpg.toFixed(1):'—')+'</td>'
     +'</tr>';
-  }).join(''):'<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
+  }).join(''):'<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
 
   // Former players — only shown if there are any
   var formerRows=getFormerPlayers();
@@ -3073,6 +2900,9 @@ function loadGameDetail(gid,g){
   h+='</table>';el.innerHTML=h;
 }
 
+
+// photos are optional and non-urgent: ask for them shortly after the page has drawn
+setTimeout(loadPlayerPhotos,700);
 </script>
 </body>
 </html>
