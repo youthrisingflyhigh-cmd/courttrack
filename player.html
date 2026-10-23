@@ -82,6 +82,18 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .game-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
 .game-tab-panel{display:none;padding:16px 20px;}
 .game-tab-panel.active{display:block;}
+/* Game Flow (lead tracker) */
+.flow-wrap{width:100%;}
+.flow-read{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.flow-title{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.flow-now{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:.5px;color:var(--white);}
+.flow-svg{display:block;width:100%;height:auto;touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:crosshair;}
+.flow-hint{font-size:11px;color:var(--muted);margin:6px 0 12px;}
+.flow-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.flow-stat{background:var(--dark3,#1c1c1c);border:1px solid var(--line);border-radius:10px;padding:9px 10px;text-align:center;min-width:0;}
+.flow-stat b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--white);line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.flow-stat span{display:block;font-size:10px;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;margin-top:3px;}
+@media(max-width:520px){.flow-stats{grid-template-columns:repeat(2,1fr);}}
 .play-log-entry{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1c1c1c;font-size:13px;}
 .play-log-entry:last-child{border-bottom:none;}
 .loading{padding:80px 20px;text-align:center;color:var(--muted);font-size:14px;}
@@ -1810,11 +1822,12 @@ function renderScores(){
       rows+='<tr class="totals-row"><td></td><td style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">TOTALS</td><td class="pts-cell">'+tP+'</td><td>'+tR+'</td><td>'+tA+'</td><td>'+tS+'</td><td>'+tB+'</td><td>'+tT+'</td><td></td><td></td><td></td></tr>';
       return rows;
     }
+    _flowGames[gi]=g;
     var log=g.playLog||(g.playLog=[]); if(!Array.isArray(log)) log=Object.values(log);
     var logHtml=log.length?log.map(function(e){
       return '<div class="play-log-entry"><div class="play-dot" style="background:'+(e.neg?'var(--red)':e.pts?'var(--orange)':'#555')+'; width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div><span class="play-team-badge" style="background:rgba(255,255,255,0.06);color:var(--white);font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;">'+(e.teamName||'').split(' ')[0]+'</span><span style="font-weight:600;color:var(--white)">'+(e.playerName||'')+'</span><span style="color:var(--muted);margin-left:2px;">'+e.label+'</span>'+(e.pts?'<span style="margin-left:auto;font-weight:700;font-size:12px;color:var(--green)">+'+e.pts+'</span>':'')+'<span style="margin-left:'+(e.pts?'8px':'auto')+';font-size:11px;color:var(--muted);">'+e.score+'</span><span style="font-size:10px;color:#444;margin-left:6px;">H'+e.half+' · '+(e.clock||'')+'</span></div>';
     }).join(''):'<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">No play log recorded for this game.</p>';
-    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div></div></div>';
+    html+='<div class="game-record-card" id="grcard-'+gi+'"><div class="game-record-header" onclick="toggleGameRecord('+gi+')"><div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--white);"><span>'+(g.home||'')+'</span> <span style="color:var(--muted);font-size:16px;">vs</span> <span>'+(g.away||'')+'</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(g.date||'')+(g.isPlayoff?' · <span style="color:#eab308;font-weight:700;">🏆 PLAYOFF</span>':'')+'</div></div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--white);">'+(g.homeScore||0)+' — '+(g.awayScore||0)+'</div><div style="font-size:12px;font-weight:700;color:var(--orange);">W: '+winner+' ('+ws+'-'+ls+')</div><span style="font-size:18px;color:var(--muted);" id="grchev-'+gi+'">▼</span></div><div class="game-record-body" id="grbody-'+gi+'"><div class="game-tabs"><button class="game-tab active" id="gtab-'+gi+'-box" onclick="switchGameTab('+gi+',\'box\')">📊 Box Score</button><button class="game-tab" id="gtab-'+gi+'-log" onclick="switchGameTab('+gi+',\'log\')">📋 Play-by-Play</button><button class="game-tab" id="gtab-'+gi+'-flow" onclick="switchGameTab('+gi+',\'flow\')">📈 Game Flow</button></div><div class="game-tab-panel active" id="gpanel-'+gi+'-box"><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.home||'')+'</div><div style="overflow-x:auto;margin-bottom:16px;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.homePlayers,g.hStats,'var(--orange)')+'</tbody></table></div><div style="font-size:11px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+(g.away||'')+'</div><div style="overflow-x:auto;"><table style="font-size:12px;"><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FGM</th><th>3PM</th><th>FTM</th></tr></thead><tbody>'+makeRows(g.awayPlayers,g.aStats,'var(--orange)')+'</tbody></table></div></div><div class="game-tab-panel" id="gpanel-'+gi+'-log" style="max-height:400px;overflow-y:auto;">'+logHtml+'</div><div class="game-tab-panel" id="gpanel-'+gi+'-flow"><div id="gflow-'+gi+'"></div></div></div></div>';
   });
   el.innerHTML=html;
 }
@@ -2876,11 +2889,177 @@ function toggleGameRecord(gi){
   if(chev) chev.textContent=open?'▲':'▼';
 }
 
-function switchGameTab(gi,tab){
-  ['box','log','video'].forEach(function(t){
-    document.getElementById('gtab-'+gi+'-'+t).classList.toggle('active',t===tab);
-    document.getElementById('gpanel-'+gi+'-'+t).classList.toggle('active',t===tab);
+// ── GAME FLOW (lead tracker) ──
+// A step chart of the point margin through the game: above the line = home
+// team leading (home colour), below = away leading (away colour). Built from
+// the saved play-by-play (each entry stores the running score, half and game
+// clock). Drag/touch across it to see the score at any moment.
+var _flowGames={};
+function _flowClockSecs(c){ var m=/^(\d+):(\d{2})$/.exec((c||'').toString().trim()); return m?(+m[1])*60+(+m[2]):null; }
+function _flowScore(s){ var m=/^(\d+)\s*-\s*(\d+)$/.exec((s||'').toString().trim()); return m?{h:+m[1],a:+m[2]}:null; }
+function _flowFmt(sec){ sec=Math.max(0,Math.round(sec)); return Math.floor(sec/60)+':'+(sec%60<10?'0':'')+(sec%60); }
+// Colours that stay readable on the dark card (very dark team colours get lightened)
+function _flowColor(c,fallback){
+  var m=/^#?([0-9a-f]{6})$/i.exec((c||'').trim()); if(!m) return fallback;
+  var r=parseInt(m[1].substr(0,2),16),g=parseInt(m[1].substr(2,2),16),b=parseInt(m[1].substr(4,2),16);
+  var lum=(0.299*r+0.587*g+0.114*b)/255;
+  if(lum>=0.28) return '#'+m[1];                       // readable as-is: leave it exactly as saved
+  r=Math.round(r+(255-r)*0.55); g=Math.round(g+(255-g)*0.55); b=Math.round(b+(255-b)*0.55);
+  return '#'+[r,g,b].map(function(v){return (v<16?'0':'')+v.toString(16);}).join('');
+}
+// Turns a saved game into points {t,h,a,half,clock} (one per change in the score).
+// Returns null when there isn't enough play-by-play to draw anything.
+function buildGameFlow(g){
+  var log=toArr(g&&g.playLog).filter(Boolean);
+  var entries=log.filter(function(e){ return _flowScore(e.score); });
+  if(!entries.length) return null;
+  var halfLen=0, maxHalf=1, hasClock=true;
+  entries.forEach(function(e){
+    var c=_flowClockSecs(e.clock); if(c===null) hasClock=false; else if(c>halfLen) halfLen=c;
+    if((e.half||1)>maxHalf) maxHalf=e.half;
   });
+  if(!halfLen) hasClock=false;
+  var halves=Math.max(2,maxHalf);
+  var pts=[{t:0,h:0,a:0,half:1,clock:hasClock?_flowFmt(halfLen):''}];
+  entries.forEach(function(e,i){
+    var sc=_flowScore(e.score), last=pts[pts.length-1];
+    if(sc.h===last.h && sc.a===last.a) return;                 // subs, fouls, rebounds… don't move the score
+    var half=e.half||1, t;
+    if(hasClock){ var rem=_flowClockSecs(e.clock); t=(half-1)*halfLen+(halfLen-(rem===null?halfLen:rem)); }
+    else t=i+1;
+    if(t<last.t) t=last.t;                                      // never run backwards
+    pts.push({t:t,h:sc.h,a:sc.a,half:half,clock:e.clock||''});
+  });
+  if(pts.length<2) return null;
+  var total=hasClock?Math.max(halves*halfLen,pts[pts.length-1].t):pts[pts.length-1].t+1;
+  var fh=g.homeScore||0, fa=g.awayScore||0, lp=pts[pts.length-1];
+  pts.push({t:total,h:fh,a:fa,half:halves,clock:hasClock?'0:00':'',final:true});   // ends on the official final score
+  // numbers for the summary chips
+  var bigH=0,bigA=0,bigHi=0,bigAi=0,changes=0,ties=0,leader=0,run={team:null,pts:0},best={team:null,pts:0};
+  pts.forEach(function(q,i){
+    var m=q.h-q.a;
+    if(m>bigH){bigH=m;bigHi=i;} if(-m>bigA){bigA=-m;bigAi=i;}
+    var sgn=m>0?1:(m<0?-1:0);
+    if(sgn!==0){ if(leader!==0 && sgn!==leader) changes++; leader=sgn; }
+    if(i>0 && !q.final && m===0 && (q.h+q.a)>0) ties++;
+    if(i>0){
+      var pv=pts[i-1], dh=q.h-pv.h, da=q.a-pv.a, team=null, gain=0;
+      if(dh>0&&da<=0){team='h';gain=dh;} else if(da>0&&dh<=0){team='a';gain=da;}
+      if(team){ if(run.team===team) run.pts+=gain; else run={team:team,pts:gain}; if(run.pts>best.pts) best={team:run.team,pts:run.pts}; }
+      else run={team:null,pts:0};
+    }
+  });
+  return {pts:pts,halfLen:halfLen,halves:halves,hasClock:hasClock,total:total,
+          bigH:bigH,bigA:bigA,bigHi:bigHi,bigAi:bigAi,changes:changes,ties:ties,run:best};
+}
+function renderGameFlow(gi){
+  var g=_flowGames[gi], box=document.getElementById('gflow-'+gi);
+  if(!g||!box||box.getAttribute('data-done')==='1') return;
+  box.setAttribute('data-done','1');
+  var f=buildGameFlow(g);
+  if(!f){ box.innerHTML='<p style="color:var(--muted);font-size:13px;font-style:italic;padding:12px 0;">Not enough play-by-play was recorded to draw the game flow for this game.</p>'; return; }
+  var log=toArr(g.playLog), cH='',cA='';
+  log.forEach(function(e){ if(e&&e.teamColor){ if(e.side==='home'&&!cH) cH=e.teamColor; if(e.side==='away'&&!cA) cA=e.teamColor; } });
+  var colH=_flowColor(cH,'#FF5C00'), colA=_flowColor(cA,'#4FC3F7');
+  if(colH.toLowerCase()===colA.toLowerCase()) colA='#4FC3F7';
+  var nameH=g.home||'Home', nameA=g.away||'Away';
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  var W=640,H=270,pl=34,pr=12,pt=22,pb=38, pw=W-pl-pr, ph=H-pt-pb;
+  // Each side of the zero line is only as tall as that team's best lead needs
+  // (never less than 8 points), so a blowout doesn't leave half the chart empty.
+  // Gridlines are whole numbers.
+  var up=Math.max(8,f.bigH), down=Math.max(8,f.bigA), step=5, stepOpts=[5,10,20,25,50];
+  for(var si=0;si<stepOpts.length;si++){ step=stepOpts[si]; if(Math.ceil(up/step)+Math.ceil(down/step)<=6) break; }
+  var topV=Math.ceil(up/step)*step, botV=Math.ceil(down/step)*step;
+  var ticks=[]; for(var tv=-botV;tv<=topV;tv+=step) ticks.push(tv);
+  function sx(t){ return pl+(f.total?t/f.total:0)*pw; }
+  var yz=pt+ph*topV/(topV+botV);
+  function sy(m){ return m>=0 ? yz-(m/topV)*(yz-pt) : yz+(-m/botV)*(pt+ph-yz); }
+  // step path of the margin, and the same path closed down to the zero line (the filled area)
+  var line='M'+sx(f.pts[0].t).toFixed(1)+','+sy(f.pts[0].h-f.pts[0].a).toFixed(1);
+  for(var i=1;i<f.pts.length;i++){ line+=' H'+sx(f.pts[i].t).toFixed(1)+' V'+sy(f.pts[i].h-f.pts[i].a).toFixed(1); }
+  var xEnd=sx(f.pts[f.pts.length-1].t), area=line+' L'+xEnd.toFixed(1)+','+yz.toFixed(1)+' L'+sx(0).toFixed(1)+','+yz.toFixed(1)+' Z';
+  var uid='fl'+gi;
+  var svg='<svg class="flow-svg" id="gfsvg-'+gi+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Game flow: point margin through the game">'
+    +'<defs><clipPath id="'+uid+'u"><rect x="'+pl+'" y="'+pt+'" width="'+pw+'" height="'+(yz-pt).toFixed(1)+'"/></clipPath>'
+    +'<clipPath id="'+uid+'d"><rect x="'+pl+'" y="'+yz.toFixed(1)+'" width="'+pw+'" height="'+(pt+ph-yz).toFixed(1)+'"/></clipPath></defs>';
+  ticks.forEach(function(v){
+    var y=sy(v).toFixed(1);
+    svg+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+(v===0?'#666':'#262626')+'" stroke-width="'+(v===0?1.3:1)+'"/>'
+       +'<text x="'+(pl-6)+'" y="'+(+y+3.5)+'" text-anchor="end" font-size="10" fill="#777">'+(v>0?'+':'')+v+'</text>';
+  });
+  svg+='<path d="'+area+'" fill="'+colH+'" fill-opacity="0.85" clip-path="url(#'+uid+'u)"/>'
+     +'<path d="'+area+'" fill="'+colA+'" fill-opacity="0.85" clip-path="url(#'+uid+'d)"/>'
+     +'<path d="'+line+'" fill="none" stroke="#fff" stroke-opacity="0.75" stroke-width="1.4" stroke-linejoin="round"/>';
+  // halves
+  function scoreAt(t){ var r=f.pts[0]; for(var k=0;k<f.pts.length;k++){ if(f.pts[k].t<=t) r=f.pts[k]; else break; } return r; }
+  if(f.hasClock){
+    for(var hh=1;hh<f.halves;hh++){
+      var tx=hh*f.halfLen, sc=scoreAt(tx), x=sx(tx).toFixed(1);
+      svg+='<line x1="'+x+'" y1="'+pt+'" x2="'+x+'" y2="'+(pt+ph)+'" stroke="#888" stroke-width="1" stroke-dasharray="3 3"/>'
+         +'<text x="'+(+x-5)+'" y="'+(H-20)+'" text-anchor="end" font-size="10" font-weight="700" fill="#bbb">H'+hh+'</text>'
+         +'<text x="'+(+x-5)+'" y="'+(H-8)+'" text-anchor="end" font-size="10" fill="#777">'+sc.h+'–'+sc.a+'</text>';
+    }
+  } else {
+    var firstH2=f.pts.filter(function(q){return q.half>=2;})[0];
+    if(firstH2){ var x2=sx(firstH2.t).toFixed(1);
+      svg+='<line x1="'+x2+'" y1="'+pt+'" x2="'+x2+'" y2="'+(pt+ph)+'" stroke="#888" stroke-width="1" stroke-dasharray="3 3"/><text x="'+(+x2+5)+'" y="'+(pt+10)+'" font-size="10" font-weight="700" fill="#bbb">H2</text>'; }
+  }
+  svg+='<text x="'+(W-pr)+'" y="'+(H-20)+'" text-anchor="end" font-size="10" font-weight="700" fill="#bbb">FINAL</text>'
+     +'<text x="'+(W-pr)+'" y="'+(H-8)+'" text-anchor="end" font-size="10" fill="#777">'+(g.homeScore||0)+'–'+(g.awayScore||0)+'</text>';
+  // who's on which side of the line
+  svg+='<text x="'+(pl+6)+'" y="'+(pt+11)+'" font-size="10" font-weight="700" fill="'+colH+'">▲ '+esc(nameH).toUpperCase()+' LEADING</text>'
+     +'<text x="'+(pl+6)+'" y="'+(pt+ph-5)+'" font-size="10" font-weight="700" fill="'+colA+'">▼ '+esc(nameA).toUpperCase()+' LEADING</text>';
+  // biggest leads
+  if(f.bigH>0){ var ph1=f.pts[f.bigHi]; svg+='<circle cx="'+sx(ph1.t).toFixed(1)+'" cy="'+sy(f.bigH).toFixed(1)+'" r="3.5" fill="#fff" stroke="'+colH+'" stroke-width="2"/><text x="'+sx(ph1.t).toFixed(1)+'" y="'+(sy(f.bigH)-7).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">+'+f.bigH+'</text>'; }
+  if(f.bigA>0){ var pa1=f.pts[f.bigAi]; svg+='<circle cx="'+sx(pa1.t).toFixed(1)+'" cy="'+sy(-f.bigA).toFixed(1)+'" r="3.5" fill="#fff" stroke="'+colA+'" stroke-width="2"/><text x="'+sx(pa1.t).toFixed(1)+'" y="'+(sy(-f.bigA)+15).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">+'+f.bigA+'</text>'; }
+  // scrub layer
+  svg+='<line id="gfx-'+gi+'" x1="0" y1="'+pt+'" x2="0" y2="'+(pt+ph)+'" stroke="#fff" stroke-opacity="0.55" stroke-width="1" style="display:none"/>'
+     +'<circle id="gfd-'+gi+'" r="4.5" fill="#fff" stroke="#000" stroke-width="1.5" style="display:none"/>'
+     +'<rect id="gfr-'+gi+'" x="'+pl+'" y="'+pt+'" width="'+pw+'" height="'+ph+'" fill="transparent"/></svg>';
+  var finalTxt='FINAL · '+esc(nameH)+' '+(g.homeScore||0)+'–'+(g.awayScore||0)+' '+esc(nameA);
+  var runTxt=f.run.pts>=4?(esc(f.run.team==='h'?nameH:nameA)+' '+f.run.pts+'–0'):'—';
+  var lead=function(n,m){ return n>0?('+'+n):'—'; };
+  box.innerHTML='<div class="flow-wrap"><div class="flow-read"><span class="flow-title">Game Flow · Lead Tracker</span><span class="flow-now" id="gfn-'+gi+'">'+finalTxt+'</span></div>'+svg
+    +'<div class="flow-hint">Drag across the chart to see the score at any moment.</div>'
+    +'<div class="flow-stats">'
+    +'<div class="flow-stat"><b style="color:'+colH+'">'+lead(f.bigH)+'</b><span>'+esc(nameH)+' biggest lead</span></div>'
+    +'<div class="flow-stat"><b style="color:'+colA+'">'+lead(f.bigA)+'</b><span>'+esc(nameA)+' biggest lead</span></div>'
+    +'<div class="flow-stat"><b>'+f.run.pts+(f.run.pts?'–0':'')+'</b><span>Biggest run'+(f.run.pts>=4?' · '+esc(f.run.team==='h'?nameH:nameA):'')+'</span></div>'
+    +'<div class="flow-stat"><b>'+f.changes+'</b><span>Lead changes</span></div>'
+    +'<div class="flow-stat"><b>'+f.ties+'</b><span>Times tied</span></div>'
+    +'<div class="flow-stat"><b>'+(g.homeScore>g.awayScore?'+'+(g.homeScore-g.awayScore):(g.awayScore>g.homeScore?'+'+(g.awayScore-g.homeScore):'0'))+'</b><span>Final margin · '+(g.homeScore===g.awayScore?'tied':esc(g.homeScore>g.awayScore?nameH:nameA))+'</span></div>'
+    +'</div></div>';
+  // drag / touch to scrub
+  var rect=document.getElementById('gfr-'+gi), sv=document.getElementById('gfsvg-'+gi), line1=document.getElementById('gfx-'+gi), dot=document.getElementById('gfd-'+gi), now=document.getElementById('gfn-'+gi);
+  if(!rect||!sv) return;
+  function show(clientX){
+    var b=sv.getBoundingClientRect(); if(!b.width) return;
+    var vx=(clientX-b.left)/b.width*W, t=Math.max(0,Math.min(f.total,(vx-pl)/pw*f.total));
+    var q=scoreAt(t), m=q.h-q.a, x=sx(t);
+    line1.setAttribute('x1',x); line1.setAttribute('x2',x); line1.style.display='';
+    dot.setAttribute('cx',x); dot.setAttribute('cy',sy(m)); dot.style.display='';
+    var when;
+    if(f.hasClock){ var half=Math.min(f.halves,Math.floor(Math.max(0,t-0.001)/f.halfLen)+1); when='H'+half+' · '+_flowFmt(f.halfLen-(t-(half-1)*f.halfLen)); }
+    else when='H'+(q.half||1);
+    now.textContent=when+' · '+nameH+' '+q.h+'–'+q.a+' '+nameA;
+  }
+  function hide(){ line1.style.display='none'; dot.style.display='none'; now.textContent=finalTxt; }
+  var down=false;
+  rect.addEventListener('pointerdown',function(e){ down=true; show(e.clientX); });
+  rect.addEventListener('pointermove',function(e){ if(e.pointerType==='mouse'||down) show(e.clientX); });
+  rect.addEventListener('pointerup',function(){ down=false; });
+  rect.addEventListener('pointerleave',function(){ down=false; hide(); });
+  rect.addEventListener('pointercancel',function(){ down=false; hide(); });
+}
+
+function switchGameTab(gi,tab){
+  ['box','log','flow','video'].forEach(function(t){
+    var tb=document.getElementById('gtab-'+gi+'-'+t), pn=document.getElementById('gpanel-'+gi+'-'+t);
+    if(tb) tb.classList.toggle('active',t===tab);
+    if(pn) pn.classList.toggle('active',t===tab);
+  });
+  if(tab==='flow') renderGameFlow(gi);          // drawn the first time it's opened
 }
 
 // Games Tab
