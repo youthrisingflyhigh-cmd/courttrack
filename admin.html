@@ -870,9 +870,10 @@ BYE: Ohana, AIM
         </div>
 
         <div style="margin-top:20px;">
-          <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:8px;">RESET SHOT CLOCK</div>
-          <div style="display:flex;gap:12px;justify-content:center;">
+          <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:8px;">SHOT CLOCK</div>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
             <button onclick="shotClockQuickReset(24)" title="Reset the shot clock to 24" style="min-width:92px;min-height:64px;border-radius:12px;background:#FF4500;color:#fff;border:none;font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;cursor:pointer;line-height:1;">↺ 24</button>
+            <button id="shot-pause-btn" onclick="toggleShotClockPause()" title="Pause or resume the shot clock" style="min-width:92px;min-height:64px;border-radius:12px;background:#22c55e;color:#000;border:none;font-family:'Barlow Condensed',sans-serif;cursor:pointer;line-height:1;padding:4px 8px;"><span id="shot-pause-num" style="display:block;font-size:34px;font-weight:900;">24</span><span id="shot-pause-lbl" style="display:block;font-size:13px;font-weight:800;letter-spacing:1px;">▶ RESUME</span></button>
             <button onclick="shotClockQuickReset(14)" title="Reset the shot clock to 14 (after a foul, etc.)" style="min-width:92px;min-height:64px;border-radius:12px;background:#eab308;color:#000;border:none;font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;cursor:pointer;line-height:1;">↺ 14</button>
           </div>
         </div>
@@ -1459,6 +1460,7 @@ var shotClockOff = false;
 function shotClockFmt(s){ return s < 10 ? '0'+s : String(s); }
 
 function shotClockUpdate(){
+  renderShotPauseBtn();
   var el = document.getElementById('shot-clock-display');
   var miniEl = document.getElementById('mini-shotclock');
   if(!el) return;
@@ -1524,6 +1526,28 @@ function shotClockStop(){
   var miniBtn=document.getElementById('mini-shotclock-btn');
   if(miniBtn){ miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   shotClockUpdate();
+}
+
+// The big pause/resume button in the middle of the live screen. It shows the
+// shot clock number and what a tap will do: PAUSE while it's running,
+// RESUME while it's held, and it's inert when the shot clock is off or has
+// expired (reset it with ↺ 24 / ↺ 14 instead).
+function renderShotPauseBtn(){
+  var b=document.getElementById('shot-pause-btn'); if(!b) return;
+  var n=document.getElementById('shot-pause-num'), l=document.getElementById('shot-pause-lbl');
+  var num, lbl, bg, fg, op='1';
+  if(shotClockOff){ num='—'; lbl='OFF'; bg='#334155'; fg='#aaa'; op='0.5'; }
+  else if(shotClockSeconds<=0 && !shotClockRunning){ num='0'; lbl='EXPIRED'; bg='#7f1d1d'; fg='#fff'; }
+  else if(shotClockRunning){ num=String(shotClockSeconds); lbl='⏸ PAUSE'; bg='#475569'; fg='#fff'; }
+  else { num=String(shotClockSeconds); lbl='▶ RESUME'; bg='#22c55e'; fg='#000'; }
+  if(n) n.textContent=num; if(l) l.textContent=lbl;
+  b.style.background=bg; b.style.color=fg; b.style.opacity=op;
+}
+function toggleShotClockPause(){
+  if(shotClockOff) return;                 // shot clock is switched off
+  if(shotClockRunning){ shotClockStop(); return; }     // pause: holds the current number
+  if(shotClockSeconds<=0) return;          // expired: reset it instead
+  shotClockStart();                        // resume from where it was held
 }
 
 function toggleMiniShotClock(){
