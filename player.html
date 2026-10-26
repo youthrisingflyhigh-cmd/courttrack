@@ -272,6 +272,8 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .hsr-sub{font-size:11px;color:var(--muted);}
 
 /* ── MVP OF THE WEEK: one card per game, side by side (swipes sideways if there are many) ── */
+.mvpw-nav{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--dark3);color:var(--white);font-size:17px;line-height:1;cursor:pointer;padding:0 0 2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mvpw-nav:disabled{opacity:.25;cursor:default;}
 .mvpw-row{display:flex;gap:1px;background:var(--line);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
 .mvpw-card{flex:1 0 0;min-width:112px;background:var(--dark2);padding:14px 6px 14px;text-align:center;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;}
 .mvpw-final{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
@@ -280,6 +282,12 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;flex-shrink:0;position:relative;}
 .mvpw-avatar.has-photo{background:none;}
 .mvpw-avatar img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);box-sizing:border-box;display:block;background:#222;}
+.mvpw-avatar.editable{cursor:pointer;}
+.mvpw-cam{position:absolute;right:-7px;top:-5px;background:var(--orange);color:#000;border-radius:99px;font-size:11px;line-height:1;padding:3px 5px;border:2px solid var(--dark2);}
+.mvpw-pm{display:none;margin:0;padding:8px 14px;background:rgba(255,92,0,.12);border-bottom:1px solid var(--line);font-size:12px;color:#ffb27a;}
+.mvpw-pm a{color:var(--white);text-decoration:underline;cursor:pointer;margin-left:6px;}
+.pm-btn{padding:11px 14px;border-radius:9px;border:1px solid #555;background:var(--dark3);color:#fff;font-weight:700;font-size:14px;cursor:pointer;}
+.pm-btn.primary{background:var(--orange);color:#000;border:none;}
 .mvpw-num{position:absolute;right:-7px;bottom:-3px;background:#0d0d0d;color:var(--white);border:2px solid var(--dark2);border-radius:99px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:900;line-height:1;padding:2px 5px;}
 .mvpw-name{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:900;line-height:1.05;color:var(--white);margin-top:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
 .mvpw-team{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--orange);text-transform:uppercase;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
@@ -435,9 +443,10 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <!-- MVP OF THE WEEK: winning team's MVP from each game of the most recent game day, side by side -->
   <div class="top-scorers-card" id="gameday-mvps-card" style="display:none;">
     <div class="tsc-header">
-      <div style="min-width:0;"><span id="gameday-mvps-title">🏅 MVP of the Week</span><div id="gameday-mvps-date" style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);margin-top:3px;"></div></div>
+      <div style="min-width:0;"><span id="gameday-mvps-title">🏅 MVP of the Week</span><div style="display:flex;align-items:center;gap:8px;margin-top:5px;"><button id="mvpw-prev" class="mvpw-nav" onclick="mvpDay(1)" aria-label="Earlier game day" title="Earlier game day">‹</button><div id="gameday-mvps-date" style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);"></div><button id="mvpw-next" class="mvpw-nav" onclick="mvpDay(-1)" aria-label="Later game day" title="Later game day">›</button></div></div>
       <a onclick="showTab('scores')">All games →</a>
     </div>
+    <div id="mvpw-photomode" class="mvpw-pm">📷 Photo mode is on — tap a player's circle to add or change their photo.<a onclick="photoModeOff()">Turn off</a></div>
     <div id="gameday-mvps" class="mvpw-row"></div>
   </div>
 
@@ -640,6 +649,27 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 </div>
 
 <!-- ── FIREBASE + JS ── -->
+<div id="photo-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:16px;padding:20px;width:92%;max-width:340px;max-height:92vh;overflow-y:auto;text-align:center;">
+    <div id="pm-title" style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#fff;">Add photo</div>
+    <div id="pm-sub" style="font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
+    <div id="pm-stage" style="width:260px;height:260px;border-radius:50%;overflow:hidden;margin:0 auto 12px;background:#222;border:3px solid var(--orange);touch-action:none;cursor:grab;position:relative;">
+      <img id="pm-current" alt="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0;">
+      <canvas id="pm-canvas" width="260" height="260" style="position:absolute;left:0;top:0;display:none;"></canvas>
+      <div id="pm-empty" style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font-size:13px;color:#888;padding:0 24px;">Choose a photo to start</div>
+    </div>
+    <input type="range" id="pm-zoom" min="100" max="400" value="100" oninput="pmZoom(this.value)" style="width:230px;display:none;margin-bottom:6px;">
+    <div id="pm-hint" style="font-size:11px;color:var(--muted);height:16px;margin-bottom:10px;"></div>
+    <input type="file" id="pm-file" accept="image/*" onchange="pmFile(this)" style="display:none;">
+    <button class="pm-btn" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('pm-file').click()">📷 Choose / take a photo</button>
+    <div id="pm-msg" style="font-size:12px;color:#fbbf24;min-height:16px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="pm-btn" style="flex:1;" onclick="pmClose()">Cancel</button>
+      <button class="pm-btn" id="pm-remove" style="flex:1;display:none;" onclick="pmRemove()">Remove</button>
+      <button class="pm-btn primary" id="pm-save" style="flex:1.4;" onclick="pmSave()">Save</button>
+    </div>
+  </div>
+</div>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
@@ -968,8 +998,14 @@ var playerPhotos={};
 function _photoSlug(s){ return String(s==null?'':s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
 function playerPhoto(team,name){
   var t=_photoSlug(team), full=_photoSlug(name), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
-  var uri=playerPhotos[t+'-'+full]||playerPhotos[t+'-'+first]||null;     // exact name first, then first name only
-  return (uri && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri))?uri:null;
+  // a photo saved from the card (database) wins over player-photos.js; exact name first, then first name only
+  // (the first one that is a real, reasonably small image wins — a bad entry never hides a good photo)
+  var cands=[dbPhotos[t+'-'+full],dbPhotos[t+'-'+first],playerPhotos[t+'-'+full],playerPhotos[t+'-'+first]];
+  for(var i=0;i<cands.length;i++){
+    var uri=cands[i];
+    if(uri && uri.length<=30000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
+  }
+  return null;
 }
 function loadPlayerPhotos(){
   var s=document.createElement('script');
@@ -978,6 +1014,141 @@ function loadPlayerPhotos(){
   s.onerror=function(){};                                                   // no file yet = no photos, nothing breaks
   document.head.appendChild(s);
 }
+// ── ADD A PHOTO RIGHT FROM THE MVP CARD ("photo mode") ──
+// Open the site with ?photos=1 once on your phone/computer and photo mode stays
+// on there (?photos=0 turns it off). Fans never see any of this. In photo mode
+// each MVP circle is tappable: pick a photo, drag/zoom it into the circle,
+// Save — it's stored in the database under team+name and shows straight away.
+// Photos from player-photos.js still work; one saved here wins over them.
+var dbPhotos={}, _dbPhotoPending={}, _photoMode=false;
+try{
+  var _q=new URLSearchParams(location.search);
+  if(_q.get('photos')==='1') localStorage.setItem('ctPhotoMode','1');
+  if(_q.get('photos')==='0') localStorage.removeItem('ctPhotoMode');
+  _photoMode=localStorage.getItem('ctPhotoMode')==='1';
+}catch(e){}
+function photoModeOff(){ try{ localStorage.removeItem('ctPhotoMode'); }catch(e){} _photoMode=false; renderGameDayMVPs(); }
+function _photoKeys(team,name){
+  var t=_photoSlug(team), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
+  return [t+'-'+_photoSlug(name), t+'-'+first];
+}
+// Ask the database (once per key) for photos saved from the card; redraw only if one turns up
+function fetchDbPhotos(items){
+  if(typeof db==='undefined' || !db) return;
+  items.forEach(function(it){
+    _photoKeys(it.m.teamName,it.m.name).forEach(function(k){
+      if(dbPhotos[k]!==undefined || _dbPhotoPending[k]) return;
+      _dbPhotoPending[k]=true;
+      db.ref('playerPhotos/'+k).once('value').then(function(s){
+        delete _dbPhotoPending[k]; dbPhotos[k]=s.val()||null;
+        if(s.val()) renderGameDayMVPs();
+      }).catch(function(){ delete _dbPhotoPending[k]; dbPhotos[k]=null; });
+    });
+  });
+}
+// crop maths (pure, so it can be tested)
+var PM_STAGE=260;
+function _pmCover(sw,sh,stage){ return Math.max(stage/sw,stage/sh); }
+function _pmClamp(ox,oy,sw,sh,scale,stage){
+  var minX=stage-sw*scale, minY=stage-sh*scale;
+  return {ox:Math.min(0,Math.max(minX,ox)), oy:Math.min(0,Math.max(minY,oy))};
+}
+function _pmSourceRect(ox,oy,scale,stage){ return {sx:-ox/scale, sy:-oy/scale, size:stage/scale}; }
+var _pm={src:null,sw:0,sh:0,base:1,scale:1,ox:0,oy:0,team:'',name:'',key:'',hadDb:false,wired:false,drag:null};
+function openPhotoUpload(el){
+  if(!_photoMode) return;
+  var team=el.getAttribute('data-team'), name=el.getAttribute('data-name'), num=el.getAttribute('data-num')||'';
+  _pm.team=team; _pm.name=name; _pm.key=_photoKeys(team,name)[0]; _pm.src=null; _pm.drag=null;
+  var cur=playerPhoto(team,name);
+  _pm.hadDb=!!(dbPhotos[_pm.key]||dbPhotos[_photoKeys(team,name)[1]]);
+  document.getElementById('pm-title').textContent=cur?'Change photo':'Add photo';
+  document.getElementById('pm-sub').textContent=(name||'')+' · '+(team||'')+(num?' · '+num:'');
+  var img=document.getElementById('pm-current'), cv=document.getElementById('pm-canvas');
+  if(cur){ img.src=cur; img.style.display='block'; } else { img.removeAttribute('src'); img.style.display='none'; }
+  cv.style.display='none'; document.getElementById('pm-empty').style.display=cur?'none':'block';
+  document.getElementById('pm-zoom').style.display='none'; document.getElementById('pm-zoom').value=100;
+  document.getElementById('pm-hint').textContent=''; document.getElementById('pm-msg').textContent='';
+  document.getElementById('pm-file').value='';
+  document.getElementById('pm-remove').style.display=_pm.hadDb?'':'none';
+  document.getElementById('pm-save').disabled=true; document.getElementById('pm-save').style.opacity='.45';
+  document.getElementById('photo-modal').style.display='flex';
+  pmWire();
+}
+function pmClose(){ document.getElementById('photo-modal').style.display='none'; _pm.src=null; }
+function pmWire(){
+  if(_pm.wired) return; _pm.wired=true;
+  var st=document.getElementById('pm-stage');
+  st.addEventListener('pointerdown',function(e){ if(!_pm.src) return; _pm.drag={x:e.clientX,y:e.clientY,ox:_pm.ox,oy:_pm.oy}; try{ st.setPointerCapture(e.pointerId); }catch(x){} });
+  st.addEventListener('pointermove',function(e){
+    if(!_pm.drag||!_pm.src) return;
+    var c=_pmClamp(_pm.drag.ox+(e.clientX-_pm.drag.x),_pm.drag.oy+(e.clientY-_pm.drag.y),_pm.sw,_pm.sh,_pm.scale,PM_STAGE);
+    _pm.ox=c.ox; _pm.oy=c.oy; pmDraw();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ st.addEventListener(ev,function(){ _pm.drag=null; }); });
+}
+function pmFile(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var msg=document.getElementById('pm-msg'); msg.textContent='';
+  if(!/^image\//.test(f.type||'')){ msg.textContent='That doesn\'t look like a photo — pick a picture.'; return; }
+  var url=URL.createObjectURL(f), im=new Image();
+  im.onload=function(){
+    // very large phone photos are shrunk once so drawing stays smooth and within the browser's limits
+    var w=im.naturalWidth||im.width, h=im.naturalHeight||im.height, k=Math.min(1,2000/Math.max(w,h)), src=im;
+    if(k<1){ var c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); src=c; w=c.width; h=c.height; }
+    URL.revokeObjectURL(url);
+    _pm.src=src; _pm.sw=w; _pm.sh=h; _pm.base=_pmCover(w,h,PM_STAGE); _pm.scale=_pm.base;
+    _pm.ox=(PM_STAGE-w*_pm.scale)/2; _pm.oy=-(h*_pm.scale-PM_STAGE)*0.15;        // centred sideways, nudged toward the top (where faces are)
+    var cl=_pmClamp(_pm.ox,_pm.oy,w,h,_pm.scale,PM_STAGE); _pm.ox=cl.ox; _pm.oy=cl.oy;
+    document.getElementById('pm-current').style.display='none'; document.getElementById('pm-empty').style.display='none';
+    document.getElementById('pm-canvas').style.display='block';
+    var z=document.getElementById('pm-zoom'); z.value=100; z.style.display='';
+    document.getElementById('pm-hint').textContent='Drag to move · slide to zoom';
+    document.getElementById('pm-save').disabled=false; document.getElementById('pm-save').style.opacity='1';
+    pmDraw();
+  };
+  im.onerror=function(){ msg.textContent='Couldn\'t open that photo. Try another one.'; };
+  im.src=url;
+}
+function pmZoom(v){
+  if(!_pm.src) return;
+  var cx=(PM_STAGE/2-_pm.ox)/_pm.scale, cy=(PM_STAGE/2-_pm.oy)/_pm.scale;       // keep what's in the middle in the middle
+  _pm.scale=_pm.base*(v/100);
+  var c=_pmClamp(PM_STAGE/2-cx*_pm.scale,PM_STAGE/2-cy*_pm.scale,_pm.sw,_pm.sh,_pm.scale,PM_STAGE);
+  _pm.ox=c.ox; _pm.oy=c.oy; pmDraw();
+}
+function pmDraw(){
+  var cv=document.getElementById('pm-canvas'), cx=cv.getContext('2d');
+  cx.clearRect(0,0,PM_STAGE,PM_STAGE);
+  cx.drawImage(_pm.src,_pm.ox,_pm.oy,_pm.sw*_pm.scale,_pm.sh*_pm.scale);
+}
+// 160x160 JPEG, kept small (the database stores it as text)
+function pmExport(){
+  var r=_pmSourceRect(_pm.ox,_pm.oy,_pm.scale,PM_STAGE), out=document.createElement('canvas');
+  out.width=160; out.height=160;
+  out.getContext('2d').drawImage(_pm.src,r.sx,r.sy,r.size,r.size,0,0,160,160);
+  var q=[0.84,0.76,0.68,0.6], uri='';
+  for(var i=0;i<q.length;i++){ uri=out.toDataURL('image/jpeg',q[i]); if(uri.length<=16000) return uri; }
+  return uri.length<=28000?uri:'';
+}
+function pmSave(){
+  var msg=document.getElementById('pm-msg');
+  if(!_pm.src){ msg.textContent='Choose a photo first.'; return; }
+  if(typeof db==='undefined'||!db){ msg.textContent='Not connected to the database.'; return; }
+  var uri=pmExport(); if(!uri){ msg.textContent='That photo is too detailed to store. Try zooming in a bit.'; return; }
+  var btn=document.getElementById('pm-save'); btn.disabled=true; btn.textContent='Saving…'; var key=_pm.key;
+  db.ref('playerPhotos/'+key).set(uri).then(function(){
+    dbPhotos[key]=uri; btn.textContent='Save'; pmClose(); renderGameDayMVPs();
+  }).catch(function(e){ btn.disabled=false; btn.textContent='Save'; msg.textContent='Couldn\'t save: '+((e&&e.message)||'the database said no.'); });
+}
+function pmRemove(){
+  var msg=document.getElementById('pm-msg');
+  if(typeof db==='undefined'||!db) return;
+  var keys=_photoKeys(_pm.team,_pm.name);
+  Promise.all(keys.filter(function(k){ return dbPhotos[k]; }).map(function(k){ return db.ref('playerPhotos/'+k).remove().then(function(){ dbPhotos[k]=null; }); }))
+    .then(function(){ pmClose(); renderGameDayMVPs(); })
+    .catch(function(e){ msg.textContent='Couldn\'t remove: '+((e&&e.message)||'the database said no.'); });
+}
+
 function computeWinningTeamMVP(g){
   var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0;
   if(hs===as) return null;
@@ -1000,32 +1171,51 @@ function computeWinningTeamMVP(g){
   });
   return best;
 }
+// Every game day that has at least one MVP, newest first (same "newest" rule as before:
+// latest save time; older data without one falls back to the calendar date).
+var _mvpDayIdx=0, _mvpNewestKey=null;
+function _mvpDays(hist){
+  var by={}, order=[];
+  hist.forEach(function(g){
+    var md=_schMd(g.date), key=md||('g:'+(g.id||''));
+    if(!by[key]){ by[key]={key:key,games:[],stamp:0,ord:0}; order.push(key); }
+    var d=by[key]; d.games.push(g); d.stamp=Math.max(d.stamp,_gdStamp(g)); d.ord=Math.max(d.ord,_gdOrdinal(g));
+  });
+  return order.map(function(k){ return by[k]; }).sort(function(a,b){ return (b.stamp-a.stamp)||(b.ord-a.ord); });
+}
+function mvpDay(delta){ _mvpDayIdx+=delta; renderGameDayMVPs(); }      // +1 = an earlier game day, -1 = a later one
 function renderGameDayMVPs(){
   var card=document.getElementById('gameday-mvps-card'), box=document.getElementById('gameday-mvps');
   if(!card||!box) return;
   var hist=toArr(gameHistory).filter(function(g){ return g && g.home && g.away; });
   if(!hist.length){ card.style.display='none'; return; }
-  // newest game = latest save time; for old data with no time in the id, the latest calendar date
-  var newest=null, best=0;
-  hist.forEach(function(g){ var st=_gdStamp(g); if(st>best){ best=st; newest=g; } });   // a game with no save time never counts as "newest"
-  if(!newest){ var bo=-1; hist.forEach(function(g){ var o=_gdOrdinal(g); if(o>bo){ bo=o; newest=g; } }); }
-  if(!newest) newest=hist[0];
-  var md=_schMd(newest.date);
-  var day=hist.filter(function(g){ return md ? _schMd(g.date)===md : g===newest; });
-  day.sort(function(a,b){ return _gdStamp(a)-_gdStamp(b); });          // in the order they were played
-  var items=day.map(function(g){ var m=computeWinningTeamMVP(g); return m?{g:g,m:m}:null; }).filter(Boolean);
-  if(!items.length){ card.style.display='none'; return; }
+  var days=_mvpDays(hist).map(function(d){
+    d.games.sort(function(a,b){ return _gdStamp(a)-_gdStamp(b); });          // in the order they were played
+    d.items=d.games.map(function(g){ var m=computeWinningTeamMVP(g); return m?{g:g,m:m}:null; }).filter(Boolean);
+    return d;
+  }).filter(function(d){ return d.items.length; });
+  if(!days.length){ card.style.display='none'; return; }
+  if(_mvpNewestKey!==days[0].key){ _mvpNewestKey=days[0].key; _mvpDayIdx=0; }   // a newer game day arrived: jump back to it
+  _mvpDayIdx=Math.max(0,Math.min(_mvpDayIdx,days.length-1));
+  var cur=days[_mvpDayIdx], items=cur.items;
   document.getElementById('gameday-mvps-title').textContent='🏅 MVP of the Week';
-  var dEl=document.getElementById('gameday-mvps-date'); if(dEl) dEl.textContent=newest.date||'';
+  var pmBar=document.getElementById('mvpw-photomode'); if(pmBar) pmBar.style.display=_photoMode?'block':'none';
+  fetchDbPhotos(items);
+  var dEl=document.getElementById('gameday-mvps-date'); if(dEl) dEl.textContent=(cur.games[0].date||'')+(_mvpDayIdx>0?'  ·  earlier':'');
+  var pv=document.getElementById('mvpw-prev'), nx=document.getElementById('mvpw-next');
+  if(pv){ pv.disabled=(_mvpDayIdx>=days.length-1); pv.style.display=days.length>1?'':'none'; }
+  if(nx){ nx.disabled=(_mvpDayIdx<=0); nx.style.display=days.length>1?'':'none'; }
   box.innerHTML=items.map(function(it){
     var g=it.g, m=it.m, s=m.s, n=function(k){ return Number(s[k])||0; };
     var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0, hWin=hs>as;
     var oppName=hWin?g.away:g.home;
     var numTxt='#'+m.num, fs=String(m.num).length>=3?16:(String(m.num).length===2?21:24);
     var photo=playerPhoto(m.teamName,m.name);
+    var edit=_photoMode?(' editable" onclick="openPhotoUpload(this)" data-team="'+gdEsc(m.teamName)+'" data-name="'+gdEsc(m.name)+'" data-num="'+gdEsc(numTxt)+'"'):'"';
+    var cam=_photoMode?'<span class="mvpw-cam">📷</span>':'';
     var avatar=photo
-      ? '<div class="mvpw-avatar has-photo"><img src="'+photo+'" alt="'+gdEsc(m.name)+'" style="border-color:'+gdEsc(m.color)+';"><span class="mvpw-num">'+gdEsc(numTxt)+'</span></div>'
-      : '<div class="mvpw-avatar" style="background:'+gdEsc(m.color)+';color:'+_gdTextOn(m.color)+';font-size:'+fs+'px;">'+gdEsc(numTxt)+'</div>';
+      ? '<div class="mvpw-avatar has-photo'+edit+'><img src="'+photo+'" alt="'+gdEsc(m.name)+'" style="border-color:'+gdEsc(m.color)+';"><span class="mvpw-num">'+gdEsc(numTxt)+'</span>'+cam+'</div>'
+      : '<div class="mvpw-avatar'+edit+' style="background:'+gdEsc(m.color)+';color:'+_gdTextOn(m.color)+';font-size:'+fs+'px;">'+gdEsc(numTxt)+cam+'</div>';
     var stat=function(v,l){ return '<div class="mvpw-stat"><b>'+v+'</b><span>'+l+'</span></div>'; };
     var extra=[]; if(n('stl')) extra.push(n('stl')+' STL'); if(n('blk')) extra.push(n('blk')+' BLK'); if(n('3pm')) extra.push(n('3pm')+' 3PM');
     return '<div class="mvpw-card">'

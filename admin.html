@@ -484,6 +484,32 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="reassign-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">Move a Player's Stats</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;" id="ra-source"></div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:12px;line-height:1.45;">Fixes stats that show up under the wrong player. It changes the saved box scores, so the fix sticks and the public site follows.</div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Team</label>
+    <select id="ra-team" onchange="onReassignTeam()" style="width:100%;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;margin-bottom:10px;"></select>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Whose stats are on the wrong player? (⚠️ = the box score names someone different from who holds that number now)</label>
+    <select id="ra-from" onchange="onReassignFrom()" style="width:100%;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;margin-bottom:8px;"></select>
+    <div id="ra-note" style="font-size:12px;color:#fbbf24;line-height:1.45;margin-bottom:10px;"></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">Games to move</label>
+    <div id="ra-games" style="max-height:140px;overflow-y:auto;border:1px solid #333;border-radius:8px;padding:6px 10px;background:var(--dark3);margin-bottom:10px;"></div>
+    <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">They really belong to</label>
+    <select id="ra-to" onchange="onReassignTo()" style="width:100%;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;margin-bottom:8px;"></select>
+    <div id="ra-new" style="display:none;gap:8px;margin-bottom:8px;">
+      <input type="text" id="ra-new-name" placeholder="Name" oninput="onReassignTo()" style="flex:2;min-width:0;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;">
+      <input type="text" id="ra-new-num" inputmode="numeric" placeholder="Number" oninput="onReassignTo()" style="flex:1;min-width:0;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;">
+    </div>
+    <div id="ra-preview" style="font-size:12px;color:var(--muted);min-height:16px;margin-bottom:12px;line-height:1.45;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeReassignModal()" style="flex:1;padding:11px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:8px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="applyReassign()" style="flex:1;padding:11px;background:var(--orange);color:#000;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Move Stats</button>
+    </div>
+  </div>
+</div>
+
 <div id="lbd-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:480px;max-height:88vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">Change Locations by Date</h3>
@@ -1275,6 +1301,12 @@ BYE: Ohana, AIM
 
       <hr style="border-color:#333;margin:18px 0;">
 
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Move a Player's Stats</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Use this when stats show up under the wrong player — for example a new player was given a number someone else wore in earlier games. It fixes the saved box scores, so it sticks (the tools below only change season totals, which the next box-score save rebuilds).</p>
+      <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="openReassignModal()">🔁 Move a Player's Stats</button>
+
+      <hr style="border-color:#333;margin:18px 0;">
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Merge Player Stats</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">When someone's jersey number changes, their old stats get stuck under the old number as a "Former Player" instead of following them. Use this to fold those old stats into their current entry — sums everything together (points, rebounds, game log, etc.) and removes the old duplicate.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
@@ -1310,7 +1342,7 @@ BYE: Ohana, AIM
       <hr style="border-color:#333;margin:18px 0;">
 
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Transfer Stats</strong></p>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Fixes a scoring mix-up — e.g. a basket that was logged under the wrong player. Moves a specific amount of one stat from one current player's season totals to another's. This only adjusts season totals, not the original saved game's box score, so re-running "Rebuild from Game History" later would undo this — use Rebuild first if you need both.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Fixes a scoring mix-up — e.g. a basket that was logged under the wrong player. Moves a specific amount of one stat from one current player's season totals to another's. This only adjusts season totals, not the original saved game's box score, so re-running "Rebuild from Game History" later would undo this — use Rebuild first if you need both. <strong style="color:#fbbf24;">Heads up:</strong> this edits season totals only, so saving any box score later rebuilds the totals and undoes it. For a lasting fix, use “Move a Player's Stats” above.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
         <div style="flex:1;min-width:200px;">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">FROM (currently has the stat)</div>
@@ -4151,6 +4183,34 @@ function renameSelectedTeam(){
   alert('✅ Renamed "'+oldName+'" to "'+newName+'". Updated '+res.games+' past game(s) and everything else that used the old name.');
 }
 
+// ── JERSEY-NUMBER REUSE ──
+// Stats are filed under team + jersey number, and the Players list shows them
+// under whoever holds that number TODAY. So giving a new player a number that
+// someone else wore in earlier games makes that person's stats appear under
+// the new player. This finds that situation so we can warn before it happens.
+var _STAT_KEYS=['pts','reb','ast','stl','blk','to','fgm','3pm','ftm','miss'];
+function _hasAnyStat(s){ return !!s && _STAT_KEYS.some(function(k){ return (s[k]||0)>0; }); }
+function _firstNameKey(n){ return String(n||'').trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,''); }
+function numberHistoryConflict(teamName,num,newName){
+  var names={}, games=0, pts=0;
+  toArr(gameHistory).forEach(function(g){
+    if(!g) return;
+    ['home','away'].forEach(function(side){
+      if(g[side]!==teamName) return;
+      var roster=toArr(side==='home'?g.homePlayers:g.awayPlayers), st=(side==='home'?g.hStats:g.aStats)||{}, lu=toArr(side==='home'?g.hLineup:g.aLineup);
+      var s=st[num], did=_hasAnyStat(s)||lu.some(function(x){ return String(x)===String(num); });
+      if(!did) return;
+      var rp=roster.filter(function(p){ return p && String(p.num)===String(num); })[0], nm=rp?rp.name:'';
+      if(nm && _firstNameKey(nm)===_firstNameKey(newName)) return;       // same person: no conflict
+      names[nm||'a different player']=true; games++; pts+=(s&&s.pts)||0;
+    });
+  });
+  return games?{names:Object.keys(names),games:games,pts:pts}:null;
+}
+function _numConflictMsg(c,num,name){
+  return '#'+num+' already has saved stats from a different player: '+c.names.join(', ')+' ('+c.games+' game'+(c.games>1?'s':'')+', '+c.pts+' pts).\n\nIf you give #'+num+' to '+name+', those stats will show up under '+name+' in the Players list.\n\nPick a different number to keep them separate, or press OK to continue anyway (you can fix it afterwards in Settings → Move a Player\'s Stats).';
+}
+
 function addPlayer(){
   if(selTeam===null){alert('Select a team first!');return;}
   var n=document.getElementById('player-name-input').value.trim();
@@ -4158,6 +4218,8 @@ function addPlayer(){
   var pos=document.getElementById('player-pos-input').value;
   if(!n||isNaN(num)){alert('Enter player name and jersey number');return;}
   if(teams[selTeam].players.find(function(p){return p.num===num;})){alert('#'+num+' already taken');return;}
+  var cf=numberHistoryConflict(teams[selTeam].name,num,n);
+  if(cf && !confirm(_numConflictMsg(cf,num,n))) return;
   teams[selTeam].players.push({name:n,num:num,pos:pos});
   document.getElementById('player-name-input').value='';
   document.getElementById('player-num-input').value='';
@@ -4201,6 +4263,11 @@ function savePlayer(i){
   if(!name||isNaN(num)){alert('Name and number required.');return;}
   var dup=teams[selTeam].players.find(function(p,idx){return p.num===num&&idx!==i;});
   if(dup){alert('#'+num+' is already taken.');return;}
+  var old=teams[selTeam].players[i];
+  if(old && (old.num!==num || _firstNameKey(old.name)!==_firstNameKey(name))){      // new number, or a different person in the same number
+    var cf=numberHistoryConflict(teams[selTeam].name,num,name);
+    if(cf && !confirm(_numConflictMsg(cf,num,name))) return;
+  }
   teams[selTeam].players[i]={name:name,num:num,pos:pos};
   fbSet(ctPath('teams'),teams); renderRoster();
 }
@@ -4667,6 +4734,142 @@ function togglePlayoffGame(){
   game.isPlayoff=!game.isPlayoff;
   saveLiveGame();
   renderPlayoffToggle();
+}
+
+// ── MOVE A PLAYER'S STATS ──
+// Fixes stats filed under the wrong player/number, IN THE SAVED BOX SCORES
+// (so the fix survives every later rebuild of season totals, unlike editing
+// the totals directly). Moves one jersey number's line, in the chosen games,
+// to another number + name: stats, roster snapshot, starting lineup, minutes
+// and play-by-play. Skips a game if the target number already has its own
+// line there (so two different people are never merged by accident).
+function reassignGameStats(hist,teamName,fromNum,gameIds,toNum,toName){
+  var A=String(fromNum), B=String(toNum), Bn=Number(toNum), res={moved:0,skipped:[]};
+  if(A===B) return res;
+  toArr(hist).forEach(function(g){
+    if(!g || gameIds.indexOf(g.id)===-1) return;
+    ['home','away'].forEach(function(side){
+      if(g[side]!==teamName) return;
+      var sk=side==='home'?'hStats':'aStats', pk=side==='home'?'homePlayers':'awayPlayers', lk=side==='home'?'hLineup':'aLineup';
+      var st=g[sk]; if(!st || st[A]===undefined) return;
+      var lineup=toArr(g[lk]);
+      var targetUsed=_hasAnyStat(st[B]) || lineup.some(function(x){ return String(x)===B; });
+      if(targetUsed){ res.skipped.push((g.date||'?')+' vs '+(side==='home'?g.away:g.home)+' — #'+B+' already has a line in that game'); return; }
+      st[B]=st[A]; delete st[A];
+      var roster=toArr(g[pk]).map(function(p){ return Object.assign({},p); });
+      var ia=-1; roster.forEach(function(p,i){ if(ia<0 && String(p.num)===A) ia=i; });
+      roster=roster.filter(function(p,i){ return !(String(p.num)===B && i!==ia); });     // an empty entry already on the target number goes
+      ia=-1; roster.forEach(function(p,i){ if(ia<0 && String(p.num)===A) ia=i; });
+      if(ia>=0) roster[ia]=Object.assign({},roster[ia],{num:Bn,name:toName}); else roster.push({num:Bn,name:toName,pos:''});
+      g[pk]=roster;
+      if(g[lk]) g[lk]=lineup.map(function(x){ return String(x)===A?Bn:x; });
+      if(g.minutes && g.minutes[side] && g.minutes[side][A]!==undefined){ g.minutes[side][B]=g.minutes[side][A]; delete g.minutes[side][A]; }
+      toArr(g.playLog).forEach(function(e){ if(e && e.side===side && String(e.num)===A){ e.num=Bn; e.playerName=toName; } });
+      res.moved++;
+    });
+  });
+  return res;
+}
+// Every jersey number with saved games for a team: who the box scores call them, who holds the number now
+function _raEntries(teamName){
+  var byNum={}, t=teams.filter(function(x){ return x.name===teamName; })[0];
+  toArr(gameHistory).forEach(function(g){
+    if(!g) return;
+    ['home','away'].forEach(function(side){
+      if(g[side]!==teamName) return;
+      var roster=toArr(side==='home'?g.homePlayers:g.awayPlayers), st=(side==='home'?g.hStats:g.aStats)||{}, lu=toArr(side==='home'?g.hLineup:g.aLineup);
+      Object.keys(st).forEach(function(n){
+        var s=st[n]; if(!_hasAnyStat(s) && !lu.some(function(x){ return String(x)===n; })) return;
+        var rp=roster.filter(function(p){ return p && String(p.num)===n; })[0];
+        var e=byNum[n]||(byNum[n]={num:n,names:{},games:[],pts:0});
+        e.names[rp&&rp.name?rp.name:'(no name saved)']=true; e.pts+=(s.pts||0);
+        e.games.push({id:g.id,date:g.date||'',opp:side==='home'?g.away:g.home,s:s});
+      });
+    });
+  });
+  return Object.keys(byNum).map(function(n){
+    var e=byNum[n], cur=t?t.players.filter(function(p){ return String(p.num)===n; })[0]:null;
+    e.boxNames=Object.keys(e.names); e.current=cur?cur.name:null;
+    e.mismatch=!!(cur && e.boxNames.every(function(nm){ return _firstNameKey(nm)!==_firstNameKey(cur.name); }));
+    return e;
+  }).sort(function(x,y){ return (y.mismatch-x.mismatch)||(y.pts-x.pts); });
+}
+
+var _raCache=[];
+function openReassignModal(){
+  document.getElementById('ra-source').textContent='Division: '+CT_ACTIVE_LABEL;
+  document.getElementById('ra-team').innerHTML=teams.map(function(t,i){ return '<option value="'+i+'">'+_dpEsc(t.name)+'</option>'; }).join('');
+  onReassignTeam();
+  document.getElementById('reassign-modal').style.display='flex';
+}
+function closeReassignModal(){ document.getElementById('reassign-modal').style.display='none'; }
+function _raTeam(){ return teams[parseInt(document.getElementById('ra-team').value)]; }
+function onReassignTeam(){
+  var t=_raTeam(); _raCache=t?_raEntries(t.name):[];
+  document.getElementById('ra-from').innerHTML=_raCache.length
+    ? _raCache.map(function(e,i){ return '<option value="'+i+'">'+(e.mismatch?'⚠️ ':'')+'#'+e.num+' — '+_dpEsc(e.boxNames.join(' / '))+(e.mismatch?' (on the roster now: '+_dpEsc(e.current)+')':'')+' · '+e.pts+' pts, '+e.games.length+' game'+(e.games.length>1?'s':'')+'</option>'; }).join('')
+    : '<option value="">(no saved stats for this team)</option>';
+  document.getElementById('ra-to').innerHTML=(t?t.players.slice().sort(function(x,y){ return x.num-y.num; }).map(function(p){ return '<option value="p:'+p.num+'">#'+p.num+' '+_dpEsc(p.name)+'</option>'; }).join(''):'')+'<option value="new">Someone not on the roster…</option>';
+  onReassignFrom();
+}
+function onReassignFrom(){
+  var e=_raCache[parseInt(document.getElementById('ra-from').value)], t=_raTeam();
+  var box=document.getElementById('ra-games'), note=document.getElementById('ra-note');
+  if(!e){ box.innerHTML='<div style="color:#888;font-size:12px;padding:6px 0;">Nothing saved for this team yet.</div>'; note.textContent=''; onReassignTo(); return; }
+  box.innerHTML=e.games.map(function(g){
+    var s=g.s||{};
+    return '<label style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #2a2a2a;cursor:pointer;font-size:12px;color:#fff;"><input type="checkbox" class="ra-game" value="'+_dpEsc(g.id)+'" checked onchange="onReassignTo()" style="margin-top:2px;"><span>'+_dpEsc(g.date||'?')+' vs '+_dpEsc(g.opp||'?')+' <span style="color:#888;">— '+(s.pts||0)+' pts, '+(s.reb||0)+' reb, '+(s.ast||0)+' ast</span></span></label>';
+  }).join('');
+  note.innerHTML=e.mismatch
+    ? '⚠️ In the saved box score, #'+e.num+' is <b>'+_dpEsc(e.boxNames.join(' / '))+'</b>, but #'+e.num+' on the roster is now <b>'+_dpEsc(e.current)+'</b> — these stats aren\'t '+_dpEsc(e.current)+'\'s. Move them to '+_dpEsc(e.boxNames[0])+' below. (If '+_dpEsc(e.boxNames[0])+' isn\'t on the roster any more, an easier fix is giving '+_dpEsc(e.current)+' a different number in Setup → Teams.)'
+    : 'Choose who these stats really belong to.';
+  // pre-select the roster player whose first name matches the box score name; otherwise "not on the roster" with that name filled in
+  var pre=t?t.players.filter(function(p){ return e.boxNames.some(function(nm){ return _firstNameKey(nm)===_firstNameKey(p.name); }) && String(p.num)!==String(e.num); })[0]:null;
+  document.getElementById('ra-to').value=pre?('p:'+pre.num):'new';
+  document.getElementById('ra-new-name').value=pre?'':(e.boxNames[0]&&e.boxNames[0].charAt(0)!=='('?e.boxNames[0]:'');
+  document.getElementById('ra-new-num').value='';
+  onReassignTo();
+}
+function _raTarget(){
+  var t=_raTeam(), v=document.getElementById('ra-to').value;
+  if(v==='new'){ var nm=(document.getElementById('ra-new-name').value||'').replace(/\s+/g,' ').trim(), nu=(document.getElementById('ra-new-num').value||'').trim();
+    return {isNew:true,name:nm,num:/^\d{1,3}$/.test(nu)?parseInt(nu,10):NaN}; }
+  var p=t&&t.players.filter(function(x){ return 'p:'+x.num===v; })[0];
+  return p?{isNew:false,name:p.name,num:p.num}:null;
+}
+function onReassignTo(){
+  var e=_raCache[parseInt(document.getElementById('ra-from').value)], tg=_raTarget(), pv=document.getElementById('ra-preview');
+  document.getElementById('ra-new').style.display=(document.getElementById('ra-to').value==='new')?'flex':'none';
+  var n=document.querySelectorAll('.ra-game:checked').length;
+  if(!e||!tg){ pv.textContent=''; return; }
+  pv.textContent=(tg.name&&!isNaN(tg.num))
+    ? 'Will move the stats from '+n+' game'+(n===1?'':'s')+' off #'+e.num+' ('+e.boxNames.join(' / ')+') and onto '+tg.name+' #'+tg.num+'.'
+    : 'Enter the player\'s name and a jersey number.';
+}
+function applyReassign(){
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var t=_raTeam(), e=_raCache[parseInt(document.getElementById('ra-from').value)], tg=_raTarget();
+  if(!t||!e){ alert('Pick whose stats to move.'); return; }
+  var ids=Array.prototype.slice.call(document.querySelectorAll('.ra-game')).filter(function(c){ return c.checked; }).map(function(c){ return c.value; });
+  if(!ids.length){ alert('Tick at least one game.'); return; }
+  if(!tg||!tg.name){ alert('Choose who the stats belong to (or type their name).'); return; }
+  if(isNaN(tg.num)){ alert('Enter a jersey number (0–999).'); return; }
+  if(String(tg.num)===String(e.num)){ alert('Those stats are already under #'+e.num+' in the box scores, so there\'s nothing to move.\n\nIf the wrong person holds #'+e.num+' on the roster, give them a different number in Setup → Teams.'); return; }
+  if(tg.isNew){
+    var holder=t.players.filter(function(p){ return p.num===tg.num; })[0];
+    if(holder){ alert('#'+tg.num+' is on the roster as '+holder.name+'. Pick '+holder.name+' from the list, or use a number nobody holds.'); return; }
+  }
+  if(!confirm('Move '+ids.length+' game'+(ids.length>1?'s':'')+' of stats off #'+e.num+' ('+e.boxNames.join(' / ')+') and onto '+tg.name+' #'+tg.num+'?\n\nThis changes the saved box scores and re-adds everyone\'s season totals.')) return;
+  var hist=toArr(gameHistory), res=reassignGameStats(hist,t.name,e.num,ids,tg.num,tg.name);
+  if(!res.moved){ alert('Nothing was moved.'+(res.skipped.length?'\n\nSkipped:\n• '+res.skipped.join('\n• '):'')); return; }
+  gameHistory=hist;
+  playerStats=computeRebuiltPlayerStats(gameHistory);
+  fbSet(ctPath('history'),gameHistory);
+  fbSet(ctPath('playerStats'),playerStats);
+  closeReassignModal();
+  if(typeof renderPlayersTab==='function') renderPlayersTab();
+  if(typeof populateMergeDropdowns==='function') populateMergeDropdowns();
+  alert('✅ Moved '+res.moved+' game'+(res.moved>1?'s':'')+' of stats to '+tg.name+' #'+tg.num+'. Season totals are updated.'+(res.skipped.length?'\n\nSkipped (not moved):\n• '+res.skipped.join('\n• '):''));
 }
 
 // ── PLAYING TIME ──
@@ -6247,6 +6450,8 @@ function saveLivePlayer(){
 
   if(_lpm.mode==='add'){
     if(roster.some(function(p){ return p.num===num; })){ alert('#'+num+' is already on this team.'); return; }
+    var cfL=numberHistoryConflict(teams[ti].name,num,name);
+    if(cfL && !confirm(_numConflictMsg(cfL,num,name))) return;
     var ex=stats[String(num)];
     var hasStats=ex && Object.keys(ex).some(function(k){ return typeof ex[k]==='number' && ex[k]>0; });
     if(hasStats && !confirm('This game already has stats recorded under #'+num+' (from a player who was removed or renumbered). Adding this player will attach those stats to them. Continue?')) return;
@@ -6258,6 +6463,10 @@ function saveLivePlayer(){
     if(num!==oldNum){
       if(roster.some(function(p,i){ return i!==idx && p.num===num; })){ alert('#'+num+' is already on this team.'); return; }
       if(stats[String(num)]!==undefined){ alert('This game already has stats saved under #'+num+', so that number can\'t be used. Pick a different one.'); return; }
+    }
+    if(num!==oldNum){
+      var cfE=numberHistoryConflict(teams[ti].name,num,name);
+      if(cfE && !confirm(_numConflictMsg(cfE,num,name))) return;
     }
     roster[idx]=Object.assign({},roster[idx],{name:name,num:num,pos:pos});
     if(num!==oldNum) migrateLivePlayerNumber(_lpm.side,oldNum,num);
