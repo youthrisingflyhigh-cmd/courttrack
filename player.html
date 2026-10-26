@@ -392,6 +392,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="nav-tab" onclick="showTab('teams')">🏀 Teams</button>
     <button class="nav-tab" onclick="showTab('playerstats')">👤 Player Stats</button>
     <button class="nav-tab" onclick="showTab('locations')">📍 Locations</button>
+    <button class="nav-tab nav-photo" id="nav-photomode" style="display:none;" onclick="togglePhotoMode()">📷 Photo mode</button>
   </div>
   <!-- Mobile hamburger -->
   <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu">
@@ -416,6 +417,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('teams');closeMenu()">🏀 Teams</button>
   <button class="mobile-tab" onclick="showTab('playerstats');closeMenu()">👤 Player Stats</button>
   <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>
+  <button class="mobile-tab nav-photo" id="mnav-photomode" style="display:none;" onclick="togglePhotoMode();closeMenu()">📷 Photo mode</button>
 </div>
 
 <!-- ── TICKER ── -->
@@ -1027,7 +1029,28 @@ try{
   if(_q.get('photos')==='0') localStorage.removeItem('ctPhotoMode');
   _photoMode=localStorage.getItem('ctPhotoMode')==='1';
 }catch(e){}
-function photoModeOff(){ try{ localStorage.removeItem('ctPhotoMode'); }catch(e){} _photoMode=false; renderGameDayMVPs(); }
+// The menu item is only shown on a device that has opened the admin page
+// (admin sets a flag the public site can read — same website, same browser),
+// or while photo mode is already on so it can be turned off. Fans never see it.
+var _isAdminDevice=false;
+try{ _isAdminDevice=localStorage.getItem('ctIsAdmin')==='1'; }catch(e){}
+function updatePhotoMenu(){
+  var show=_isAdminDevice||_photoMode;
+  ['nav-photomode','mnav-photomode'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    el.style.display=show?'':'none';
+    el.textContent=_photoMode?'📷 Photo mode: ON':'📷 Photo mode';
+    el.style.color=_photoMode?'#FF5C00':'';
+  });
+}
+function togglePhotoMode(){
+  _photoMode=!_photoMode;
+  try{ if(_photoMode) localStorage.setItem('ctPhotoMode','1'); else localStorage.removeItem('ctPhotoMode'); }catch(e){}
+  updatePhotoMenu();
+  showTab('home');                                   // the MVP card lives on Home
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function photoModeOff(){ try{ localStorage.removeItem('ctPhotoMode'); }catch(e){} _photoMode=false; updatePhotoMenu(); renderGameDayMVPs(); }
 function _photoKeys(team,name){
   var t=_photoSlug(team), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
   return [t+'-'+_photoSlug(name), t+'-'+first];
@@ -3093,6 +3116,7 @@ function loadGameDetail(gid,g){
 
 // photos are optional and non-urgent: ask for them shortly after the page has drawn
 setTimeout(loadPlayerPhotos,700);
+updatePhotoMenu();
 </script>
 </body>
 </html>

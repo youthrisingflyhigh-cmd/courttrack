@@ -8647,6 +8647,9 @@ function saveStatCorrection(){
   if(typeof renderStandings==='function') renderStandings();
   if(typeof renderSchedule==='function') renderSchedule();
 }
+
+// Mark this browser as an admin device. The public site reads it to show the (hidden-from-fans) Photo mode menu item.
+try{ localStorage.setItem('ctIsAdmin','1'); }catch(e){}
 </script>
 
 <div id="stats-correction-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
