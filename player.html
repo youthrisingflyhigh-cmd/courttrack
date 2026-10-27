@@ -285,6 +285,8 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-num{position:absolute;right:-7px;bottom:-3px;background:#0d0d0d;color:var(--white);border:2px solid var(--dark2);border-radius:99px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:900;line-height:1;padding:2px 5px;}
 .mvpw-name.mvpw-link{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,92,0,.65);text-underline-offset:4px;}
 .mvpw-name.mvpw-link:active{opacity:.7;}
+.mvpw-team.mvpw-link,.mvpw-oppn.mvpw-link{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,92,0,.5);text-underline-offset:3px;}
+.mvpw-team.mvpw-link:active,.mvpw-oppn.mvpw-link:active{opacity:.7;}
 .mvpw-name{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:900;line-height:1.05;color:var(--white);margin-top:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
 .mvpw-team{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--orange);text-transform:uppercase;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
 .mvpw-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin-top:12px;}
@@ -1019,6 +1021,14 @@ function fetchDbPhotos(items){
   });
 }
 
+// Team names on the MVP card open that team's page (the same one the Standings names open).
+// Only linked when the team exists in the league's team list; the link uses the team's official spelling.
+function _teamLinkAttrs(name){
+  var t=(teams||[]).filter(function(x){ return normTeam(x.name)===normTeam(name); })[0];
+  return t?(' mvpw-link" role="link" tabindex="0" onclick="openMvpTeam(this)" onkeydown="if(event.key===\'Enter\')openMvpTeam(this)" data-team="'+gdEsc(t.name)+'"'):'"';
+}
+function openMvpTeam(el){ openTeamDetail(el.getAttribute('data-team')); }
+
 // Tapping an MVP's name opens the same player card as the Player Stats page (season stats + game log).
 function openMvpPlayer(el){
   var team=el.getAttribute('data-team'), name=el.getAttribute('data-name'), num=el.getAttribute('data-num');
@@ -1100,10 +1110,10 @@ function renderGameDayMVPs(){
     return '<div class="mvpw-card">'
       +'<div class="mvpw-final">Final'+(g.isPlayoff?' · <span style="color:#eab308;">🏆</span>':'')+'</div>'
       +'<div class="mvpw-score">'+Math.max(hs,as)+' – '+Math.min(hs,as)+'</div>'
-      +'<div class="mvpw-vs" title="'+gdEsc(m.teamName)+' vs '+gdEsc(oppName)+'">vs '+gdEsc(oppName)+'</div>'
+      +'<div class="mvpw-vs" title="'+gdEsc(m.teamName)+' vs '+gdEsc(oppName)+'">vs <span class="mvpw-oppn'+_teamLinkAttrs(oppName)+'>'+gdEsc(oppName)+'</span></div>'
       +avatar
       +'<div class="mvpw-name'+(/^#/.test(String(m.name))?'"':' mvpw-link" role="link" tabindex="0" onclick="openMvpPlayer(this)" onkeydown="if(event.key===\'Enter\')openMvpPlayer(this)" data-team="'+gdEsc(m.teamName)+'" data-name="'+gdEsc(m.name)+'" data-num="'+gdEsc(m.num)+'"')+' title="'+gdEsc(m.name)+'">'+gdEsc(m.name)+'</div>'
-      +'<div class="mvpw-team">⭐ '+gdEsc(m.teamName)+'</div>'
+      +'<div class="mvpw-team'+_teamLinkAttrs(m.teamName)+'>⭐ '+gdEsc(m.teamName)+'</div>'
       +'<div class="mvpw-stats">'+stat(n('pts'),'PTS')+stat(n('reb'),'REB')+stat(n('ast'),'AST')+'</div>'
       +'<div class="mvpw-extra">'+(extra.length?extra.map(function(x){ return '<span style="white-space:nowrap;">'+x.replace(' ','&nbsp;')+'</span>'; }).join(' · '):'')+'</div>'
     +'</div>';
