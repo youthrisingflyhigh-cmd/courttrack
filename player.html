@@ -283,6 +283,8 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-avatar.has-photo{background:none;}
 .mvpw-avatar img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);box-sizing:border-box;display:block;background:#222;}
 .mvpw-num{position:absolute;right:-7px;bottom:-3px;background:#0d0d0d;color:var(--white);border:2px solid var(--dark2);border-radius:99px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:900;line-height:1;padding:2px 5px;}
+.mvpw-name.mvpw-link{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,92,0,.65);text-underline-offset:4px;}
+.mvpw-name.mvpw-link:active{opacity:.7;}
 .mvpw-name{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:900;line-height:1.05;color:var(--white);margin-top:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
 .mvpw-team{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--orange);text-transform:uppercase;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
 .mvpw-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin-top:12px;}
@@ -968,11 +970,21 @@ function _gdTextOn(hex){
 // never slows the first draw.
 var playerPhotos={};
 function _photoSlug(s){ return String(s==null?'':s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+// A photo can also be found by FIRST name only (so a rename from "Jon" to "Jon Cadavos" keeps the photo) —
+// but only when that first name is unique on the team's roster. With two "Chris"es, each needs their own exact name.
+function _photoFirstOk(team,name){
+  var t=_photoSlug(team), f=_photoSlug(String(name||'').trim().split(/\s+/)[0]), n=0;
+  (typeof teams!=='undefined' && teams ? teams : []).forEach(function(x){
+    if(_photoSlug(x&&x.name)===t) toArr(x.players).forEach(function(p){ if(_photoSlug(String(p&&p.name||'').trim().split(/\s+/)[0])===f) n++; });
+  });
+  return n<=1;
+}
 function playerPhoto(team,name){
   var t=_photoSlug(team), full=_photoSlug(name), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
   // a photo saved from the admin page (database) wins over player-photos.js; exact name first, then first name only.
   // The first one that is a real, reasonably small image wins — a bad entry never hides a good photo.
-  var cands=[dbPhotos[t+'-'+full],dbPhotos[t+'-'+first],playerPhotos[t+'-'+full],playerPhotos[t+'-'+first]];
+  var uniq=_photoFirstOk(team,name);
+  var cands=[dbPhotos[t+'-'+full],uniq?dbPhotos[t+'-'+first]:null,playerPhotos[t+'-'+full],uniq?playerPhotos[t+'-'+first]:null];
   for(var i=0;i<cands.length;i++){
     var uri=cands[i];
     if(uri && uri.length<=30000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
@@ -1005,6 +1017,18 @@ function fetchDbPhotos(items){
       }).catch(function(){ delete _dbPhotoPending[k]; dbPhotos[k]=null; });
     });
   });
+}
+
+// Tapping an MVP's name opens the same player card as the Player Stats page (season stats + game log).
+function openMvpPlayer(el){
+  var team=el.getAttribute('data-team'), name=el.getAttribute('data-name'), num=el.getAttribute('data-num');
+  var first=function(n){ return _photoSlug(String(n||'').trim().split(/\s+/)[0]); };
+  var tn=normTeam(team), nk=_photoSlug(name);
+  var inTeam=getMergedPlayerRows().filter(function(r){ return normTeam(r.teamName)===tn; });
+  var row=inTeam.filter(function(r){ return _photoSlug(r.p.name)===nk; })[0];                         // same name
+  if(!row){ var same=inTeam.filter(function(r){ return first(r.p.name)===first(name); }); if(same.length===1) row=same[0]; }   // same first name, if only one
+  if(!row) row=inTeam.filter(function(r){ return String(r.p.num)===String(num); })[0];               // last resort: the jersey number
+  if(row) showPlayerModal(row);
 }
 
 function computeWinningTeamMVP(g){
@@ -1078,7 +1102,7 @@ function renderGameDayMVPs(){
       +'<div class="mvpw-score">'+Math.max(hs,as)+' – '+Math.min(hs,as)+'</div>'
       +'<div class="mvpw-vs" title="'+gdEsc(m.teamName)+' vs '+gdEsc(oppName)+'">vs '+gdEsc(oppName)+'</div>'
       +avatar
-      +'<div class="mvpw-name" title="'+gdEsc(m.name)+'">'+gdEsc(m.name)+'</div>'
+      +'<div class="mvpw-name'+(/^#/.test(String(m.name))?'"':' mvpw-link" role="link" tabindex="0" onclick="openMvpPlayer(this)" onkeydown="if(event.key===\'Enter\')openMvpPlayer(this)" data-team="'+gdEsc(m.teamName)+'" data-name="'+gdEsc(m.name)+'" data-num="'+gdEsc(m.num)+'"')+' title="'+gdEsc(m.name)+'">'+gdEsc(m.name)+'</div>'
       +'<div class="mvpw-team">⭐ '+gdEsc(m.teamName)+'</div>'
       +'<div class="mvpw-stats">'+stat(n('pts'),'PTS')+stat(n('reb'),'REB')+stat(n('ast'),'AST')+'</div>'
       +'<div class="mvpw-extra">'+(extra.length?extra.map(function(x){ return '<span style="white-space:nowrap;">'+x.replace(' ','&nbsp;')+'</span>'; }).join(' · '):'')+'</div>'
