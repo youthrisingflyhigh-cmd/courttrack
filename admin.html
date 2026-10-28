@@ -1124,7 +1124,26 @@ BYE: Ohana, AIM
   </div>
 
   <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--orange);letter-spacing:1px;margin-bottom:0.75rem;">🏀 ALL-STAR GAME</div>
-  <p style="color:var(--muted);font-size:13px;margin-bottom:1rem;">Run the actual game normally in Live Tracking (with your two All-Star rosters), then pick it here — its box score shows below, separate from the regular season's Game History.</p>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:1rem;">A game played with Team A and Team B is picked automatically when you finish it, and its box score shows below, separate from the regular season. You can also pick any saved game by hand.</p>
+
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3>All-Star Rosters — Team A vs Team B</h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5;">All-Stars come from different teams, so every All-Star Game is simply <strong style="color:#fff;">Team A vs Team B</strong>. Type each team's players, one per line: a number then a name (<code>5 Jose</code>), or just a name and a number is picked for you. Save, then run the game in <strong style="color:#fff;">Live Tracking</strong> by picking Team A vs Team B. It's kept out of the standings and everyone's season stats, and the result shows below and under ⭐ All-Star on the public site.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="flex:1;min-width:190px;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--orange);margin-bottom:4px;">TEAM A</div>
+          <textarea id="asg-roster-a" rows="10" oninput="asgRosterDirty()" placeholder="5 Jose&#10;12 Marcus&#10;Dre&#10;..." style="width:100%;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+        <div style="flex:1;min-width:190px;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--orange);margin-bottom:4px;">TEAM B</div>
+          <textarea id="asg-roster-b" rows="10" oninput="asgRosterDirty()" placeholder="7 Scott&#10;21 Rob&#10;Isaiah&#10;..." style="width:100%;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div id="asg-roster-msg" style="font-size:12px;color:#fbbf24;min-height:16px;margin-bottom:8px;"></div>
+      <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="saveAllStarRosters()">💾 Save Team A &amp; Team B</button>
+    </div>
+  </div>
 
   <div class="card" style="margin-bottom:1.5rem;">
     <div class="card-header"><h3>Select the All-Star Game</h3></div>
@@ -1984,8 +2003,81 @@ function renderTpcUI(){
 // lets that one game be pointed to and displayed here, separately from
 // the regular season's own Game History list, instead of building a
 // second parallel tracking system for the same thing.
-var asgSelectedGameId=null;
-fbOnce(ctPath('allStarGameId'), function(v){ asgSelectedGameId=v||null; renderAsgUI(); });
+// ── ALL-STAR GAME: TEAM A vs TEAM B ──
+// All-Stars come from several teams, so the game is always "Team A vs Team B", with the
+// players typed in. The two teams are ordinary entries in the team list (so Live Tracking
+// can use them) but flagged isAllStar. Finishing a game that involves one of them keeps it
+// out of the standings, the schedule and everyone's season stats, and points the All-Star
+// tab at it. Nothing else about the league changes.
+var _asgDirty=false;
+function isAllStarTeam(t){ return !!(t && t.isAllStar); }
+function _asgFind(letter){
+  var want='team'+letter;                       // _nt() strips spaces: "Team A" -> "teama"
+  return teams.filter(function(t){ return _nt(t.name)===want; })[0]||null;
+}
+// "5 Jose", "#5 Jose", "5. Jose", "5 - Jose", "Jose 5", "Jose #5" or just "Jose". Players without a
+// usable number get the next free one (1, 2, 3 …); a repeated number is treated as missing.
+function parseAllStarRoster(text){
+  var rows=[], used={}, notes=[];
+  String(text==null?'':text).split(/\r?\n/).forEach(function(raw){
+    var s=raw.replace(/\s+/g,' ').trim();
+    if(!s || /^\d+$/.test(s)) return;
+    var num=null, name=s, m;
+    if((m=/^#?\s*(\d{1,3})\s*[.\-–:)]?\s+(.+)$/.exec(s))){ num=parseInt(m[1],10); name=m[2]; }
+    else if((m=/^(.+?)\s+#?(\d{1,3})$/.exec(s))){ name=m[1]; num=parseInt(m[2],10); }
+    name=name.replace(/^[-–•*]+\s*/,'').replace(/\s+/g,' ').trim().slice(0,30);
+    if(!name) return;
+    if(num!==null && used[num]){ notes.push('#'+num+' was used twice — '+name+' got a new number.'); num=null; }
+    if(num!==null) used[num]=true;
+    rows.push({num:num,name:name});
+  });
+  var next=1;
+  rows.forEach(function(r){
+    if(r.num===null){ while(used[next]) next++; r.num=next; used[next]=true; notes.push(r.name+' was given #'+r.num+'.'); }
+  });
+  return {players:rows,notes:notes};
+}
+function asgRosterDirty(){ _asgDirty=true; }
+function asgFillRosterBoxes(force){
+  var ba=document.getElementById('asg-roster-a'), bb=document.getElementById('asg-roster-b');
+  if(!ba||!bb||(_asgDirty&&!force)) return;
+  var fmt=function(t){ return t&&t.isAllStar?(t.players||[]).map(function(p){ return p.num+' '+p.name; }).join('\n'):''; };
+  ba.value=fmt(_asgFind('a')); bb.value=fmt(_asgFind('b'));
+}
+function saveAllStarRosters(){
+  var msg=document.getElementById('asg-roster-msg'); msg.textContent='';
+  if(!_dataFullyLoaded){ alert('Refused — this device hasn\'t confirmed it fully loaded current data yet. Refresh and try again.'); return; }
+  var pa=parseAllStarRoster(document.getElementById('asg-roster-a').value), pb=parseAllStarRoster(document.getElementById('asg-roster-b').value);
+  if(pa.players.length<5||pb.players.length<5){
+    msg.textContent='Each team needs at least 5 players (Team A has '+pa.players.length+', Team B has '+pb.players.length+').'; return;
+  }
+  if(game && ((teams[game.hi]&&teams[game.hi].isAllStar)||(teams[game.ai]&&teams[game.ai].isAllStar))){
+    alert('An All-Star game is in progress. Finish it first, then change the rosters.'); return;
+  }
+  var ta=_asgFind('a'), tb=_asgFind('b');
+  var clash=[ta,tb].filter(function(t){ return t && !t.isAllStar && (t.players||[]).length; });
+  if(clash.length && !confirm('A team named "'+clash[0].name+'" already exists with players. Turn "Team A"/"Team B" into the All-Star teams and replace their players?')) return;
+  function put(t,letter,color,players){
+    if(!t){ t={name:'Team '+letter.toUpperCase(),color:color,players:[]}; teams.push(t); }
+    t.isAllStar=true; t.players=players.map(function(p){ return {name:p.name,num:p.num,pos:''}; });
+  }
+  put(ta,'a','#FF5C00',pa.players); put(tb,'b','#3B82F6',pb.players);
+  fbSet(ctPath('teams'), teams);
+  if(typeof renderTeams==='function') renderTeams();
+  if(typeof renderSelects==='function') renderSelects();
+  _asgDirty=false; asgFillRosterBoxes(true);
+  var notes=pa.notes.map(function(n){ return 'Team A: '+n; }).concat(pb.notes.map(function(n){ return 'Team B: '+n; }));
+  msg.style.color='#86efac';
+  msg.textContent='✅ Saved: Team A ('+pa.players.length+' players), Team B ('+pb.players.length+' players). Now start the game in Live Tracking.'+(notes.length?' '+notes.join(' '):'');
+}
+
+var asgSelectedGameId=null, _asgLoaded=false;
+// Loaded when the All-Star page opens (a call at load time would throw: this script block runs
+// before fbOnce is defined further down the file).
+function asgLoadSelected(){
+  if(_asgLoaded) return; _asgLoaded=true;
+  fbOnce(ctPath('allStarGameId'), function(v){ asgSelectedGameId=v||null; renderAsgUI(); });
+}
 
 function asgSetSelectedGame(){
   var sel=document.getElementById('asg-game-select');
@@ -1997,6 +2089,7 @@ function asgSetSelectedGame(){
 function renderAsgUI(){
   var sel=document.getElementById('asg-game-select');
   if(!sel) return;
+  asgFillRosterBoxes();
   var hist=toArr(gameHistory);
   sel.innerHTML='<option value="">-- Pick from Game History --</option>'+hist.map(function(g){
     return '<option value="'+g.id+'"'+(g.id===asgSelectedGameId?' selected':'')+'>'+(g.date||'?')+' — '+(g.home||'?')+' '+(g.homeScore||0)+'-'+(g.awayScore||0)+' '+(g.away||'?')+'</option>';
@@ -3075,7 +3168,7 @@ fbListen(ctPath('game/shotClock'), function(v){
 function computeStandingsFromGameHistory(){
   var rebuilt={};
   toArr(gameHistory).forEach(function(g){
-    if(!g||!g.home||!g.away) return;
+    if(!g||!g.home||!g.away||g.isAllStar) return;
     var hs=g.homeScore, as_=g.awayScore;
     if(hs==null||as_==null) return;
     // Prefer the decision saved directly on the record at the moment it
@@ -4689,12 +4782,14 @@ function hideSavingOverlay(){
 
 function writeFinishPayload(payload){
   var histData = payload.gameHistory !== undefined ? payload.gameHistory : payload.history;
-  return Promise.all([
+  var jobs=[
     db.ref(ctPath('standings')).set(payload.standings),
     db.ref(ctPath('history')).set(histData),
     db.ref(ctPath('playerStats')).set(payload.playerStats),
     db.ref(ctPath('schedule')).set(payload.schedule),
-  ]).then(function(){
+  ];
+  if(payload.allStarGameId) jobs.push(db.ref(ctPath('allStarGameId')).set(payload.allStarGameId));
+  return Promise.all(jobs).then(function(){
     return db.ref(ctPath('game')).remove();
   });
 }
@@ -4770,6 +4865,12 @@ function _isKnownPlayoffDay(dateStr){
 function renderPlayoffToggle(){
   var b=document.getElementById('playoff-toggle-btn'), n=document.getElementById('playoff-toggle-note');
   if(!b||!n) return;
+  var asg=!!(game && ((teams[game.hi]&&teams[game.hi].isAllStar)||(teams[game.ai]&&teams[game.ai].isAllStar)));
+  if(asg){
+    b.textContent='⭐ ALL-STAR GAME'; b.style.background='var(--orange)'; b.style.color='#000'; b.style.borderColor='var(--orange)';
+    n.textContent="All-Star game — won't count in the standings or anyone's season stats. The result shows under ⭐ All-Star.";
+    return;
+  }
   var on=!!(game && game.isPlayoff);
   b.textContent='🏆 PLAYOFF GAME: '+(on?'ON':'OFF');
   b.style.background=on?'#eab308':'var(--dark3)';
@@ -4779,6 +4880,7 @@ function renderPlayoffToggle(){
 }
 function togglePlayoffGame(){
   if(!game) return;
+  if(teams[game.hi]&&teams[game.hi].isAllStar||teams[game.ai]&&teams[game.ai].isAllStar) return;   // an All-Star game is always excluded
   if(!isActiveSession){ alert('This tab is read-only because another tab or device took over as the active session. Click "Use This Tab Instead" first.'); return; }
   game.isPlayoff=!game.isPlayoff;
   saveLiveGame();
@@ -5038,12 +5140,15 @@ function finishGame(){
   } else if(_pt.reason==='clock-not-used'){
     _ptNote='\n\n⏱ Playing time can\'t be tracked for this game — the game clock was never run.';
   }
+  var _asg0=!!(game.isAllStar || teams[game.hi].isAllStar || teams[game.ai].isAllStar);
+  if(_asg0) _ptNote+='\n\n⭐ All-Star Game — kept out of the standings and everyone\'s season stats. The result will show under ⭐ All-Star.';
   if(!confirm('Finish this game and save results?'+_ptNote))return;
   _finishingGame=true;
   try{
     var hn=teams[game.hi].name, an=teams[game.ai].name;
     var hc=teams[game.hi].color, ac=teams[game.ai].color;
     var hs=game.homeScore, as_=game.awayScore;
+    var isAllStarGame=!!(game.isAllStar || teams[game.hi].isAllStar || teams[game.ai].isAllStar);   // Team A vs Team B: an exhibition
     // Determine which week/round this game belongs to BEFORE touching
     // standings — playoff games (week 9+, i.e. Round 1 on Aug 19 onward)
     // must NOT feed back into the regular-season standings, or the
@@ -5051,7 +5156,7 @@ function finishGame(){
     // game is saved instead of staying locked to the final regular
     // season record.
     var matchedWeek=null;
-    for(var sw=0;sw<schedule.length;sw++){
+    for(var sw=0;!isAllStarGame && sw<schedule.length;sw++){
       if(schedule[sw].status!=='upcoming') continue;
       // a flagged playoff game must never claim a regular-season row
       if(game.isPlayoff && !(schedule[sw].isPlayoff || (schedule[sw].round||0)>=9)) continue;
@@ -5073,7 +5178,7 @@ function finishGame(){
     // separate calendars (a brand new division's regular season games
     // played after Aug 19 are NOT playoff games just because that date
     // has passed in real time).
-    var isPlayoffGame=!!game.isPlayoff || (matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
+    var isPlayoffGame=isAllStarGame || !!game.isPlayoff || (matchedWeek!==null && matchedWeek>=9) || (CT_BASE==='ct' && new Date() >= PLAYOFF_START_DATE);
     // Only create a brand-new standings row for a team that doesn't
     // already have one if this game actually counts toward the regular
     // season. Otherwise an excluded game (a playoff game, or an
@@ -5100,7 +5205,7 @@ function finishGame(){
     // auto-generated schedule listed them. Matched case-insensitively —
     // schedule entries can come from a bulk-import paste using different
     // casing than the team's real (usually ALL CAPS) stored name.
-    for(var s=0;s<schedule.length;s++){
+    for(var s=0;!isAllStarGame && s<schedule.length;s++){
       if(schedule[s].status!=='upcoming') continue;
       if(game.isPlayoff && !(schedule[s].isPlayoff || (schedule[s].round||0)>=9)) continue;
       var sHome=(schedule[s].home||'').toLowerCase(), sAway=(schedule[s].away||'').toLowerCase();
@@ -5136,8 +5241,10 @@ function finishGame(){
         ps.gp++;
       });
     }
-    accum(hn,teams[game.hi].players,game.hStats,game.hLineup);
-    accum(an,teams[game.ai].players,game.aStats,game.aLineup);
+    if(!isAllStarGame){                          // an All-Star game never touches anyone's season stats
+      accum(hn,teams[game.hi].players,game.hStats,game.hLineup);
+      accum(an,teams[game.ai].players,game.aStats,game.aLineup);
+    }
     // Save box score + play-by-play to history
     var gameId='game_'+Date.now();
     var gameRecord={
@@ -5155,6 +5262,7 @@ function finishGame(){
       // and doesn't always parse), so the actual decision made right now
       // (when today's real date is known) is captured here instead.
       excludedFromStandings:isPlayoffGame,
+      isAllStar:isAllStarGame,
       isPlayoff:!!game.isPlayoff,
       season:appSettings.season||'',
       hLineup:game.hLineup||[],aLineup:game.aLineup||[]
@@ -5176,14 +5284,17 @@ function finishGame(){
         });
       });
     }
-    savePlayerGameLogs(hn,teams[game.hi].players,game.hStats,game.hLineup);
-    savePlayerGameLogs(an,teams[game.ai].players,game.aStats,game.aLineup);
+    if(!isAllStarGame){
+      savePlayerGameLogs(hn,teams[game.hi].players,game.hStats,game.hLineup);
+      savePlayerGameLogs(an,teams[game.ai].players,game.aStats,game.aLineup);
+    }
     gameHistory.unshift(gameRecord);
 
     // Snapshot the full payload locally BEFORE attempting the network save.
     // If the tab closes, refreshes, or loses connection mid-save, this lets
     // us recover and retry instead of silently losing the finished game.
     var payload={standings:standings,gameHistory:gameHistory,playerStats:playerStats,schedule:schedule,hn:hn,an:an,hs:hs,as_:as_};
+    if(isAllStarGame){ payload.allStarGameId=gameId; asgSelectedGameId=gameId; }   // the All-Star tab points at this game
     try{ localStorage.setItem(PENDING_FINISH_KEY, JSON.stringify(payload)); }catch(e){}
 
     attemptFinishSave(payload, hn, an, hs, as_);
@@ -5227,8 +5338,8 @@ function backfillGameWeeks(){
   var fixed=0, skippedNoMatch=0;
   hist.forEach(function(g){
     if(!g || !g.home || !g.away) return;
-    if(g.week || g.week===0) return; // already has a week, nothing to do
-    if(g.isPlayoff) return;          // a playoff game must not be pinned to a regular-season week/row
+    if(g.isPlayoff || g.isAllStar) return;          // a playoff game must not be pinned to a regular-season week/row
+    var hasWeek=!!(g.week || g.week===0);   // a game with a week still gets its schedule row fixed (below) if that row never got updated
     // Same two teams in either order, spelling-tolerant ("Old & Slow" = "OLD AND
     // SLOW"). If the pair meets more than once, prefer the row on the game's own
     // day, then a row that's still upcoming, so a rematch never takes the
@@ -5239,22 +5350,30 @@ function backfillGameWeeks(){
       if(!sc||sc.isBye) continue;
       if((_schTeamsMatch(sc.home,g.home)&&_schTeamsMatch(sc.away,g.away))||(_schTeamsMatch(sc.home,g.away)&&_schTeamsMatch(sc.away,g.home))) cands.push(sc);
     }
-    var match=cands.filter(function(sc){ return gmd && _schMd(sc.date)===gmd; })[0]
-           || cands.filter(function(sc){ return sc.status==='upcoming'; })[0]
-           || cands[0] || null;
-    if(!match){ skippedNoMatch++; return; }
-    g.week=match.round||null;
-    if(match.status==='upcoming'){
+    var sameDay=cands.filter(function(sc){ return gmd && _schMd(sc.date)===gmd; })[0];
+    var match;
+    if(hasWeek){
+      // already has a week: only touch the row for THAT week (or the same day) — never an unrelated rematch
+      match=cands.filter(function(sc){ return sc.round===g.week; })[0] || sameDay || null;
+    } else {
+      match=sameDay || cands.filter(function(sc){ return sc.status==='upcoming'; })[0] || cands[0] || null;
+    }
+    if(!match){ if(!hasWeek) skippedNoMatch++; return; }
+    var changed=false;
+    if(!hasWeek){ g.week=match.round||null; changed=true; }
+    // a finished game whose schedule row still says Upcoming: write the result onto the row
+    if(match.status==='upcoming' && ((Number(g.homeScore)||0)+(Number(g.awayScore)||0))>0){
       match.status='final';
       if(_schTeamsMatch(match.home,g.home)){ match.homeScore=g.homeScore; match.awayScore=g.awayScore; }
       else { match.homeScore=g.awayScore; match.awayScore=g.homeScore; }
+      changed=true;
     }
-    fixed++;
+    if(changed) fixed++;
   });
   if(!fixed){
     alert(skippedNoMatch>0
       ? 'Found '+skippedNoMatch+' game(s) missing a week, but none matched anything in the current schedule — they may be from before the schedule was generated, or against a bye/removed team.'
-      : 'Nothing to backfill — every saved game already has a week assigned.');
+      : 'Nothing to fix — every saved game already has its week, and every finished game\'s schedule row already shows its result.');
     return;
   }
   if(!_dataFullyLoaded){
@@ -5264,7 +5383,7 @@ function backfillGameWeeks(){
   gameHistory=hist;
   fbSet(ctPath('history'), gameHistory);
   fbSet(ctPath('schedule'), schedule);
-  alert('✅ Fixed the week and schedule status for '+fixed+' game(s).'+(skippedNoMatch?(' '+skippedNoMatch+' other game(s) had no schedule match and were left as-is.'):''));
+  alert('✅ Fixed the week and/or schedule result for '+fixed+' game(s).'+(skippedNoMatch?(' '+skippedNoMatch+' other game(s) had no schedule match and were left as-is.'):''));
 }
 
 // ── RECOVERY: rebuild playerStats from scratch using Game History ──
@@ -5307,7 +5426,7 @@ function computeRebuiltPlayerStats(histInput){
   // (gameHistory itself is stored newest-first, via unshift in finishGame()).
   var chronological=hist.slice().reverse();
   chronological.forEach(function(g){
-    if(!g || !g.home || !g.away) return;
+    if(!g || !g.home || !g.away || g.isAllStar) return;      // All-Star games never count toward season stats
     var hWin = (g.homeScore||0) > (g.awayScore||0);
     accumRebuild(g.home, g.homePlayers, g.hStats, {id:g.id, date:g.date, opp:g.away, result:hWin?'W':'L'}, g.hLineup);
     accumRebuild(g.away, g.awayPlayers, g.aStats, {id:g.id, date:g.date, opp:g.home, result:hWin?'L':'W'}, g.aLineup);
@@ -7803,7 +7922,7 @@ function switchSubTab(tab){
 
 function renderTeamsTab(){
   var q=(document.getElementById('team-search-input').value||'').toLowerCase();
-  var filtered=teams.filter(function(t){return t.name.toLowerCase().indexOf(q)>=0;});
+  var filtered=teams.filter(function(t){return !t.isAllStar && t.name.toLowerCase().indexOf(q)>=0;});
   var grid=document.getElementById('teams-tab-grid');
   if(!filtered.length){grid.innerHTML='<div class="empty-state">No teams match.</div>';return;}
   grid.innerHTML=filtered.map(function(t){
@@ -7889,6 +8008,7 @@ function renderPlayersTab(){
   var q=(document.getElementById('player-search-input').value||'').toLowerCase();
   var rows=[];
   teams.forEach(function(t){
+    if(t.isAllStar) return;
     var ps=playerStats[t.name]||{};
     t.players.forEach(function(p){
       if(!q||p.name.toLowerCase().indexOf(q)>=0||t.name.toLowerCase().indexOf(q)>=0){
@@ -8084,9 +8204,20 @@ function _photoKeys(team,name){
   var t=_photoSlug(team), first=_photoSlug(String(name||'').trim().split(/\s+/)[0]);
   return [t+'-'+_photoSlug(name), t+'-'+first];
 }
+// A photo can also be found by FIRST name only (so a rename from "Jon" to "Jon Cadavos" keeps the photo) —
+// but only when that first name is unique on the team's roster. With two "Chris"es, each needs their own exact name.
+function _photoFirstOk(team,name){
+  var t=_photoSlug(team), f=_photoSlug(String(name||'').trim().split(/\s+/)[0]), n=0;
+  (typeof teams!=='undefined' && teams ? teams : []).forEach(function(x){
+    if(_photoSlug(x&&x.name)===t) toArr(x.players).forEach(function(p){ if(_photoSlug(String(p&&p.name||'').trim().split(/\s+/)[0])===f) n++; });
+  });
+  return n<=1;
+}
+// the database keys that really belong to this player: the exact name, plus the first-name key only if unique
+function _photoKeysFor(team,name){ var k=_photoKeys(team,name); return _photoFirstOk(team,name)?[k[0],k[1]]:[k[0]]; }
 function playerPhoto(team,name){
-  var k=_photoKeys(team,name);
-  var cands=[dbPhotos[k[0]],dbPhotos[k[1]],playerPhotos[k[0]],playerPhotos[k[1]]];
+  var k=_photoKeys(team,name), uniq=_photoFirstOk(team,name);
+  var cands=[dbPhotos[k[0]],uniq?dbPhotos[k[1]]:null,playerPhotos[k[0]],uniq?playerPhotos[k[1]]:null];
   for(var i=0;i<cands.length;i++){
     var uri=cands[i];
     if(uri && uri.length<=30000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
@@ -8127,7 +8258,7 @@ function _phStamp(g){ return parseInt(String(g&&g.id||'').replace(/\D/g,''),10)|
 // MVPs (newest first, each person once) who don't have a photo yet
 function _phNeedList(){
   var seen={}, out=[];
-  toArr(gameHistory).filter(function(g){ return g && g.home && g.away; }).sort(function(x,y){ return _phStamp(y)-_phStamp(x); }).forEach(function(g){
+  toArr(gameHistory).filter(function(g){ return g && g.home && g.away && !g.isAllStar; }).sort(function(x,y){ return _phStamp(y)-_phStamp(x); }).forEach(function(g){
     var m=_phMvp(g); if(!m || /^#/.test(m.name)) return;
     var k=_photoKeys(m.teamName,m.name)[0]; if(seen[k]) return; seen[k]=1;
     if(playerPhoto(m.teamName,m.name)) return;
@@ -8188,8 +8319,8 @@ function _pmSourceRect(ox,oy,scale,stage){ return {sx:-ox/scale, sy:-oy/scale, s
 var _pm={src:null,sw:0,sh:0,base:1,scale:1,ox:0,oy:0,team:'',name:'',key:'',hadDb:false,wired:false,drag:null};
 function openPhotoUpload(team,name,num){
   _pm.team=team; _pm.name=name; _pm.key=_photoKeys(team,name)[0]; _pm.src=null; _pm.drag=null;
-  var cur=playerPhoto(team,name), ks=_photoKeys(team,name);
-  _pm.hadDb=!!(dbPhotos[ks[0]]||dbPhotos[ks[1]]);
+  var cur=playerPhoto(team,name), ks=_photoKeysFor(team,name);
+  _pm.hadDb=ks.some(function(k){ return !!dbPhotos[k]; });
   document.getElementById('pm-title').textContent=cur?'Change photo':'Add photo';
   document.getElementById('pm-sub').textContent=(name||'')+' · '+(team||'')+(num?' · '+num:'');
   var img=document.getElementById('pm-current'), cv=document.getElementById('pm-canvas');
@@ -8270,7 +8401,7 @@ function pmSave(){
 }
 function pmRemove(){
   var msg=document.getElementById('pm-msg');
-  var keys=_photoKeys(_pm.team,_pm.name);
+  var keys=_photoKeysFor(_pm.team,_pm.name);      // never another player's photo that only shares a first name
   Promise.all(keys.filter(function(k){ return dbPhotos[k]; }).map(function(k){ return db.ref('playerPhotos/'+k).remove().then(function(){ delete dbPhotos[k]; }); }))
     .then(function(){ pmClose(); renderPhotosPage(); })
     .catch(function(e){ msg.textContent='Couldn\'t remove: '+((e&&e.message)||'the database said no.'); });
@@ -8309,6 +8440,8 @@ function showPage(p){
   if(p==='photos') openPhotosPage();
   if(p==='threept'){
     renderTpcUI();
+    asgFillRosterBoxes();
+    asgLoadSelected();
   }
   if(p==='schedule'){
     // Independent of Standings rendering entirely — the bracket is fully

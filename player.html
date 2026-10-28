@@ -873,6 +873,7 @@ function buildTicker(){
   // Recent results
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
+  hist=hist.filter(function(g){return g&&!g.isAllStar;});
   function getGameTopScorer(g){
     var best=null;
     function scan(statsObj,rosterArr,teamName){
@@ -907,6 +908,7 @@ function buildTicker(){
   // above, but summing across games instead of taking one game's max.
   var recentGames=[];
   try{if(Array.isArray(gameHistory))recentGames=gameHistory;else if(gameHistory&&typeof gameHistory==='object')recentGames=Object.values(gameHistory);}catch(e){}
+  recentGames=recentGames.filter(function(g){return g&&!g.isAllStar;});
   recentGames=recentGames.filter(Boolean).slice(-5);
 
   var recentPlayerStats={};
@@ -1079,7 +1081,7 @@ function mvpDay(delta){ _mvpDayIdx+=delta; renderGameDayMVPs(); }      // +1 = a
 function renderGameDayMVPs(){
   var card=document.getElementById('gameday-mvps-card'), box=document.getElementById('gameday-mvps');
   if(!card||!box) return;
-  var hist=toArr(gameHistory).filter(function(g){ return g && g.home && g.away; });
+  var hist=toArr(gameHistory).filter(function(g){ return g && g.home && g.away && !g.isAllStar; });
   if(!hist.length){ card.style.display='none'; return; }
   var days=_mvpDays(hist).map(function(d){
     d.games.sort(function(a,b){ return _gdStamp(a)-_gdStamp(b); });          // in the order they were played
@@ -1198,6 +1200,7 @@ function getMergedPlayerRows(){
     return f.toLowerCase().replace(/[^a-z0-9]/g,'');
   }
   teams.forEach(function(t){
+    if(t.isAllStar) return;                         // Team A / Team B are not league teams
     var ps=teamPlayerStats(t);
     var byName={};
     var order=[];
@@ -1359,7 +1362,7 @@ function renderHomeRecentScores(){
   var el=document.getElementById('home-recent-scores');
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean);
+  hist=hist.filter(function(g){return g&&!g.isAllStar;});
   if(!hist.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">'+(_histLoaded?'No completed games yet.':'Loading latest results…')+'</div>';return;}
   var recent=hist.slice(-5).reverse();
   el.innerHTML=recent.map(function(g){
@@ -1512,7 +1515,7 @@ function renderHomeTopScorers(){
   var el=document.getElementById('home-top-scorers');
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(Boolean);
+  hist=hist.filter(function(g){return g&&!g.isAllStar;});
   
   // Get stats from recent games only (last 5)
   var recent=hist.slice(-5);
@@ -1560,6 +1563,7 @@ function homeSearch(){
   if(!q){res.style.display='none';return;}
   var hits=[];
   teams.forEach(function(t){
+    if(t.isAllStar) return;
     if(t.name.toLowerCase().indexOf(q)>=0) hits.push({type:'team',name:t.name,sub:t.players.length+' players',color:t.color});
     t.players.forEach(function(p){
       if(p.name.toLowerCase().indexOf(q)>=0||String(p.num).indexOf(q)>=0)
@@ -1700,7 +1704,7 @@ function renderLive(){
 // ── SCORES (game history) ──
 function renderScores(){
   var el=document.getElementById('tab-scores');
-  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  var hist=(Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{})).filter(function(g){return g&&!g.isAllStar;});
   if(!hist.length){
     el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1rem;">Scores</h2><p style="color:var(--muted);font-style:italic;">No completed games yet.</p>';
     return;
@@ -1756,6 +1760,7 @@ function renderFilm(){
   // show up in the regular season's Game Film list under a confusing
   // "Week TBD" bucket.
   if(allStarGameId) hist=hist.filter(function(g){return g.id!==allStarGameId;});
+  hist=hist.filter(function(g){return !g.isAllStar;});
   if(!hist.length){
     el.innerHTML='<p style="color:var(--muted);font-style:italic;font-size:13px;">No game film uploaded yet — check back after the next game!</p>';
     return;
@@ -2156,9 +2161,14 @@ function renderSchedule(){
   html += '</div>';
   }
 
-  // Bracket first (season's done, playoffs are what matters now), then the
-  // full regular-season week-by-week list below it.
-  el.innerHTML='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Schedule</h2>'+html+weeksHtml;
+  // The playoff bracket sits at the very TOP of the page (above the "Schedule" heading),
+  // then the full regular-season week-by-week list below it. Brackets that don't carry
+  // their own title (everything except the old Summer one) get a PLAYOFF BRACKET heading.
+  var bracketHtml=html;
+  if(bracketHtml && bracketHtml.indexOf('PLAYOFF BRACKET')===-1){
+    bracketHtml='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>'+bracketHtml;
+  }
+  el.innerHTML=bracketHtml+'<h2 style="font-size:28px;font-weight:900;color:var(--white);margin:'+(bracketHtml?'2.5rem':'0')+' 0 1.5rem;">Schedule</h2>'+weeksHtml;
 }
 
 // ── STANDINGS ──
@@ -2223,6 +2233,22 @@ function getSeededStandings(){
 // All-Star Game itself is just a normal finished game, picked out of
 // Game History and displayed here rather than in the regular Game Film/
 // Scores lists.
+// All-Star MVP: the best efficiency on EITHER team (the winning side isn't required).
+function allStarMvp(g){
+  var best=null;
+  [[g.hStats,g.homePlayers,g.home],[g.aStats,g.awayPlayers,g.away]].forEach(function(side){
+    var stats=side[0]||{}, roster=toArr(side[1]);
+    Object.keys(stats).forEach(function(num){
+      var s=stats[num]||{}, n=function(k){ return Number(s[k])||0; };
+      if(!(n('pts')+n('reb')+n('ast')+n('stl')+n('blk')+n('to')+n('fgm')+n('3pm')+n('ftm'))) return;
+      var eff=n('pts')+n('reb')+n('ast')+n('stl')+n('blk')-n('to');
+      var pl=roster.filter(function(x){ return String(x.num)===String(num); })[0];
+      if(!best || eff>best.eff || (eff===best.eff && n('pts')>(Number(best.s.pts)||0)))
+        best={name:(pl&&pl.name)?pl.name:('#'+num), num:num, teamName:side[2], s:s, eff:eff};
+    });
+  });
+  return best;
+}
 function renderAllStarTab(){
   var el=document.getElementById('tab-allstar');
   var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:0.25rem;">⭐ All-Star</h2>';
@@ -2238,8 +2264,8 @@ function renderAllStarTab(){
       var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
       return '<tr>'
         +'<td style="text-align:left;">'+medal+'</td>'
-        +'<td style="text-align:left;font-weight:700;">'+p.name+'</td>'
-        +'<td style="text-align:left;color:var(--muted);">'+(p.teamName||'—')+'</td>'
+        +'<td style="text-align:left;font-weight:700;">'+gdEsc(p.name)+'</td>'
+        +'<td style="text-align:left;color:var(--muted);">'+gdEsc(p.teamName||'—')+'</td>'
         +'<td style="font-weight:900;color:var(--orange);">'+(p.score||0)+'</td>'
         +'<td>'+(p.completed?'<span style="color:var(--green);">✓ Done</span>':(p.id===threePointContest.currentId?'<span style="color:var(--orange);">● Shooting</span>':'<span style="color:var(--muted);">Waiting</span>'))+'</td>'
         +'</tr>';
@@ -2253,18 +2279,22 @@ function renderAllStarTab(){
   if(!g){
     html+='<p style="color:var(--muted);font-style:italic;">Not played yet.</p>';
   } else {
-    html+='<div class="card" style="margin-bottom:1rem;"><div style="padding:16px;font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;text-align:center;">'+g.home+' '+g.homeScore+' — '+g.awayScore+' '+g.away+'</div></div>';
+    html+='<div class="card" style="margin-bottom:1rem;"><div style="padding:16px;font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;text-align:center;">'+gdEsc(g.home)+' '+(g.homeScore||0)+' — '+(g.awayScore||0)+' '+gdEsc(g.away)+'</div></div>';
+    var mvp=allStarMvp(g);
+    if(mvp){
+      html+='<div style="text-align:center;margin:-0.25rem 0 1rem;font-size:13px;color:var(--muted);">🏅 <span style="color:var(--orange);font-weight:800;letter-spacing:1px;">ALL-STAR MVP</span> · <strong style="color:#fff;">'+gdEsc(mvp.name)+'</strong> ('+gdEsc(mvp.teamName)+') — '+(mvp.s.pts||0)+' PTS · '+(mvp.s.reb||0)+' REB · '+(mvp.s.ast||0)+' AST</div>';
+    }
     function buildRows(players,statsObj){
       return (players||[]).map(function(p){
         var s=(statsObj&&statsObj[p.num])||{};
         if(!(s.pts>0||s.reb>0||s.ast>0||s.stl>0||s.blk>0||s.to>0)) return '';
-        return '<tr><td>#'+p.num+'</td><td style="text-align:left;">'+p.name+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td></tr>';
+        return '<tr><td>#'+p.num+'</td><td style="text-align:left;">'+gdEsc(p.name)+'</td><td class="pts-cell">'+(s.pts||0)+'</td><td>'+(s.reb||0)+'</td><td>'+(s.ast||0)+'</td><td>'+(s.stl||0)+'</td><td>'+(s.blk||0)+'</td><td>'+(s.to||0)+'</td></tr>';
       }).join('');
     }
     var homeRows=buildRows(g.homePlayers,g.hStats);
     var awayRows=buildRows(g.awayPlayers,g.aStats);
-    html+='<div class="stats-card" style="margin-bottom:1rem;"><div class="stats-card-header">'+g.home+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(homeRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
-    html+='<div class="stats-card"><div class="stats-card-header">'+g.away+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(awayRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
+    html+='<div class="stats-card" style="margin-bottom:1rem;"><div class="stats-card-header">'+gdEsc(g.home)+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(homeRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
+    html+='<div class="stats-card"><div class="stats-card-header">'+gdEsc(g.away)+'</div><table><thead><tr><th>#</th><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th></tr></thead><tbody>'+(awayRows||'<tr><td colspan="8" style="text-align:center;color:var(--muted);font-style:italic;">No stats recorded.</td></tr>')+'</tbody></table></div>';
   }
 
   el.innerHTML=html;
@@ -2280,7 +2310,7 @@ function renderStandings(){
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   var histHtml='';
   if(hist.length){
-    histHtml=hist.filter(Boolean).map(function(g){
+    histHtml=hist.filter(function(g){return g&&!g.isAllStar;}).map(function(g){
       var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
       return '<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--dark3);border:1px solid var(--line);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">'
         +'<div style="font-size:12px;color:var(--muted);min-width:110px;">'+(g.date||'')+'</div>'
@@ -2348,6 +2378,7 @@ function renderTeams(){
   if(!teams.length){el.innerHTML='<div class="no-game"><h2>No teams yet.</h2></div>';return;}
   var html='<h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:1.5rem;">Teams</h2><div class="teams-grid">';
   teams.forEach(function(t){
+    if(t.isAllStar) return;
     var st=standings[t.name]||{w:0,l:0,pf:0,pa:0}; var gp=st.w+st.l;
     var ps=playerStats[t.name]||{};
     var mergedForTeam=getAllPlayers().filter(function(r){return r.teamName===t.name;});
