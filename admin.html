@@ -516,6 +516,15 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="pt-report-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">📋 Playing Time Report</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;">Which saved games have reliable minutes, and why the others don't.</div>
+    <div id="pt-report-body"></div>
+    <button onclick="closePlayingTimeReport()" style="width:100%;padding:11px;margin-top:10px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
+  </div>
+</div>
+
 <div id="reassign-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:560px;max-height:90vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">Move a Player's Stats</h3>
@@ -996,7 +1005,7 @@ BYE: Ohana, AIM
       <div style="background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;">
         <div style="padding:10px 16px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;gap:8px;">
           <div class="color-dot" id="home-side-dot"></div>
-          <span class="section-label" style="margin:0;" id="home-side-lbl">HOME</span>
+          <span class="section-label" style="margin:0;" id="home-side-lbl">HOME</span><span id="home-oncourt" style="margin-left:8px;font-size:11px;font-weight:800;letter-spacing:.5px;"></span>
         </div>
         <div style="padding:12px 14px;">
           <div class="section-label" style="margin-bottom:8px;">On Court <span style="color:#555;font-weight:400;text-transform:none;">— drag to Bench to sub out</span></div>
@@ -1017,7 +1026,7 @@ BYE: Ohana, AIM
       <div style="background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;">
         <div style="padding:10px 16px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;gap:8px;">
           <div class="color-dot" id="away-side-dot"></div>
-          <span class="section-label" style="margin:0;" id="away-side-lbl">AWAY</span>
+          <span class="section-label" style="margin:0;" id="away-side-lbl">AWAY</span><span id="away-oncourt" style="margin-left:8px;font-size:11px;font-weight:800;letter-spacing:.5px;"></span>
         </div>
         <div style="padding:12px 14px;">
           <div class="section-label" style="margin-bottom:8px;">On Court <span style="color:#555;font-weight:400;text-transform:none;">— drag to Bench to sub out</span></div>
@@ -1325,6 +1334,7 @@ BYE: Ohana, AIM
       <p style="font-size:13px;color:var(--muted);margin-bottom:4px;"><strong style="color:#fca5a5;">Playing Time for Saved Games</strong></p>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">New games work out minutes on the court by themselves, from the subs and the game clock. This does the same for games you saved earlier that have no minutes yet. They're estimates, and you can correct any of them in Edit Box Score.</p>
       <button class="btn" style="background:var(--orange);border:none;color:#000;" onclick="calcMinutesForSavedGames()">⏱ Calculate Playing Time</button>
+      <button class="btn" style="margin-left:8px;" onclick="openPlayingTimeReport()">📋 Playing Time Report</button>
 
       <hr style="border-color:#333;margin:18px 0;">
 
@@ -5088,6 +5098,54 @@ function playingTimeCheck(pt, teamNames, hStats, aStats){
   return lines;
 }
 
+// Settings → 📋 Playing Time Report: for every saved game, is the minutes data there, can it be trusted, and
+// if not, why. (The box score can only show what the subs and the game clock recorded.)
+function playingTimeReportRows(hist){
+  return toArr(hist).filter(function(g){ return g && g.home && g.away && !g.isAllStar; }).map(function(g){
+    var row={date:g.date||'?',game:g.home+' '+(g.homeScore||0)+'–'+(g.awayScore||0)+' '+g.away,status:'none',notes:[]};
+    if(g.minutes){
+      row.status=g.minutesEst?'estimated':'tracked';
+      var total=g.halfSec?2*g.halfSec:0;
+      ['home','away'].forEach(function(side){
+        var team=side==='home'?g.home:g.away, m=g.minutes[side]||{}, sum=0;
+        Object.keys(m).forEach(function(k){ if(typeof m[k]==='number') sum+=m[k]; });
+        if(total){ var ratio=sum/(5*total); if(ratio<0.97||ratio>1.03) row.notes.push(team+': minutes add up to '+_ptFmt(sum)+' of the expected '+_ptFmt(5*total)+' ('+Math.round(ratio*100)+'%) — a sub was probably missed.'); }
+        var stats=(side==='home'?g.hStats:g.aStats)||{}, roster=toArr(side==='home'?g.homePlayers:g.awayPlayers), none=[];
+        Object.keys(stats).forEach(function(n){
+          if(_hasAnyStat(stats[n]) && !(m[n]>0)){ var p=roster.filter(function(x){ return String(x.num)===n; })[0]; none.push(p&&p.name?p.name:('#'+n)); }
+        });
+        if(none.length) row.notes.push(team+': stats but no minutes for '+none.slice(0,6).join(', ')+(none.length>6?'…':'')+'.');
+      });
+      if(g.minutesEst) row.notes.unshift('Estimated from the play-by-play (older game) — correct it in Edit Box Score if you know better.');
+    } else if(!toArr(g.playLog).length){
+      row.notes.push('No play-by-play was saved for this game, so there is nothing to work minutes out from.');
+    } else {
+      var pt=computePlayingTime(g.playLog,null,null,true);
+      row.notes.push(pt.usable
+        ? 'Not saved yet, but the play-by-play has subs and a clock — “Calculate Playing Time” can estimate it.'
+        : ({'no-clock':'No game clock was saved with this game\'s play-by-play.','clock-not-used':'The game clock was never run, so there was no time to measure.','no-subs':'No substitutions were recorded (only the starting lineup, or nothing).'}[pt.reason]||'No play-by-play was saved for this game.'));
+    }
+    return row;
+  });
+}
+function openPlayingTimeReport(){
+  var rows=playingTimeReportRows(gameHistory);
+  var count=function(s){ return rows.filter(function(r){ return r.status===s; }).length; };
+  var clean=rows.filter(function(r){ return r.status==='tracked'&&!r.notes.length; }).length;
+  var col={tracked:'#22c55e',estimated:'#eab308',none:'#f87171'}, lbl={tracked:'✓ Tracked',estimated:'≈ Estimated',none:'✗ No minutes'};
+  var html='<div style="font-size:13px;color:#ccc;margin-bottom:12px;line-height:1.5;"><strong style="color:#fff;">'+rows.length+' saved games:</strong> '+clean+' look right · '+(count('tracked')-clean)+' tracked but need a look · '+count('estimated')+' estimated · '+count('none')+' without minutes.</div>'
+    +rows.map(function(r){
+      return '<div style="border:1px solid #333;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--dark3);">'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;"><span style="font-weight:700;color:#fff;font-size:13px;">'+_dpEsc(r.game)+'</span><span style="font-size:11px;font-weight:800;color:'+col[r.status]+';white-space:nowrap;">'+lbl[r.status]+'</span></div>'
+        +'<div style="font-size:11px;color:#888;margin-top:2px;">'+_dpEsc(r.date)+'</div>'
+        +(r.notes.length?'<div style="font-size:12px;color:#fbbf24;margin-top:6px;line-height:1.45;">'+r.notes.map(_dpEsc).join('<br>')+'</div>':(r.status==='tracked'?'<div style="font-size:12px;color:#86efac;margin-top:6px;">Minutes add up for both teams.</div>':''))
+        +'</div>';
+    }).join('');
+  document.getElementById('pt-report-body').innerHTML=rows.length?html:'<div style="color:#888;font-size:13px;">No saved games yet.</div>';
+  document.getElementById('pt-report-modal').style.display='flex';
+}
+function closePlayingTimeReport(){ document.getElementById('pt-report-modal').style.display='none'; }
+
 // Settings → Playing Time for Saved Games. Fills in minutes for games saved
 // before this existed (only games with no minutes yet; never overwrites).
 function calcMinutesForSavedGames(){
@@ -6647,6 +6705,38 @@ function saveLivePlayer(){
   renderDualChips(); renderDualStatBtns();
 }
 
+// ── PLAYING TIME SAFEGUARDS (Live Tracking) ──
+// Minutes are only as good as the IN/SUB taps. These two helpers make a missed sub obvious
+// while the game is still going, when it's easy to fix.
+function _inCount(statusMap){ var n=0; Object.keys(statusMap||{}).forEach(function(k){ if(statusMap[k]==='IN') n++; }); return n; }
+// "5 ON COURT" in green; anything else in red (advisory only — a team can legitimately play short-handed)
+function updateOnCourtCounters(){
+  if(!game) return;
+  [['home',game.hStatus],['away',game.aStatus]].forEach(function(x){
+    var el=document.getElementById(x[0]+'-oncourt'); if(!el) return;
+    var n=_inCount(x[1]), good=(n===5);
+    el.textContent=(good?'':'⚠ ')+n+' ON COURT';
+    el.style.color=good?'var(--green)':'#f87171';
+    el.title=good?'5 players are marked on the court':'Playing time is only accurate when 5 players are marked on the court. Use the IN/SUB buttons, or Swap.';
+  });
+}
+// Someone not marked IN just got a stat — they were obviously on the court, so a sub was missed.
+// Returns 'in' (put them in now), 'swap' (start the swap flow after the stat) or null (nothing to do).
+function benchStatPrompt(side,num){
+  var st=side==='home'?game.hStatus:game.aStatus; if(!st) return null;
+  var key=st[num]!==undefined?num:String(num), cur=st[key];
+  if(cur===undefined || cur==='IN') return null;
+  game._benchOk=game._benchOk||{}; var id=side+':'+num; if(game._benchOk[id]) return null;
+  var ti=side==='home'?game.hi:game.ai, p=teams[ti].players.find(function(x){ return x.num==num; }), nm=p?p.name:('#'+num);
+  var n=_inCount(st), where=(cur==='OUT'?'OUT':'on the bench');
+  var msg=n<5
+    ? nm+' is marked '+where+', but just got a stat — and only '+n+' are marked on the court for '+teams[ti].name+'.\n\nPut '+nm+' in the game so his minutes count?'
+    : nm+' is marked '+where+', but just got a stat, so a sub was probably missed.\n\nSwap him in? (You\'ll then tap the player who came out.)';
+  if(confirm(msg)) return n<5?'in':'swap';
+  game._benchOk[id]=true;            // they chose to leave it: don't ask again for this player this game
+  return null;
+}
+
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
@@ -6678,6 +6768,7 @@ function renderDualChips(){
   document.getElementById('away-side-lbl').textContent=at.name.toUpperCase();
   document.getElementById('home-side-dot').style.background=ht.color;
   document.getElementById('away-side-dot').style.background=at.color;
+  updateOnCourtCounters();
 
   function chipHtml(side, p){
     var isHome=side==='home';
@@ -7007,6 +7098,8 @@ function doStatSide(side,key,pts,neg,decr){
     st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0};
   }
   selNum=stKey;
+  var _bp=(!decr && key!=='tech')?benchStatPrompt(side,selNum):null;      // a stat for someone marked on the bench
+  if(_bp==='in') setPlayerStatus(side,selNum,'IN');
   if(key!=='miss'){
     if(decr && st[selNum][key]>0){
       st[selNum][key]-=1;
@@ -7050,6 +7143,7 @@ function doStatSide(side,key,pts,neg,decr){
   });
   logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:isNegative});
   addLogSide(side,selNum,key,pts,neg,entryId); saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
+  if(_bp==='swap') triggerSwap(side,selNum);
 
   // ── FOUL TRACKING ──
   if(key==='foul'){
