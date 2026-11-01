@@ -642,8 +642,7 @@ db.ref(ctPath('teams')).on('value', function(s){
 // started, without needing the game listener itself to refire.
 var _lastGameVal=null;
 
-db.ref(ctPath('game')).on('value', function(s){
-  var game = s.val();
+function renderGame(game){
   _lastGameVal = game;
   if(!game || (game.homeScore == null && game.awayScore == null)){
     document.getElementById('no-game').style.display = 'flex';
@@ -721,6 +720,25 @@ db.ref(ctPath('game')).on('value', function(s){
   document.getElementById('bottom-ticker').textContent =
     (ht.name||'Home') + ' ' + (game.homeScore||0) + '  —  ' + (game.awayScore||0) + '  ' + (at.name||'Away') +
     '  ·  ' + (game.date||'') + '  ·  San Jose High School';
+}
+
+// This screen only needs a handful of small values. Listening to the WHOLE game folder meant every tap
+// — and every clock tick (game clock AND shot clock, once a second each) — pulled down and re-copied the
+// entire play-by-play and every player's stats: 70–120 KB late in a game, for ~250 bytes of information.
+// Listen to just the fields it shows instead.
+var _GAME_KEYS=['homeScore','awayScore','hi','ai','q','status','date','hHalfTeamFouls','aHalfTeamFouls','hTimeoutsUsed','aTimeoutsUsed','clock','shotClock'];
+var _G={}, _gSeen={}, _gSeenCount=0, _gQueued=false;
+function _queueGameRender(){
+  if(_gQueued || _gSeenCount<_GAME_KEYS.length) return;      // wait until every field has reported once
+  _gQueued=true;
+  setTimeout(function(){ _gQueued=false; renderGame(_G); },0);   // fields that change together in one save are drawn once
+}
+_GAME_KEYS.forEach(function(k){
+  db.ref(ctPath('game/'+k)).on('value', function(snap){
+    _G[k]=snap.val();
+    if(!_gSeen[k]){ _gSeen[k]=true; _gSeenCount++; }
+    _queueGameRender();
+  });
 });
 
 // 3-Point Contest — takes over the whole screen while a shooter is

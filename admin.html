@@ -2213,6 +2213,7 @@ function timerUpdate(){
   if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
   // Sync to Firebase regardless of game state
   if(db) db.ref(ctPath('game/clock')).set({seconds: timerSeconds, running: timerRunning});
+  try{ updateLiveMinutes(); }catch(e){}      // the minutes on every chip tick along with the clock
 }
 
 function timerStart(){
@@ -2921,6 +2922,16 @@ function fbSet(path,val){
     if(err.code==='PERMISSION_DENIED') alert('⚠️ Firebase permission denied! Go to Firebase console → Realtime Database → Rules and set read/write to true.'); 
   }); 
 }
+// Like fbSet, but MERGES into what's already there instead of replacing it. The live game folder also holds
+// children this page writes separately (game clock, shot clock, score shortcut, horn signal) that are not
+// part of the in-memory game object — replacing the whole folder on every tap erased them.
+function fbUpdate(path,val){
+  if(!isActiveSession){ console.warn('Skipped write to '+path+' — this tab is no longer the active session.'); return; }
+  if(db) db.ref(path).update(val).catch(function(err){
+    console.error('Firebase write error at '+path+':', err.message);
+    if(err.code==='PERMISSION_DENIED') alert('⚠️ Firebase permission denied! Go to Firebase console → Realtime Database → Rules and set read/write to true.');
+  });
+}
 function fbRemove(path){ 
   if(!isActiveSession){ console.warn('Skipped remove at '+path+' — this tab is no longer the active session.'); return; }
   if(db) db.ref(path).remove(); 
@@ -2939,7 +2950,7 @@ function save(){
   fbSet(ctPath('history'),gameHistory);
   fbSet(ctPath('playerStats'),playerStats);
   fbSet(ctPath('schedule'),schedule);
-  if(game) fbSet(ctPath('game'),game);
+  if(game) fbUpdate(ctPath('game'),game);       // merge: keeps the separately-stored clocks
 }
 // Every point/foul/sub tap was calling save() above, which re-uploads the
 // ENTIRE app state every time — full team rosters, the whole season's
@@ -2949,13 +2960,13 @@ function save(){
 // was causing the lag between Admin and scoreboard.html. Live-tracking
 // actions should only need to write the current game.
 function saveLiveGame(){
-  if(!game) return;
-  fbSet(ctPath('game'),game);
-  // Also sync just the score to its own tiny path — same trick already
-  // used for the clocks — so scoreboard.html can show it instantly
-  // without waiting on the full (and steadily growing, play-log-included)
-  // game object to transfer.
+  if(!game || !isActiveSession) return;       // (a stale second tab must not write a stale score either)
+  // The score goes FIRST, on its own tiny path. Writes from this device go out in order, so if it came after
+  // the full game (70–120 KB late in a game: the whole play-by-play + all stats) the scoreboard would have
+  // to wait for that upload to finish before it saw the new score.
   if(db) db.ref(ctPath('game/liveScore')).set({home: game.homeScore||0, away: game.awayScore||0});
+  // MERGE the game in — don't replace the folder — so the clocks stored beside it survive every tap.
+  fbUpdate(ctPath('game'),game);
 }
 function clearGame(){ fbRemove(ctPath('game')); }
 
@@ -4631,7 +4642,9 @@ function confirmStartGame(){
     }
   });
   unlockHornAudio(); // unlock audio synchronously within this tap, before the delayed clock start below
-  logStack=[]; save();
+  logStack=[];
+  fbRemove(ctPath('game'));                   // clean slate: saves now merge, so clear anything left by an abandoned game
+  save();
   closeLineupModal();
   var b=document.getElementById('game-banner');
   b.style.display='block';
@@ -6720,26 +6733,115 @@ function updateOnCourtCounters(){
     el.title=good?'5 players are marked on the court':'Playing time is only accurate when 5 players are marked on the court. Use the IN/SUB buttons, or Swap.';
   });
 }
-// Someone not marked IN just got a stat — they were obviously on the court, so a sub was missed.
-// Returns 'in' (put them in now), 'swap' (start the swap flow after the stat) or null (nothing to do).
-function benchStatPrompt(side,num){
-  var st=side==='home'?game.hStatus:game.aStatus; if(!st) return null;
+// A stat was just recorded for someone who is NOT marked IN (a missed sub, a late arrival, or an
+// accidental OUT). The stat is ALWAYS kept — nothing here can block or undo it. This only offers,
+// in a small notice that never interrupts scoring, to fix their status so their minutes count.
+var _benchToast=null, _benchToastTimer=null;
+function _hideBenchToast(){
+  var el=document.getElementById('bench-toast'); if(el) el.style.display='none';
+  if(_benchToastTimer){ clearTimeout(_benchToastTimer); _benchToastTimer=null; }
+  _benchToast=null;
+}
+function benchStatNote(side,num){
+  var st=side==='home'?game.hStatus:game.aStatus; if(!st) return;
   var key=st[num]!==undefined?num:String(num), cur=st[key];
-  if(cur===undefined || cur==='IN') return null;
-  game._benchOk=game._benchOk||{}; var id=side+':'+num; if(game._benchOk[id]) return null;
+  if(cur===undefined || cur==='IN') return;
+  game._benchOk=game._benchOk||{}; var id=side+':'+num; if(game._benchOk[id]) return;       // already dealt with for this game
   var ti=side==='home'?game.hi:game.ai, p=teams[ti].players.find(function(x){ return x.num==num; }), nm=p?p.name:('#'+num);
-  var n=_inCount(st), where=(cur==='OUT'?'OUT':'on the bench');
-  var msg=n<5
-    ? nm+' is marked '+where+', but just got a stat — and only '+n+' are marked on the court for '+teams[ti].name+'.\n\nPut '+nm+' in the game so his minutes count?'
-    : nm+' is marked '+where+', but just got a stat, so a sub was probably missed.\n\nSwap him in? (You\'ll then tap the player who came out.)';
-  if(confirm(msg)) return n<5?'in':'swap';
-  game._benchOk[id]=true;            // they chose to leave it: don't ask again for this player this game
-  return null;
+  var mode=_inCount(st)<5?'in':'swap';
+  _benchToast={side:side,num:key,mode:mode,id:id};
+  var el=document.getElementById('bench-toast');
+  if(!el){
+    el=document.createElement('div'); el.id='bench-toast';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:9998;width:max-content;max-width:92vw;background:#1c1c1c;border:1px solid #f59e0b;color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.55);display:flex;gap:10px;align-items:center;';
+    (document.body||document.documentElement).appendChild(el);
+  }
+  el.innerHTML='<span style="line-height:1.35;"><strong>'+_dpEsc(nm)+'</strong> is marked '+(cur==='OUT'?'OUT':'on the bench')+' — <strong style="color:#86efac;">stat saved</strong>. '+(mode==='in'?'Put him in the game so his minutes count?':'Swap him in so his minutes count?')+'</span>'
+    +'<button type="button" onclick="benchToastAct()" style="background:var(--orange);color:#000;border:none;border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">'+(mode==='in'?'Put in':'Swap in')+'</button>'
+    +'<button type="button" onclick="benchToastDismiss()" aria-label="Dismiss" style="background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:2px 4px;">✕</button>';
+  el.style.display='flex';
+  if(_benchToastTimer) clearTimeout(_benchToastTimer);
+  _benchToastTimer=setTimeout(benchToastDismiss,12000);          // ignored for 12 s = "leave it" (no nagging)
+}
+function benchToastAct(){
+  var t=_benchToast; _hideBenchToast(); if(!t||!game) return;
+  game._benchOk=game._benchOk||{}; game._benchOk[t.id]=true;
+  if(t.mode==='in') setPlayerStatus(t.side,t.num,'IN'); else triggerSwap(t.side,t.num);      // swap: tap the player who came out next
+}
+function benchToastDismiss(){
+  var t=_benchToast; _hideBenchToast();
+  if(t&&game){ game._benchOk=game._benchOk||{}; game._benchOk[t.id]=true; }
+}
+
+
+// ── LIVE MINUTES ON COURT ──
+// Every player's chip shows how long they have been on the court so far, and the number ticks each second
+// for players who are IN. It is worked out from the same sub log as the final box-score minutes, so what you
+// see here is exactly what gets saved. (Zeros until the game clock first moves.)
+function liveMinutes(){
+  var none={home:{},away:{}};
+  if(!game || !game.playLog) return none;
+  var pt=computePlayingTime(game.playLog, game.q||1, timerSeconds);
+  return pt.usable?{home:pt.home,away:pt.away}:none;
+}
+function updateLiveMinutes(){
+  if(!game) return;
+  var els=document.querySelectorAll('.pmin'); if(!els||!els.length) return;
+  var lm=liveMinutes();
+  els.forEach(function(el){
+    var side=el.getAttribute('data-side'), n=el.getAttribute('data-num');
+    var st=(side==='home'?game.hStatus:game.aStatus)||{};
+    var t='⏱ '+_ptFmt(((lm[side]||{})[n])||0);
+    if(el.textContent!==t) el.textContent=t;
+    el.style.color=(st[n]==='IN')?'#86efac':'#9ca3af';
+  });
+}
+
+// ── FIX A SUB'S TIME ──
+// A sub tapped a few seconds late puts a player's minutes off by those seconds. Open the sub in the game log
+// and type the clock time it really happened. A swap logs two entries at once (one out, one in) — both move.
+function _logHalfLen(log){ var h=0; log.forEach(function(e){ var c=_ptClockSecs(e.clock); if(c!==null&&c>h) h=c; }); return h; }
+function _subElapsed(e,halfLen){ var c=_ptClockSecs(e.clock); return c===null?null:((e.half||1)-1)*halfLen+(halfLen-Math.min(halfLen,c)); }
+function subTimeEditorHtml(entryId){
+  var pe=(game.playLog||[]).filter(function(e){ return e.id===entryId; })[0]; if(!pe) return '';
+  return '<div style="margin-bottom:14px;">'
+    +'<div style="font-size:11px;color:#888;margin-bottom:6px;line-height:1.4;">Clock time when this sub really happened (minutes:seconds). Fixes the minutes if it was tapped late.</div>'
+    +'<div style="display:flex;gap:8px;"><input id="sub-time-input" type="text" inputmode="numeric" value="'+_dpEsc(String(pe.clock||'').replace(/^0/,''))+'" style="flex:1;min-width:0;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:15px;text-align:center;">'
+    +'<button class="btn" style="background:var(--orange);border:none;color:#000;white-space:nowrap;" onclick="saveSubTime(\''+entryId+'\')">Save time</button></div>'
+    +'<div id="sub-time-msg" style="font-size:12px;color:#fbbf24;min-height:16px;margin-top:6px;"></div></div>';
+}
+function saveSubTime(entryId){
+  var msg=document.getElementById('sub-time-msg'), inp=document.getElementById('sub-time-input');
+  var say=function(t){ if(msg) msg.textContent=t; };
+  var log=(game&&game.playLog)||[], idx=log.findIndex(function(e){ return e.id===entryId; });
+  if(idx===-1){ closeLogEntryEditor(); return; }
+  var pe=log[idx];
+  if(pe.key!=='sub' || pe.label==='Starting Lineup'){ say('Only substitutions can be re-timed.'); return; }
+  var m=/^(\d{1,2}):([0-5]\d)$/.exec(((inp&&inp.value)||'').trim());
+  if(!m){ say('Type the clock time like 8:30 (minutes:seconds).'); return; }
+  var secs=parseInt(m[1],10)*60+parseInt(m[2],10), halfLen=_logHalfLen(log);
+  if(secs>halfLen){ say('That is longer than a half ('+timerFmt(halfLen).replace(/^0/,'')+').'); return; }
+  // a swap logs two entries at once: the same team, half, clock, and moments apart — move them together
+  var group=log.filter(function(e){ return e.key==='sub' && e.label!=='Starting Lineup' && e.side===pe.side && e.half===pe.half && e.clock===pe.clock && Math.abs((e.timestamp||0)-(pe.timestamp||0))<=2000; });
+  var newClock=timerFmt(secs), newT=((pe.half||1)-1)*halfLen+(halfLen-secs);
+  // keep this team's subs in order: not before its previous sub, not after its next one
+  var prevT=-1, nextT=Infinity;
+  log.forEach(function(e,i){
+    if(e.key!=='sub' || e.side!==pe.side || group.indexOf(e)!==-1) return;
+    var t=_subElapsed(e,halfLen); if(t===null) return;
+    if(i<idx){ if(t>prevT) prevT=t; } else if(i>idx){ if(t<nextT) nextT=t; }
+  });
+  var fmtT=function(t){ var h=Math.floor(t/halfLen)+1, r=halfLen-(t-(h-1)*halfLen); return timerFmt(Math.max(0,r)).replace(/^0/,'')+' (H'+h+')'; };
+  if(newT<prevT){ say('That is before this team\'s previous sub, at '+fmtT(prevT)+'. Pick a time after it.'); return; }
+  if(newT>nextT){ say('That is after this team\'s next sub, at '+fmtT(nextT)+'. Pick a time before it.'); return; }
+  group.forEach(function(e){ e.clock=newClock; });
+  saveLiveGame(); rebuildLogBody(); renderDualChips(); closeLogEntryEditor();
 }
 
 function renderDualChips(){
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
+  var lm=liveMinutes();                       // minutes on court so far, for the chips below
   // Display half team fouls (resets at start of each half)
   var homeFouls=game.hHalfTeamFouls||0;
   var awayFouls=game.aHalfTeamFouls||0;
@@ -6794,7 +6896,7 @@ function renderDualChips(){
     return '<div class="player-chip" data-side="'+side+'" data-num="'+p.num+'" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
       +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
       +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+(isPending?' <span style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick swap</span>':'')+'</div>'
-      +'<div class="ppts">'+pStats.pts+' pts</div>'
+      +'<div class="ppts">'+pStats.pts+' pts · <span class="pmin" data-side="'+side+'" data-num="'+p.num+'" title="Minutes on the court so far" style="color:'+(status==='IN'?'#86efac':'#9ca3af')+';">⏱ '+_ptFmt(((lm[side]||{})[p.num])||0)+'</span></div>'
       +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F'+(techs?' · <span style="color:#a855f7;">'+techs+' T</span>':'')+'</div></div>'
       +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
       +'<button type="button" onclick="event.stopPropagation();triggerSwap(\''+side+'\','+p.num+')" title="Swap this player with another — tap here, then tap who they\'re subbing with" style="margin-left:4px;font-size:11px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid '+(isPending?'#60a5fa':'#444')+';color:'+(isPending?'#60a5fa':'#888')+';background:'+(isPending?'rgba(96,165,250,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;">⇄</button>'
@@ -6914,15 +7016,21 @@ function performSwap(side,numA,numB){
     renderDualChips();
     return;
   }
-  statusMap[keyA]=statusB;
-  statusMap[keyB]=statusA;
+  // Each player takes the other's status — except that someone coming OFF the court goes to the bench
+  // (SUB), never "OUT". Otherwise swapping an accidentally-OUT player in would mark the player who came
+  // out as OUT too.
+  var newA=statusB, newB=statusA;
+  if(statusA==='IN' && newA==='OUT') newA='SUB';
+  if(statusB==='IN' && newB==='OUT') newB='SUB';
+  statusMap[keyA]=newA;
+  statusMap[keyB]=newB;
 
   var ti=isHome?game.hi:game.ai;
   var pA=teams[ti].players.find(function(x){return x.num==numA;});
   var pB=teams[ti].players.find(function(x){return x.num==numB;});
   var labels={IN:'Entered Game',SUB:'Subbed Out',OUT:'Marked Out'};
   if(!game.playLog) game.playLog=[];
-  [{num:keyA,p:pA,prev:statusA,next:statusB},{num:keyB,p:pB,prev:statusB,next:statusA}].forEach(function(x){
+  [{num:keyA,p:pA,prev:statusA,next:newA},{num:keyB,p:pB,prev:statusB,next:newB}].forEach(function(x){
     var entryId='log_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     var entry={
       id:entryId, side:side, num:x.num,
@@ -7098,8 +7206,6 @@ function doStatSide(side,key,pts,neg,decr){
     st[stKey]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0};
   }
   selNum=stKey;
-  var _bp=(!decr && key!=='tech')?benchStatPrompt(side,selNum):null;      // a stat for someone marked on the bench
-  if(_bp==='in') setPlayerStatus(side,selNum,'IN');
   if(key!=='miss'){
     if(decr && st[selNum][key]>0){
       st[selNum][key]-=1;
@@ -7143,7 +7249,7 @@ function doStatSide(side,key,pts,neg,decr){
   });
   logStack.push({id:entryId,side:side,num:selNum,key:key,pts:pts,neg:isNegative});
   addLogSide(side,selNum,key,pts,neg,entryId); saveLiveGame(); renderDualChips(); renderDualStatBtns(); renderBox();
-  if(_bp==='swap') triggerSwap(side,selNum);
+  if(!decr && key!=='tech') benchStatNote(side,selNum);      // stat is saved; this only offers to fix a bench/OUT status
 
   // ── FOUL TRACKING ──
   if(key==='foul'){
@@ -7237,6 +7343,7 @@ function openLogEntryEditor(entryId){
     overlay2.innerHTML='<div style="background:#141414;border:1px solid #333;border-radius:12px;padding:20px;max-width:380px;width:100%;">'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;">Edit Log Entry</div>'
       +'<div style="font-size:13px;color:#888;margin-bottom:16px;">Currently: <strong style="color:#fff;">'+(entry.key==='teamfoul'?teams[ti].name:(p?p.name:'Player'))+'</strong> — '+descLabel+'</div>'
+      +(entry.key==='sub'?subTimeEditorHtml(entryId):'')
       +'<button class="btn" style="width:100%;background:#3a1414;border:1px solid #7c2d2d;color:#fca5a5;" onclick="confirmDeleteLogEntry(\''+entryId+'\')">🗑 Delete this entry</button>'
       +'<button class="btn" style="width:100%;margin-top:8px;background:transparent;border:1px solid #333;" onclick="closeLogEntryEditor()">Cancel</button>'
       +'</div>';
@@ -7333,7 +7440,8 @@ function rebuildLogBody(){
           :entry.key==='teamfoul'?((entry.teamFoulDelta>=0?'Team Foul +':'Team Foul ')+entry.teamFoulDelta)
           :entry.key==='benchtech'?((entry.benchTechDelta>=0?'Bench/Coach Tech +':'Bench/Coach Tech ')+entry.benchTechDelta)
           :((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
-        pts:entry.pts, neg:entry.neg, clock:timerFmt(timerSeconds)
+        pts:entry.pts, neg:entry.neg,
+        clock:(function(){ var pe=(game.playLog||[]).filter(function(x){ return x.id===entry.id; })[0]; return pe&&pe.clock?pe.clock:timerFmt(timerSeconds); })()      // the clock time of THAT play, not the clock now
       });
     } else {
       addLogSide(entry.side,entry.num,entry.key,entry.pts,entry.neg,entry.id);
