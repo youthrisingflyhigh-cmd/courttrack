@@ -19,7 +19,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .nav-logo small{display:block;font-size:9px;font-weight:600;letter-spacing:2px;color:var(--muted);line-height:1;margin-top:2px;}
 .nav-tabs{display:flex;gap:4px;flex-wrap:wrap;}
 .nav-tab{padding:6px 13px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);border:none;transition:all 0.15s;font-family:Barlow,sans-serif;}
-.nav-tab:hover{color:var(--light);background:var(--dark3);}
 .nav-tab.active{background:var(--orange);color:#fff;}
 /* ── HAMBURGER MENU ── */
 .nav-tabs-desktop{display:flex;gap:4px;flex-wrap:nowrap;}
@@ -31,7 +30,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .mobile-menu{display:none;position:fixed;top:56px;left:0;right:0;background:#0d0d0d;border-bottom:2px solid var(--orange);z-index:150;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.6);max-height:calc(100vh - 56px);overflow-y:auto;}
 .mobile-menu.open{display:flex;}
 .mobile-tab{padding:14px 20px;font-size:15px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:1px solid #1e1e1e;text-align:left;cursor:pointer;font-family:'Barlow',sans-serif;transition:all 0.1s;}
-.mobile-tab:hover,.mobile-tab:active{background:#1a1a1a;color:var(--white);}
+.mobile-tab:active{background:#1a1a1a;color:var(--white);}
 .mobile-tab.active{color:var(--orange);}
 @media(max-width:1100px){
   .nav-tabs-desktop{display:none;}
@@ -58,14 +57,10 @@ input[type=color]{width:48px;height:36px;padding:3px 4px;cursor:pointer;border-r
 select{flex:1;min-width:100px;}
 .btn{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.12s;font-family:Barlow,sans-serif;white-space:nowrap;}
 .btn-orange{background:var(--orange);color:#fff;}
-.btn-orange:hover{background:var(--orange-dim);}
 .btn-ghost{background:transparent;border:1px solid #333;color:var(--muted);}
-.btn-ghost:hover{border-color:#555;color:var(--light);}
 .btn-red{background:transparent;border:1px solid transparent;color:var(--red);padding:5px 9px;font-size:12px;cursor:pointer;border-radius:5px;font-family:Barlow,sans-serif;}
-.btn-red:hover{border-color:var(--red);}
 .list-area{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;}
 .team-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--dark3);border-radius:8px;border:1px solid #2a2a2a;cursor:pointer;transition:border-color 0.12s;}
-.team-item:hover{border-color:#555;}
 .team-item.selected{border-color:var(--orange);background:rgba(255,92,0,0.08);}
 .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .team-item-name{font-size:14px;font-weight:600;color:var(--white);flex:1;}
@@ -90,20 +85,16 @@ select{flex:1;min-width:100px;}
 .section-label{font-family:Barlow Condensed,sans-serif;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
 .player-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;}
 .player-chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid #2a2a2a;background:var(--dark2);cursor:pointer;transition:all 0.12s;touch-action:none;}
-.player-chip:hover{border-color:#444;}
 .player-chip .jersey{font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:16px;min-width:20px;text-align:center;}
 .player-chip .pname{font-size:13px;font-weight:600;color:var(--light);}
 .player-chip .ppts{font-size:11px;color:var(--muted);}
 .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;}
 .stat-btn{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;padding:16px 12px;cursor:pointer;transition:all 0.12s;text-align:center;position:relative;overflow:hidden;}
-.stat-btn:hover{border-color:#444;background:var(--dark3);}
 .stat-btn:active{transform:scale(0.97);}
 .stat-btn.pts-btn{border-color:rgba(255,92,0,0.3);}
-.stat-btn.pts-btn:hover{border-color:var(--orange);background:rgba(255,92,0,0.08);}
 .sb-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
 .sb-count{font-family:Barlow Condensed,sans-serif;font-size:28px;font-weight:900;color:var(--white);}
 .sb-plus{position:absolute;top:8px;right:10px;font-size:16px;color:var(--orange);opacity:0;transition:opacity 0.2s;}
-.stat-btn:hover .sb-plus{opacity:1;}
 .pts-tag{position:absolute;bottom:6px;right:8px;font-size:10px;font-weight:700;color:var(--orange);background:rgba(255,92,0,0.15);padding:1px 5px;border-radius:4px;}
 .two-col{display:grid;grid-template-columns:1fr 340px;gap:1.5rem;}
 .log-panel{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;}
@@ -116,7 +107,6 @@ select{flex:1;min-width:100px;}
 .log-dot.neutral{background:#555;}
 .log-pts{margin-left:auto;font-weight:700;font-size:12px;color:var(--green);}
 .undo-btn{padding:4px 10px;border-radius:5px;border:1px solid #333;background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:Barlow,sans-serif;}
-.undo-btn:hover{border-color:var(--red);color:var(--red);}
 .stats-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
 .stats-card-header{padding:14px 20px;border-bottom:1px solid #2a2a2a;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
 table{width:100%;border-collapse:collapse;}
@@ -131,7 +121,6 @@ td.loss{color:var(--red);font-weight:700;}
 td.diff-pos{color:var(--green);}
 td.diff-neg{color:var(--red);}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(255,255,255,0.02);}
 tr.totals-row td{border-top:2px solid #2a2a2a;font-weight:700;color:var(--white);background:rgba(255,255,255,0.03);}
 tr.totals-row td.pts-cell{color:var(--orange);}
 .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:13px;}
@@ -142,15 +131,12 @@ tr.totals-row td.pts-cell{color:var(--orange);}
 .no-game h2{font-size:24px;color:var(--light);margin-bottom:8px;}
 .success-banner{margin-top:8px;padding:10px 14px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;font-size:13px;color:var(--green);font-weight:600;}
 .finish-btn{background:var(--blue);color:#fff;padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:Barlow,sans-serif;}
-.finish-btn:hover{background:#2563eb;}
 .color-preview-swatch{width:32px;height:32px;border-radius:6px;flex-shrink:0;border:1px solid #333;}
 .standings-team-link{cursor:pointer;color:var(--white);font-weight:700;transition:color 0.12s;display:inline-flex;align-items:center;gap:8px;}
-.standings-team-link:hover{color:var(--orange);}
 .search-bar{background:var(--dark3);border:1px solid #333;border-radius:8px;color:var(--white);font-family:Barlow,sans-serif;font-size:14px;padding:10px 14px;width:100%;outline:none;margin-bottom:1.2rem;}
 .search-bar:focus{border-color:var(--orange);}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;}
 .team-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color 0.15s,transform 0.12s;}
-.team-card:hover{border-color:#444;transform:translateY(-2px);}
 .team-card-header{padding:16px 20px;display:flex;align-items:center;gap:12px;}
 .team-card-badge{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:18px;color:#fff;flex-shrink:0;}
 .team-card-name{font-family:Barlow Condensed,sans-serif;font-size:18px;font-weight:900;color:var(--white);}
@@ -161,7 +147,6 @@ tr.totals-row td.pts-cell{color:var(--orange);}
 .tc-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
 .sub-tabs{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:1px solid #2a2a2a;}
 .sub-tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:Barlow,sans-serif;transition:all 0.12s;}
-.sub-tab:hover{color:var(--light);}
 .sub-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
 .sub-panel{display:none;}
 .sub-panel.active{display:block;}
@@ -181,12 +166,10 @@ tr.totals-row td.pts-cell{color:var(--orange);}
 .game-history-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--dark3);border:1px solid #2a2a2a;border-radius:8px;margin-bottom:8px;flex-wrap:wrap;}
 .game-record-card{background:var(--dark2);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;margin-bottom:1rem;}
 .game-record-header{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;flex-wrap:wrap;}
-.game-record-header:hover{background:rgba(255,255,255,0.02);}
 .game-record-body{display:none;border-top:1px solid #2a2a2a;}
 .game-record-body.open{display:block;}
 .game-tabs{display:flex;gap:0;border-bottom:1px solid #2a2a2a;}
 .game-tab{padding:10px 18px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;font-family:Barlow,sans-serif;border-bottom:2px solid transparent;margin-bottom:-1px;}
-.game-tab:hover{color:var(--light);}
 .game-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
 .game-tab-panel{display:none;padding:16px 20px;}
 .game-tab-panel.active{display:block;}
@@ -278,11 +261,51 @@ th, td { padding: 10px 8px !important; }
 .pm-btn{padding:11px 14px;border-radius:9px;border:1px solid #555;background:var(--dark3);color:#fff;font-weight:700;font-size:14px;cursor:pointer;}
 .pm-btn.primary{background:var(--orange);color:#000;border:none;}
 .ph-card{background:var(--dark2);border:1px solid #333;border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;}
-.ph-card:hover{border-color:var(--orange);}
 .ph-card .ph-name{font-weight:800;color:#fff;font-size:14px;margin-top:8px;word-break:break-word;}
 .ph-card .ph-sub{font-size:11px;color:var(--muted);margin-top:2px;}
 .ph-card .ph-act{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;color:#000;background:var(--orange);border-radius:99px;padding:4px 11px;}
 .ph-card .ph-act.have{background:var(--dark3);color:#ccc;border:1px solid #555;}
+
+/* hover looks only on devices that really hover (a mouse). On a phone/iPad the FIRST tap on an element with a hover style is swallowed as a "hover" and only the second tap clicks. */
+@media (hover:hover) and (pointer:fine){
+  .nav-tab:hover{color:var(--light);background:var(--dark3);}
+  .mobile-tab:hover{background:#1a1a1a;color:var(--white);}
+  .btn-orange:hover{background:var(--orange-dim);}
+  .btn-ghost:hover{border-color:#555;color:var(--light);}
+  .btn-red:hover{border-color:var(--red);}
+  .team-item:hover{border-color:#555;}
+  .player-chip:hover{border-color:#444;}
+  .stat-btn:hover{border-color:#444;background:var(--dark3);}
+  .stat-btn.pts-btn:hover{border-color:var(--orange);background:rgba(255,92,0,0.08);}
+  .stat-btn:hover .sb-plus{opacity:1;}
+  .undo-btn:hover{border-color:var(--red);color:var(--red);}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+  .finish-btn:hover{background:#2563eb;}
+  .standings-team-link:hover{color:var(--orange);}
+  .team-card:hover{border-color:#444;transform:translateY(-2px);}
+  .sub-tab:hover{color:var(--light);}
+  .game-record-header:hover{background:rgba(255,255,255,0.02);}
+  .game-tab:hover{color:var(--light);}
+  .ph-card:hover{border-color:var(--orange);}
+}
+</style>
+<style id="live-layout-css">
+/* ── Live Tracking: players are compact tiles laid out side by side (2 across on a phone, more on wider screens) ── */
+.sub-dropzone.player-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;align-items:stretch;}
+.sub-dropzone.player-row > :not(.player-chip){grid-column:1 / -1;}
+.player-chip{flex-direction:column;align-items:stretch;gap:2px;padding:6px 8px;min-width:0;}
+.player-chip .pc-top{display:flex;align-items:center;gap:6px;min-width:0;}
+.player-chip .pc-top .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.player-chip .pc-mid{display:flex;align-items:baseline;justify-content:space-between;gap:6px;white-space:nowrap;}
+.player-chip .pc-acts{display:flex;gap:6px;align-items:center;}
+/* phones: less wasted margin on the Live Tracking page, so two players fit side by side and the stat buttons stay closer */
+@media (max-width:700px){
+  #page-track.page{padding-left:8px;padding-right:8px;}
+  #dual-track-grid > div > div:nth-child(2){padding-left:8px !important;padding-right:8px !important;}
+  #dual-track-grid{gap:.8rem !important;}
+}
+/* quick taps must never be mistaken for a double-tap zoom */
+.stat-btn,.btn,.btn-ghost,.q-btn,button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 </style>
 </head>
 <body ontouchstart="">
@@ -721,7 +744,11 @@ BYE: Ohana, AIM
     <h2 style="font-size:32px;font-weight:900;color:var(--white);">📷 Photo Mode</h2>
     <p style="font-size:13px;color:var(--muted);margin-top:4px;">Add or change player photos. They appear in the circles on the public site's MVP of the Week card. This is the only place photos can be added — the public site can't change them.</p>
   </div>
-  <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:6px 0 8px;">MVPs WHO NEED A PHOTO</div>
+  <div id="ph-division" style="font-size:12px;color:var(--muted);margin:0 0 12px;"></div>
+  <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:6px 0 8px;">🏅 THIS WEEK'S MVPs <span style="font-weight:400;letter-spacing:0;text-transform:none;">— exactly what the public MVP of the Week card shows</span> <span id="ph-week-date" style="font-weight:400;letter-spacing:0;color:#777;"></span></div>
+  <div id="ph-week" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:6px;"></div>
+  <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:22px 0 4px;">PAST MVPs WHO STILL NEED A PHOTO</div>
+  <div style="font-size:11px;color:#777;margin-bottom:8px;">Earlier games' MVPs, newest first, one per person. Anyone who already has a photo is left out — so this list is <b>not</b> the current MVP.</div>
   <div id="ph-need" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;"></div>
   <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:22px 0 8px;">ALL PLAYERS</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -2950,7 +2977,7 @@ function save(){
   fbSet(ctPath('history'),gameHistory);
   fbSet(ctPath('playerStats'),playerStats);
   fbSet(ctPath('schedule'),schedule);
-  if(game) fbUpdate(ctPath('game'),game);       // merge: keeps the separately-stored clocks
+  if(game){ var g0=game; _savingLive=true; try{ fbUpdate(ctPath('game'),liveGamePayload(g0)); } finally { _savingLive=false; } }      // merge: keeps the separately-stored clocks
 }
 // Every point/foul/sub tap was calling save() above, which re-uploads the
 // ENTIRE app state every time — full team rosters, the whole season's
@@ -2959,14 +2986,28 @@ function save(){
 // season goes on, and re-sending all of it on every single tap is what
 // was causing the lag between Admin and scoreboard.html. Live-tracking
 // actions should only need to write the current game.
+// What gets saved for the live game: everything EXCEPT the children that other writers own (game clock, shot
+// clock, score shortcut, horn). They live in the same folder but must never be rewritten from a stale copy.
+function liveGamePayload(g){
+  var p={}; Object.keys(g).forEach(function(k){ if(k!=='clock'&&k!=='shotClock'&&k!=='liveScore'&&k!=='hornSignal') p[k]=g[k]; });
+  return p;
+}
+// True only while THIS page is in the middle of writing. The database announces your own writes to your own
+// listeners immediately, and the listener replaces the page's game with that announcement — which, mid-save, can
+// be a snapshot that does not contain the change you just made (the tap would be lost). Echoes of our own writes
+// are ignored; real updates from other devices arrive later and are still applied.
+var _savingLive=false;
 function saveLiveGame(){
   if(!game || !isActiveSession) return;       // (a stale second tab must not write a stale score either)
-  // The score goes FIRST, on its own tiny path. Writes from this device go out in order, so if it came after
-  // the full game (70–120 KB late in a game: the whole play-by-play + all stats) the scoreboard would have
-  // to wait for that upload to finish before it saw the new score.
-  if(db) db.ref(ctPath('game/liveScore')).set({home: game.homeScore||0, away: game.awayScore||0});
-  // MERGE the game in — don't replace the folder — so the clocks stored beside it survive every tap.
-  fbUpdate(ctPath('game'),game);
+  var g=game;                                  // (the listener may swap the global `game` while we write)
+  _savingLive=true;
+  try{
+    // The score goes FIRST, on its own tiny path: writes go out in order, so after the full game (70–120 KB late in
+    // a game) the scoreboard would have to wait for that upload before it saw the new score.
+    if(db) db.ref(ctPath('game/liveScore')).set({home: g.homeScore||0, away: g.awayScore||0});
+    // MERGE the game in — don't replace the folder — so the clocks stored beside it survive every tap.
+    fbUpdate(ctPath('game'),liveGamePayload(g));
+  } finally { _savingLive=false; }
 }
 function clearGame(){ fbRemove(ctPath('game')); }
 
@@ -3092,7 +3133,9 @@ function gameSigNoClocks(v){
   return JSON.stringify(v,function(k,val){ return ((k==='clock'||k==='shotClock')&&this===v)?undefined:val; });
 }
 function handleGameUpdate(v){
+  if(_savingLive) return;                  // the echo of our own save in progress: our in-memory game is already right
   game=v||null;
+  try{ ensureLogPanel(); }catch(e){}      // a refresh mid-game: bring the log + Undo history back (the panel itself is drawn when Live Tracking opens if teams haven't loaded yet)
   var sig=gameSigNoClocks(game);
   if(sig===_lastGameSigAdm) return;
   _lastGameSigAdm=sig;
@@ -3128,8 +3171,18 @@ fbListen(ctPath('game'), handleGameUpdate);
 // Start here), just mirror whatever the active device is broadcasting —
 // that way switching from one scorekeeping device to another always
 // picks up the real current time instead of some stale local default.
-fbListen(ctPath('game/clock'), function(v){
+// When THIS page has just loaded (e.g. a refresh mid-game) and the first reading says the clock is "running", but
+// nothing keeps updating it for 2.5 s, whoever was running it is gone — pause it. Otherwise the scoreboard keeps
+// counting down on its own and fires the horn with nobody in charge. (A device that really is running the clock
+// rewrites it every second, so it is left alone.)
+var _clockReads=0, _shotReads=0;
+function onClockSnapshot(v){
+  _clockReads++;
   if(!v || timerRunning) return;
+  if(_clockReads===1 && v.running){
+    var n=_clockReads;
+    setTimeout(function(){ if(_clockReads===n && !timerRunning && isActiveSession && db) db.ref(ctPath('game/clock')).set({seconds: timerSeconds, running: false}); },2500);
+  }
   timerSeconds = v.seconds;
   var el = document.getElementById('game-timer-display');
   if(el) el.textContent = timerFmt(timerSeconds);
@@ -3140,9 +3193,15 @@ fbListen(ctPath('game/clock'), function(v){
     if(v.running){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
     else { miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   }
-});
-fbListen(ctPath('game/shotClock'), function(v){
+}
+fbListen(ctPath('game/clock'), onClockSnapshot);
+function onShotClockSnapshot(v){
+  _shotReads++;
   if(!v || shotClockRunning) return;
+  if(_shotReads===1 && v.running){
+    var n=_shotReads;
+    setTimeout(function(){ if(_shotReads===n && !shotClockRunning && isActiveSession && db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: false, off: shotClockOff}); },2500);
+  }
   shotClockSeconds = v.seconds != null ? v.seconds : 30;
   shotClockOff = !!v.off;
   // Update the display directly — NOT via shotClockUpdate()/updateShotClockOffUI(),
@@ -3177,7 +3236,8 @@ fbListen(ctPath('game/shotClock'), function(v){
     if(v.running){ miniBtn.style.background='#22c55e'; miniBtn.style.borderColor='#22c55e'; miniBtn.textContent='⏸'; }
     else { miniBtn.style.background='#FF4500'; miniBtn.style.borderColor='#FF4500'; miniBtn.textContent='▶'; }
   }
-});
+}
+fbListen(ctPath('game/shotClock'), onShotClockSnapshot);
 
 // Same idea as computeStandingsFromSchedule(), but built from Game
 // History instead — proven more reliable tonight (schedule entries can
@@ -6695,6 +6755,13 @@ function saveLivePlayer(){
     var hasStats=ex && Object.keys(ex).some(function(k){ return typeof ex[k]==='number' && ex[k]>0; });
     if(hasStats && !confirm('This game already has stats recorded under #'+num+' (from a player who was removed or renumbered). Adding this player will attach those stats to them. Continue?')) return;
     roster.push({name:name,num:num,pos:pos});
+    // Put them into THIS live game straight away (a zeroed stat line, on the bench), so the saved game is complete
+    // even before their first stat and a refresh right after adding them shows them as normal.
+    var zero=function(){ return {pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0}; };
+    if(isH){ game.hStats=_asPlainObject(game.hStats); game.hStatus=_asPlainObject(game.hStatus);
+             if(!game.hStats[String(num)]) game.hStats[String(num)]=zero(); if(game.hStatus[String(num)]===undefined) game.hStatus[String(num)]='SUB'; }
+    else   { game.aStats=_asPlainObject(game.aStats); game.aStatus=_asPlainObject(game.aStatus);
+             if(!game.aStats[String(num)]) game.aStats[String(num)]=zero(); if(game.aStatus[String(num)]===undefined) game.aStatus[String(num)]='SUB'; }
   } else {
     var idx=roster.findIndex(function(p){ return String(p.num)===String(_lpm.num); });
     if(idx<0){ alert('Player not found.'); closeLivePlayerModal(); return; }
@@ -6753,12 +6820,12 @@ function benchStatNote(side,num){
   var el=document.getElementById('bench-toast');
   if(!el){
     el=document.createElement('div'); el.id='bench-toast';
-    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:9998;width:max-content;max-width:92vw;background:#1c1c1c;border:1px solid #f59e0b;color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.55);display:flex;gap:10px;align-items:center;';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:9998;width:max-content;max-width:92vw;background:#1c1c1c;border:1px solid #f59e0b;color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.55);display:flex;gap:10px;align-items:center;pointer-events:none;';      // the message lets taps through; only its buttons catch them
     (document.body||document.documentElement).appendChild(el);
   }
   el.innerHTML='<span style="line-height:1.35;"><strong>'+_dpEsc(nm)+'</strong> is marked '+(cur==='OUT'?'OUT':'on the bench')+' — <strong style="color:#86efac;">stat saved</strong>. '+(mode==='in'?'Put him in the game so his minutes count?':'Swap him in so his minutes count?')+'</span>'
-    +'<button type="button" onclick="benchToastAct()" style="background:var(--orange);color:#000;border:none;border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">'+(mode==='in'?'Put in':'Swap in')+'</button>'
-    +'<button type="button" onclick="benchToastDismiss()" aria-label="Dismiss" style="background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:2px 4px;">✕</button>';
+    +'<button type="button" onclick="benchToastAct()" style="pointer-events:auto;background:var(--orange);color:#000;border:none;border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">'+(mode==='in'?'Put in':'Swap in')+'</button>'
+    +'<button type="button" onclick="benchToastDismiss()" aria-label="Dismiss" style="pointer-events:auto;background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:6px 8px;">✕</button>';
   el.style.display='flex';
   if(_benchToastTimer) clearTimeout(_benchToastTimer);
   _benchToastTimer=setTimeout(benchToastDismiss,12000);          // ignored for 12 s = "leave it" (no nagging)
@@ -6803,7 +6870,7 @@ function updateLiveMinutes(){
 function _logHalfLen(log){ var h=0; log.forEach(function(e){ var c=_ptClockSecs(e.clock); if(c!==null&&c>h) h=c; }); return h; }
 function _subElapsed(e,halfLen){ var c=_ptClockSecs(e.clock); return c===null?null:((e.half||1)-1)*halfLen+(halfLen-Math.min(halfLen,c)); }
 function subTimeEditorHtml(entryId){
-  var pe=(game.playLog||[]).filter(function(e){ return e.id===entryId; })[0]; if(!pe) return '';
+  var pe=toArr(game.playLog).filter(function(e){ return e.id===entryId; })[0]; if(!pe) return '';
   return '<div style="margin-bottom:14px;">'
     +'<div style="font-size:11px;color:#888;margin-bottom:6px;line-height:1.4;">Clock time when this sub really happened (minutes:seconds). Fixes the minutes if it was tapped late.</div>'
     +'<div style="display:flex;gap:8px;"><input id="sub-time-input" type="text" inputmode="numeric" value="'+_dpEsc(String(pe.clock||'').replace(/^0/,''))+'" style="flex:1;min-width:0;padding:9px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:15px;text-align:center;">'
@@ -6813,7 +6880,7 @@ function subTimeEditorHtml(entryId){
 function saveSubTime(entryId){
   var msg=document.getElementById('sub-time-msg'), inp=document.getElementById('sub-time-input');
   var say=function(t){ if(msg) msg.textContent=t; };
-  var log=(game&&game.playLog)||[], idx=log.findIndex(function(e){ return e.id===entryId; });
+  var log=toArr(game&&game.playLog), idx=log.findIndex(function(e){ return e.id===entryId; });
   if(idx===-1){ closeLogEntryEditor(); return; }
   var pe=log[idx];
   if(pe.key!=='sub' || pe.label==='Starting Lineup'){ say('Only substitutions can be re-timed.'); return; }
@@ -6894,13 +6961,17 @@ function renderDualChips(){
     var pendingNum=isHome?pendingSubHome:pendingSubAway;
     var isPending=pendingNum!==null&&(pendingNum===p.num||pendingNum===String(p.num));
     return '<div class="player-chip" data-side="'+side+'" data-num="'+p.num+'" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
-      +'<span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
-      +'<div style="flex:1;min-width:0;"><div class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+(isPending?' <span style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick swap</span>':'')+'</div>'
-      +'<div class="ppts">'+pStats.pts+' pts · <span class="pmin" data-side="'+side+'" data-num="'+p.num+'" title="Minutes on the court so far" style="color:'+(status==='IN'?'#86efac':'#9ca3af')+';">⏱ '+_ptFmt(((lm[side]||{})[p.num])||0)+'</span></div>'
+      +'<div class="pc-top"><span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
+      +'<span class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+'</span>'
++'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:0;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
+      +'</div>'
+      +(isPending?'<div style="color:#60a5fa;font-size:10px;font-weight:800;">↔ pick who is subbing with him</div>':'')
+      +'<div class="pc-mid"><div class="ppts">'+pStats.pts+' pts · <span class="pmin" data-side="'+side+'" data-num="'+p.num+'" title="Minutes on the court so far" style="color:'+(status==='IN'?'#86efac':'#9ca3af')+';">⏱ '+_ptFmt(((lm[side]||{})[p.num])||0)+'</span></div>'
       +'<div style="font-size:10px;color:'+foulColor+';font-weight:700;">'+fouls+' F'+(techs?' · <span style="color:#a855f7;">'+techs+' T</span>':'')+'</div></div>'
-      +'<button type="button" onclick="event.stopPropagation();toggleSub(\''+side+'\','+p.num+')" title="Tap to cycle IN → SUB → OUT" style="margin-left:4px;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid '+statusStyle.border+';color:'+statusStyle.color+';background:'+statusStyle.bg+';cursor:pointer;font-family:Barlow,sans-serif;flex-shrink:0;">'+status+'</button>'
-      +'<button type="button" onclick="event.stopPropagation();triggerSwap(\''+side+'\','+p.num+')" title="Swap this player with another — tap here, then tap who they\'re subbing with" style="margin-left:4px;font-size:11px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid '+(isPending?'#60a5fa':'#444')+';color:'+(isPending?'#60a5fa':'#888')+';background:'+(isPending?'rgba(96,165,250,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;">⇄</button>'
-      +'<button type="button" onclick="event.stopPropagation();openLivePlayerEdit(\''+side+'\','+p.num+')" title="Edit name or number" style="margin-left:4px;font-size:11px;padding:3px 7px;border-radius:99px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer;line-height:1;">✏️</button>'
+      +'<div class="pc-acts">'
++'<button type="button" onclick="event.stopPropagation();triggerSwap(\''+side+'\','+p.num+')" title="Swap this player with another — tap here, then tap who they\'re subbing with" style="margin-left:0;font-size:11px;font-weight:800;padding:3px 7px;border-radius:99px;border:1px solid '+(isPending?'#60a5fa':'#444')+';color:'+(isPending?'#60a5fa':'#888')+';background:'+(isPending?'rgba(96,165,250,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;">⇄</button>'
++'<button type="button" onclick="event.stopPropagation();openLivePlayerEdit(\''+side+'\','+p.num+')" title="Edit name or number" style="margin-left:0;font-size:11px;padding:3px 7px;border-radius:99px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer;line-height:1;">✏️</button>'
+      +'</div>'
       +'</div>';
   }
 
@@ -7295,8 +7366,9 @@ function formatWallClock(ts){
 
 function addLogSide(side,num,key,pts,neg,entryId){
   var ti=side==='home'?game.hi:game.ai;
-  var p=teams[ti].players.find(function(x){return x.num===num;});
+  var p=teams[ti].players.find(function(x){return x.num===num||x.num==num;});
   var label=STATS.find(function(s){return s.key===key;});
+  var pe=toArr(game.playLog).filter(function(x){ return x.id===entryId; })[0];
   var lb=document.getElementById('log-body');
   if(lb.children[0]&&lb.children[0].style.fontStyle==='italic') lb.innerHTML='';
   var tc=teams[ti].color;
@@ -7307,10 +7379,10 @@ function addLogSide(side,num,key,pts,neg,entryId){
     row.dataset.entryId=entryId;
     row.onclick=function(){ openLogEntryEditor(entryId); };
   }
-  var clockStr = timerFmt(timerSeconds);
+  var clockStr = pe&&pe.clock ? pe.clock : timerFmt(timerSeconds);      // that play's own clock time (matters when the log is rebuilt)
   row.innerHTML='<div class="log-dot '+(neg?'neg':pts?'':'neutral')+'" style="background:#888"></div>'
     +'<span style="font-size:10px;font-weight:700;color:var(--white);margin-right:2px;">'+teams[ti].name.split(' ').pop().toUpperCase()+'</span>'
-    +'<span style="font-weight:600;color:var(--white)">'+p.name.split(' ').pop()+'</span>'
+    +'<span style="font-weight:600;color:var(--white)">'+(p?p.name:(pe&&pe.playerName)||'').split(' ').pop()+'</span>'
     +'<span style="color:var(--muted);margin-left:4px;">'+(label?label.label:key)+'</span>'
     +'<span style="margin-left:auto;font-size:10px;color:#444;min-width:40px;text-align:right;">'+clockStr+'</span>'
     +(pts?'<span style="font-weight:700;font-size:12px;color:var(--green);margin-left:6px;">+'+pts+'</span>':'')
@@ -7422,6 +7494,28 @@ function applyLogEntryEffect(side,num,key,pts){
   }
 }
 
+// ── A REFRESH MID-GAME KEEPS THE LOG, UNDO AND EDITING ──
+// The score, stats, subs and play-by-play are saved in the database all along, but the Undo / tap-to-edit
+// history (logStack) and the game log panel only lived in memory — so after a refresh Undo did nothing and
+// the log was blank. Every saved play-by-play entry carries what Undo needs, so rebuild it from there.
+function _isUndoableLogEntry(e){ return !!(e && e.id) && !(e.key==='sub' && e.label==='Starting Lineup'); }
+function restoreLogStack(){
+  logStack=toArr(game&&game.playLog).filter(_isUndoableLogEntry).map(function(e){
+    var s={id:e.id,side:e.side,num:e.num,key:e.key,pts:e.pts||0,neg:!!e.neg};
+    if(e.prevStatus!==undefined) s.prevStatus=e.prevStatus;
+    if(e.teamFoulDelta!==undefined) s.teamFoulDelta=e.teamFoulDelta;
+    if(e.benchTechDelta!==undefined) s.benchTechDelta=e.benchTechDelta;
+    return s;
+  });
+}
+function ensureLogPanel(){
+  if(!game) return;
+  var lb=document.getElementById('log-body'); if(!lb) return;
+  if(!logStack.length && toArr(game.playLog).some(_isUndoableLogEntry)) restoreLogStack();
+  var first=lb.children&&lb.children[0];
+  if(logStack.length && first && first.style && first.style.fontStyle==='italic') rebuildLogBody();   // still showing "Game log will appear here…"
+}
+
 function rebuildLogBody(){
   var lb=document.getElementById('log-body');
   if(!logStack.length){
@@ -7441,7 +7535,7 @@ function rebuildLogBody(){
           :entry.key==='benchtech'?((entry.benchTechDelta>=0?'Bench/Coach Tech +':'Bench/Coach Tech ')+entry.benchTechDelta)
           :((entry.pts>=0?'Manual +':'Manual ')+entry.pts+' pts'),
         pts:entry.pts, neg:entry.neg,
-        clock:(function(){ var pe=(game.playLog||[]).filter(function(x){ return x.id===entry.id; })[0]; return pe&&pe.clock?pe.clock:timerFmt(timerSeconds); })()      // the clock time of THAT play, not the clock now
+        clock:(function(){ var pe=toArr(game.playLog).filter(function(x){ return x.id===entry.id; })[0]; return pe&&pe.clock?pe.clock:timerFmt(timerSeconds); })()      // the clock time of THAT play, not the clock now
       });
     } else {
       addLogSide(entry.side,entry.num,entry.key,entry.pts,entry.neg,entry.id);
@@ -8456,15 +8550,43 @@ function _phMvp(g){
   });
   return best;
 }
+// The SAME "which game day is newest, and in what order" rule as the public MVP of the Week card, so the two
+// pages can never disagree about it (the public card reads the 12+ digit save time out of the game id; games
+// without one — imported or backfilled — fall back to the calendar date).
+function _phGdStamp(g){ var m=String((g&&g.id)||'').match(/(\d{12,})/); return m?Number(m[1]):0; }
+function _phGdOrdinal(g){ var md=_schMd(g&&g.date); if(!md) return 0; var p=md.split('-'); return (+p[0])*100+(+p[1]); }
+function _phDays(hist){
+  var by={}, order=[];
+  hist.forEach(function(g){
+    var md=_schMd(g.date), key=md||('g:'+(g.id||''));
+    if(!by[key]){ by[key]={key:key,games:[],stamp:0,ord:0}; order.push(key); }
+    var d=by[key]; d.games.push(g); d.stamp=Math.max(d.stamp,_phGdStamp(g)); d.ord=Math.max(d.ord,_phGdOrdinal(g));
+  });
+  return order.map(function(k){ return by[k]; }).sort(function(x,y){ return (y.stamp-x.stamp)||(y.ord-x.ord); });
+}
+function _phLeagueGames(){ return toArr(gameHistory).filter(function(g){ return g && g.home && g.away && !g.isAllStar; }); }
+// the latest game day and each of its games' MVPs, in the order the games were played — what the public card shows first
+function _phWeekList(){
+  var days=_phDays(_phLeagueGames()).map(function(d){
+    d.games.sort(function(x,y){ return _phGdStamp(x)-_phGdStamp(y); });
+    d.items=d.games.map(function(g){ var m=_phMvp(g); return m?{g:g,m:m}:null; }).filter(Boolean);
+    return d;
+  }).filter(function(d){ return d.items.length; });
+  return days.length?days[0]:null;
+}
+function _phOpp(g){ var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0; return {opp:hs>as?g.away:g.home,score:Math.max(hs,as)+'–'+Math.min(hs,as)}; }
 function _phStamp(g){ return parseInt(String(g&&g.id||'').replace(/\D/g,''),10)||0; }
 // MVPs (newest first, each person once) who don't have a photo yet
 function _phNeedList(){
   var seen={}, out=[];
-  toArr(gameHistory).filter(function(g){ return g && g.home && g.away && !g.isAllStar; }).sort(function(x,y){ return _phStamp(y)-_phStamp(x); }).forEach(function(g){
-    var m=_phMvp(g); if(!m || /^#/.test(m.name)) return;
-    var k=_photoKeys(m.teamName,m.name)[0]; if(seen[k]) return; seen[k]=1;
-    if(playerPhoto(m.teamName,m.name)) return;
-    out.push({team:m.teamName,name:m.name,num:'#'+m.num,color:m.color,date:g.date||''});
+  _phDays(_phLeagueGames()).forEach(function(d){
+    d.games.slice().sort(function(x,y){ return _phGdStamp(y)-_phGdStamp(x); }).forEach(function(g){      // newest game day first, newest game first
+      var m=_phMvp(g); if(!m || /^#/.test(m.name)) return;
+      var k=_photoKeys(m.teamName,m.name)[0]; if(seen[k]) return; seen[k]=1;
+      if(playerPhoto(m.teamName,m.name)) return;
+      var o=_phOpp(g);
+      out.push({team:m.teamName,name:m.name,num:'#'+m.num,color:m.color,date:g.date||'',opp:o.opp,score:o.score});
+    });
   });
   return out.slice(0,12);
 }
@@ -8494,8 +8616,13 @@ function renderPhotosPage(){
   var keep=sel.value;
   sel.innerHTML=teams.map(function(t,i){ return '<option value="'+i+'">'+_dpEsc(t.name)+'</option>'; }).join('');
   if(keep!=='' && keep!=null && teams[parseInt(keep,10)]) sel.value=keep;
+  var dvSel=document.getElementById('season-division-select'), dvLbl=(dvSel&&dvSel.selectedOptions&&dvSel.selectedOptions[0])?dvSel.selectedOptions[0].textContent:'';
+  var dvEl=document.getElementById('ph-division'); if(dvEl) dvEl.textContent=dvLbl?('Division shown: '+dvLbl+' — switch divisions with the selector at the top of admin'):'';
+  var wk=_phWeekList(), wbox=document.getElementById('ph-week'), wd=document.getElementById('ph-week-date');
+  if(wd) wd.textContent=wk?('· '+(wk.games[0].date||'')):'';
+  if(wbox) wbox.innerHTML=wk?wk.items.map(function(it){ var o=_phOpp(it.g); return _phCard(it.m.teamName,it.m.name,'#'+it.m.num,it.m.color,it.m.teamName+' · beat '+o.opp+' '+o.score); }).join(''):'<div style="color:var(--muted);font-size:13px;grid-column:1/-1;">No finished games yet.</div>';
   var need=_phNeedList(), box=document.getElementById('ph-need');
-  box.innerHTML=need.length?need.map(function(x){ return _phCard(x.team,x.name,x.num,x.color,x.team+(x.date?' · '+x.date:'')); }).join('')
+  box.innerHTML=need.length?need.map(function(x){ return _phCard(x.team,x.name,x.num,x.color,x.team+(x.date?' · '+x.date:'')+' · beat '+x.opp+' '+x.score); }).join('')
     :'<div style="color:var(--muted);font-size:13px;grid-column:1/-1;">Every MVP so far has a photo. 🎉</div>';
   renderPhotosRoster();
 }
@@ -8679,6 +8806,7 @@ function showPage(p){
       document.getElementById('mini-away-pts').style.color='#fff';
       selPlayerHome=null; selPlayerAway=null;
       renderDualChips(); renderDualStatBtns(); renderBox();
+      try{ ensureLogPanel(); }catch(e){}   // after a refresh, show the saved play-by-play in the log panel
     }
   }
   if(p==='standings') renderStandings();
