@@ -539,6 +539,19 @@ th, td { padding: 10px 8px !important; }
   </div>
 </div>
 
+<div id="mvp-check-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.72);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:20px;width:96%;max-width:640px;max-height:92vh;overflow-y:auto;">
+    <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">🔎 Check an MVP</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.45;">Compares this screen with what is saved in the database (what the public site reads) for one game, and shows every player's line and how the MVP is worked out.</div>
+    <select id="mvp-check-game" onchange="runMvpCheck()" style="width:100%;padding:10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:8px;font-size:14px;margin-bottom:12px;"></select>
+    <div id="mvp-check-body" style="font-size:13px;color:#ddd;"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="copyMvpCheck()" style="flex:1;padding:11px;background:var(--orange);color:#000;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Copy report</button>
+      <button onclick="closeMvpCheck()" style="flex:1;padding:11px;background:var(--dark3);color:#fff;border:1px solid #555;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="pt-report-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--dark2);border:1px solid #555;border-radius:12px;padding:22px;width:94%;max-width:560px;max-height:90vh;overflow-y:auto;">
     <h3 style="color:#fff;margin:0 0 4px;font-size:17px;">📋 Playing Time Report</h3>
@@ -744,7 +757,10 @@ BYE: Ohana, AIM
     <h2 style="font-size:32px;font-weight:900;color:var(--white);">📷 Photo Mode</h2>
     <p style="font-size:13px;color:var(--muted);margin-top:4px;">Add or change player photos. They appear in the circles on the public site's MVP of the Week card. This is the only place photos can be added — the public site can't change them.</p>
   </div>
-  <div id="ph-division" style="font-size:12px;color:var(--muted);margin:0 0 12px;"></div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;">
+    <div id="ph-division" style="font-size:12px;color:var(--muted);flex:1;min-width:200px;"></div>
+    <button class="btn" style="white-space:nowrap;" onclick="openMvpCheck()">🔎 Check an MVP</button>
+  </div>
   <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:6px 0 8px;">🏅 THIS WEEK'S MVPs <span style="font-weight:400;letter-spacing:0;text-transform:none;">— exactly what the public MVP of the Week card shows</span> <span id="ph-week-date" style="font-weight:400;letter-spacing:0;color:#777;"></span></div>
   <div id="ph-week" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:6px;"></div>
   <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:22px 0 4px;">PAST MVPs WHO STILL NEED A PHOTO</div>
@@ -4563,7 +4579,7 @@ function archiveUnfinishedGame(){
       home:hn,away:an,homeScore:hs,awayScore:as_,
       date:game.date,homeColor:hc,awayColor:ac,
       hStats:game.hStats||{},aStats:game.aStats||{},
-      homePlayers:teams[hi].players,awayPlayers:teams[ai].players,
+      homePlayers:_copyRoster(teams[hi].players),awayPlayers:_copyRoster(teams[ai].players),
       playLog:game.playLog||[],
       week:null,
       season:appSettings.season||'',
@@ -5383,7 +5399,7 @@ function finishGame(){
       home:hn,away:an,homeScore:hs,awayScore:as_,
       date:game.date,homeColor:hc,awayColor:ac,
       hStats:game.hStats,aStats:game.aStats,
-      homePlayers:teams[game.hi].players,awayPlayers:teams[game.ai].players,
+      homePlayers:_copyRoster(teams[game.hi].players),awayPlayers:_copyRoster(teams[game.ai].players),
       playLog:game.playLog||[],
       week:matchedWeek,
       // Saved directly rather than re-derived later — a re-derivation
@@ -8575,6 +8591,154 @@ function _phWeekList(){
   return days.length?days[0]:null;
 }
 function _phOpp(g){ var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0; return {opp:hs>as?g.away:g.home,score:Math.max(hs,as)+'–'+Math.min(hs,as)}; }
+// ── MVP CHECK ──
+// Works out an MVP exactly the way the public page does (the rule is the same as _phMvp, written out so each
+// step can be shown), but also returns every player's line, where the names came from, duplicate jersey
+// numbers and ties — and can compare this screen's copy of a game with the copy saved in the database.
+function mvpAnalyze(g,tl){
+  var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0, r={hs:hs,as:as,tie:hs===as,rows:[],best:null,source:'',dup:[],ties:[],team:''};
+  if(r.tie) return r;
+  var homeWon=hs>as, stats=(homeWon?g.hStats:g.aStats)||{}, teamName=homeWon?g.home:g.away;
+  var roster=toArr(homeWon?g.homePlayers:g.awayPlayers); r.source='the roster saved with the game'; r.team=teamName; r.homeWon=homeWon;
+  var team=(tl||[]).filter(function(t){ return _nt(t.name)===_nt(teamName); })[0];
+  if(!roster.length && team){ roster=team.players||[]; r.source='the team\'s CURRENT roster (this game was saved without its own)'; }
+  var by={}; roster.forEach(function(p){ var k=String(p.num); (by[k]=by[k]||[]).push(p.name); });
+  Object.keys(by).forEach(function(k){ if(by[k].length>1) r.dup.push({num:k,names:by[k]}); });
+  Object.keys(stats).forEach(function(num){
+    var s=stats[num]||{}, n=function(k){ return Number(s[k])||0; };
+    var played=!!(n('pts')+n('reb')+n('ast')+n('stl')+n('blk')+n('to')+n('fgm')+n('3pm')+n('ftm'));
+    var eff=n('pts')+n('reb')+n('ast')+n('stl')+n('blk')-n('to');
+    var p=roster.filter(function(x){ return String(x.num)===String(num); })[0];
+    var row={num:String(num),name:(p&&p.name)?p.name:('#'+num),pts:n('pts'),reb:n('reb'),ast:n('ast'),stl:n('stl'),blk:n('blk'),to:n('to'),eff:eff,played:played};
+    r.rows.push(row);
+    if(!played) return;
+    if(!r.best || eff>r.best.eff || (eff===r.best.eff && row.pts>r.best.pts)) r.best=row;
+  });
+  if(r.best) r.ties=r.rows.filter(function(x){ return x.played && x!==r.best && x.eff===r.best.eff; });
+  return r;
+}
+function _mvpWho(r){ return r&&r.best?(r.best.name+' (#'+r.best.num+')'):(r&&r.tie?'nobody — the game was tied':'nobody (no stats)'); }
+function mvpCompareGames(gMem,tMem,gDb,tDb){
+  var a=mvpAnalyze(gMem,tMem), b=gDb?mvpAnalyze(gDb,tDb):null, notes=[], nameDiffs=[];
+  if(!gDb){ notes.push('This game is not in the database copy (it may not have been saved, or it was saved under a different id).'); }
+  else {
+    if(a.hs!==b.hs||a.as!==b.as) notes.push('Final score differs: this screen '+a.hs+'–'+a.as+', database '+b.hs+'–'+b.as+'.');
+    if(_mvpWho(a)!==_mvpWho(b)) notes.push('The MVP differs: this screen picks '+_mvpWho(a)+'; the database (what the public site reads) picks '+_mvpWho(b)+'.');
+    var bm={}; b.rows.forEach(function(x){ bm[x.num]=x; });
+    a.rows.forEach(function(x){ var y=bm[x.num]; if(y && x.name!==y.name) nameDiffs.push({num:x.num,mem:x.name,db:y.name}); });
+    var diffs=[]; a.rows.forEach(function(x){ var y=bm[x.num]; var sx=[x.pts,x.reb,x.ast,x.stl,x.blk,x.to].join('/'), sy=y?[y.pts,y.reb,y.ast,y.stl,y.blk,y.to].join('/'):'missing'; if(sx!==sy) diffs.push('#'+x.num+': screen '+sx+' vs database '+sy+' (PTS/REB/AST/STL/BLK/TO)'); else if(y && x.name!==y.name) diffs.push('#'+x.num+': named "'+x.name+'" here but "'+y.name+'" in the database'); });
+    b.rows.forEach(function(y){ if(!a.rows.some(function(x){ return x.num===y.num; })) diffs.push('#'+y.num+': only in the database'); });
+    if(diffs.length) notes.push('Differences by jersey number — '+diffs.slice(0,8).join('; ')+(diffs.length>8?'; …':'')+'.');
+  }
+  return {a:a,b:b,notes:notes,same:!notes.length,nameDiffs:nameDiffs};
+}
+function _mvpTable(r,edit){
+  if(r.tie) return '<div style="color:#fbbf24;">The game ended '+r.hs+'–'+r.as+', so it has no MVP.</div>';
+  var N='style="text-align:right;padding:4px 6px;"';
+  var head='<tr style="color:#888;font-size:11px;"><td style="text-align:left;padding:4px 6px;">PLAYER</td><td '+N+'>PTS</td><td '+N+'>REB</td><td '+N+'>AST</td><td '+N+'>STL</td><td '+N+'>BLK</td><td '+N+'>TO</td><td '+N+'>EFF</td></tr>';
+  var rows=r.rows.slice().sort(function(x,y){ return y.eff-x.eff||y.pts-x.pts; }).map(function(x){
+    var star=(x===r.best); return '<tr style="'+(star?'background:rgba(255,92,0,.16);font-weight:800;color:#fff;':(x.played?'':'opacity:.45;'))+'"><td style="text-align:left;padding:4px 6px;">'+(star?'⭐ ':'')+_dpEsc(x.name)+' <span style="color:#888;font-weight:400;">#'+_dpEsc(x.num)+'</span>'+((edit&&/^the roster saved/.test(r.source)&&!/^#/.test(x.name))?' <button type="button" title="Correct this name in this game" data-num="'+_attrEsc(x.num)+'" data-name="'+_attrEsc(x.name)+'" onclick="mvpNameBtn(this,\'prompt\')" style="background:none;border:1px solid #555;border-radius:99px;color:#aaa;font-size:11px;padding:1px 6px;cursor:pointer;">✏️</button>':'')+'</td><td '+N+'>'+x.pts+'</td><td '+N+'>'+x.reb+'</td><td '+N+'>'+x.ast+'</td><td '+N+'>'+x.stl+'</td><td '+N+'>'+x.blk+'</td><td '+N+'>'+x.to+'</td><td '+N+'>'+x.eff+'</td></tr>'; }).join('');
+  var warn='';
+  if(r.dup.length) warn+='<div style="color:#f87171;margin-top:6px;">⚠ Two players share a jersey number on '+_dpEsc(r.team)+': '+r.dup.map(function(d){ return '#'+_dpEsc(d.num)+' = '+d.names.map(_dpEsc).join(' and '); }).join('; ')+'. A game files stats by number, so it can only show the first one listed.</div>';
+  if(r.ties.length) warn+='<div style="color:#fbbf24;margin-top:6px;">⚠ '+r.ties.map(function(x){ return _dpEsc(x.name); }).join(', ')+' tied '+_dpEsc(r.best.name)+' on efficiency ('+r.best.eff+')'+(r.ties.some(function(x){ return x.pts===r.best.pts; })?' AND on points — nothing separates them, so the LOWER jersey number is picked (stats are read in number order), which is why it can look arbitrary.':'; points broke the tie.')+'</div>';
+  return '<div style="font-size:11px;color:#888;margin:4px 0 6px;">Winning team: <b style="color:#ddd;">'+_dpEsc(r.team)+'</b> · names come from '+_dpEsc(r.source)+' · EFF = PTS + REB + AST + STL + BLK − TO</div><table style="width:100%;border-collapse:collapse;font-size:12px;">'+head+rows+'</table>'+warn;
+}
+var _mvpCheckText='', _mvpCtx=null;
+function _rawHistArr(v){ return Array.isArray(v)?v.filter(Boolean):(v&&typeof v==='object'?Object.values(v).filter(Boolean):[]); }
+function mvpNameBtn(el,mode){
+  var num=el.getAttribute('data-num'), name=el.getAttribute('data-name');
+  if(mode==='set') mvpSetName(num,name);
+  else if(mode==='db') mvpUseDbRoster();
+  else { var nn=prompt('Correct name for #'+num+' in this game.\nIt is saved to the database, so the public site updates too.',name); if(nn!==null) mvpSetName(num,nn); }
+}
+// "Keep the database's names": make THIS screen's copy of the game match what is saved (a separate copy — the
+// team's live roster is not touched).
+function mvpUseDbRoster(){
+  var c=_mvpCtx; if(!c) return;
+  c.mem[c.key]=_copyRoster(c.db[c.key]);
+  runMvpCheck();
+}
+// Correct a player's name in ONE saved game (its roster and its play-by-play), saved to the database. Works from a
+// fresh read of the database so nothing else in the history can be changed by accident.
+function mvpSetName(num,name){
+  if(!isActiveSession){ alert('This tab is read-only because another tab or device took over as the active session. Click "Use This Tab Instead" first.'); return; }
+  name=String(name==null?'':name).replace(/\s+/g,' ').trim();
+  if(!name){ alert('Enter a name.'); return; }
+  if(name.length>30){ alert('Names can be at most 30 characters.'); return; }
+  var c=_mvpCtx; if(!c) return;
+  db.ref(ctPath('history')).once('value').then(function(s){
+    var h=_rawHistArr(s.val()), g=_mvpFindDb(h,c.mem);
+    if(!g){ alert('This game is not in the database, so there is nothing to correct there.'); return; }
+    var roster=_copyRoster(g[c.key]);
+    if(!roster.length){ alert('This game was saved without its own roster, so its names come from the team\'s current roster. Rename the player in the Teams tab instead.'); return; }
+    var p=roster.filter(function(x){ return String(x.num)===String(num); })[0];
+    if(p) p.name=name; else roster.push({num:parseInt(num,10),name:name});
+    g[c.key]=roster;
+    toArr(g.playLog).forEach(function(e){ if(e && e.side===c.side && String(e.num)===String(num)) e.playerName=name; });
+    fbSet(ctPath('history'),h);
+    var idx=gameHistory.findIndex(function(x){ return x && x.id===g.id; });
+    if(idx>-1) gameHistory[idx]=JSON.parse(JSON.stringify(g));
+    _mvpCtx=null;
+    try{ renderPhotosPage(); }catch(e){}
+    try{ if(typeof renderStandings==='function') renderStandings(); }catch(e){}
+    runMvpCheck();
+  });
+}
+function _mvpDivisionLabel(){ var s=document.getElementById('season-division-select'), o=s&&s.selectedOptions&&s.selectedOptions[0]; return o&&o.textContent?o.textContent:'?'; }
+function _mvpGameLabel(g){ var o=_phOpp(g); return (g.date||'?')+' · '+g.home+' '+(g.homeScore||0)+'–'+(g.awayScore||0)+' '+g.away; }
+function openMvpCheck(){
+  var games=[]; _phDays(_phLeagueGames()).forEach(function(d){ d.games.slice().sort(function(x,y){ return _phGdStamp(y)-_phGdStamp(x); }).forEach(function(g){ games.push(g); }); });
+  var wk=_phWeekList(), first=wk&&wk.items.length?wk.items[0].g:null;
+  var sel=document.getElementById('mvp-check-game');
+  sel.innerHTML=games.map(function(g,i){ return '<option value="'+_attrEsc(g.id||'')+'" data-i="'+i+'">'+_dpEsc(_mvpGameLabel(g))+'</option>'; }).join('')||'<option value="">No finished games</option>';
+  if(first && first.id) sel.value=first.id;
+  document.getElementById('mvp-check-modal').style.display='flex';
+  runMvpCheck();
+}
+function closeMvpCheck(){ document.getElementById('mvp-check-modal').style.display='none'; }
+function _mvpFindDb(list,g){
+  var hit=list.filter(function(x){ return g.id && x.id===g.id; })[0];
+  return hit||list.filter(function(x){ return x.home===g.home && x.away===g.away && String(x.date||'')===String(g.date||'') && Number(x.homeScore)===Number(g.homeScore) && Number(x.awayScore)===Number(g.awayScore); })[0]||null;
+}
+function runMvpCheck(){
+  var body=document.getElementById('mvp-check-body'), sel=document.getElementById('mvp-check-game');
+  var games=_phLeagueGames(), g=games.filter(function(x){ return String(x.id||'')===sel.value; })[0]||games[0];
+  if(!g){ body.innerHTML='<div style="color:#888;">No finished games to check.</div>'; _mvpCheckText=''; return; }
+  body.innerHTML='<div style="color:#888;">Reading the saved copy from the database…</div>';
+  var tok=(runMvpCheck._t=(runMvpCheck._t||0)+1);
+  Promise.all([db.ref(ctPath('history')).once('value'),db.ref(ctPath('teams')).once('value')]).then(function(res){
+    if(tok!==runMvpCheck._t) return;
+    var dbHist=toArr(res[0].val()), dbTeams=toArr(res[1].val()), gDb=_mvpFindDb(dbHist,g);
+    var c=mvpCompareGames(g,teams,gDb,dbTeams), who=_mvpWho(c.b||c.a);
+    var verdict=c.same?'<div style="background:rgba(34,197,94,.14);border:1px solid #22c55e;border-radius:8px;padding:10px;margin-bottom:10px;">✓ This screen and the database agree: the MVP is <b>'+_dpEsc(who)+'</b>. The public site reads the database copy, so it shows the same player.</div>'
+      :'<div style="background:rgba(239,68,68,.14);border:1px solid #ef4444;border-radius:8px;padding:10px;margin-bottom:10px;"><b>⚠ This screen and the database DISAGREE for this game.</b><ul style="margin:6px 0 0 18px;padding:0;">'+c.notes.map(function(n){ return '<li>'+_dpEsc(n)+'</li>'; }).join('')+'</ul><div style="margin-top:6px;color:#fca5a5;">The public site shows the <b>database</b> copy. If the database copy is the wrong one, correct the game in Edit Box Score / Move a Player\'s Stats and make sure the change saves (no red banner at the top).</div></div>';
+    _mvpCtx=gDb?{mem:g,db:gDb,key:((c.b||c.a).homeWon?'homePlayers':'awayPlayers'),side:((c.b||c.a).homeWon?'home':'away')}:null;
+    var nameFix=(gDb&&c.nameDiffs.length)?'<div style="margin-top:10px;border-top:1px solid #7f1d1d;padding-top:8px;"><div style="color:#fca5a5;margin-bottom:6px;"><b>Which name is right?</b> (this happens when a player is renamed on the team after the game was saved)</div>'+c.nameDiffs.map(function(d){ return '<div style="margin-bottom:8px;">#'+_dpEsc(d.num)+': this screen says <b>'+_dpEsc(d.mem)+'</b>, the database says <b>'+_dpEsc(d.db)+'</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"><button type="button" data-num="'+_attrEsc(d.num)+'" data-name="'+_attrEsc(d.mem)+'" onclick="mvpNameBtn(this,\'set\')" style="padding:7px 10px;border-radius:8px;border:none;background:var(--orange);color:#000;font-weight:800;font-size:12px;cursor:pointer;">Save “'+_dpEsc(d.mem)+'” to the database</button><button type="button" onclick="mvpNameBtn(this,\'db\')" style="padding:7px 10px;border-radius:8px;border:1px solid #666;background:var(--dark3);color:#fff;font-weight:700;font-size:12px;cursor:pointer;">Keep “'+_dpEsc(d.db)+'” (fix this screen)</button></div></div>'; }).join('')+'</div>':'';
+    if(nameFix) verdict=verdict.replace(/<\/div>$/,nameFix+'</div>');
+    var html=verdict+'<div style="font-weight:800;color:#fff;margin-top:4px;">'+(gDb?'What the public site reads (database)':'This screen (not in the database)')+'</div>'+_mvpTable(c.b||c.a,!!gDb);
+    if(gDb && !c.same) html+='<div style="font-weight:800;color:#fff;margin-top:14px;">What THIS screen has in memory</div>'+_mvpTable(c.a);
+    body.innerHTML=html;
+    var tx=function(r,t){ return t+'\n'+(r.tie?'  tied '+r.hs+'-'+r.as+' (no MVP)':'  winner: '+r.team+' | names from: '+r.source+'\n'+r.rows.slice().sort(function(x,y){ return y.eff-x.eff||y.pts-x.pts; }).map(function(x){ return '  '+(x===r.best?'* ':'  ')+x.name+' #'+x.num+'  PTS '+x.pts+' REB '+x.reb+' AST '+x.ast+' STL '+x.stl+' BLK '+x.blk+' TO '+x.to+'  EFF '+x.eff; }).join('\n')+(r.dup.length?'\n  DUPLICATE NUMBERS: '+r.dup.map(function(d){ return '#'+d.num+'='+d.names.join('/'); }).join('; '):'')+(r.ties.length?'\n  TIED ON EFF WITH: '+r.ties.map(function(x){ return x.name; }).join(', '):'')); };
+    _mvpCheckText='MVP CHECK — '+_mvpGameLabel(g)+' (id '+(g.id||'none')+')\nDivision: '+_mvpDivisionLabel()+'\nVerdict: '+(c.same?'same on both':'DIFFERENT — '+c.notes.join(' | '))+'\n\n'+tx(c.b||c.a,gDb?'DATABASE (public site):':'THIS SCREEN (not in database):')+(gDb&&!c.same?'\n\n'+tx(c.a,'THIS SCREEN (memory):'):'');
+  }).catch(function(e){ body.innerHTML='<div style="color:#f87171;">Could not read the database: '+_dpEsc(e&&e.message||e)+'</div>'; });
+}
+function copyMvpCheck(){
+  var t=_mvpCheckText||''; if(!t){ return; }
+  var done=function(){ var b=document.querySelector('#mvp-check-modal button'); if(b){ var o=b.textContent; b.textContent='Copied ✓'; setTimeout(function(){ b.textContent=o; },1400); } };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){ prompt('Copy this report:',t); }); }
+  else { prompt('Copy this report:',t); }
+}
+// A finished game keeps the roster as it was when the game was played. Store an independent COPY: the team's
+// live roster is renamed/renumbered all the time, and a shared (linked) array would silently rewrite the
+// names in every game saved since the page was loaded — on this screen only, until some later save wrote
+// those changed names into the database.
+// For values placed INSIDE an HTML attribute (data-name="…"): _dpEsc leaves double quotes alone, so a name like
+// O'Neil "J" would break out of the attribute. This escapes quotes too.
+function _attrEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _copyRoster(arr){
+  var list=Array.isArray(arr)?arr:(arr&&typeof arr==='object'?Object.values(arr):[]);
+  return list.filter(Boolean).map(function(p){ return (p&&typeof p==='object')?Object.assign({},p):p; });
+}
 function _phStamp(g){ return parseInt(String(g&&g.id||'').replace(/\D/g,''),10)||0; }
 // MVPs (newest first, each person once) who don't have a photo yet
 function _phNeedList(){
@@ -8600,7 +8764,7 @@ function _phCard(team,name,num,color,sub){
   var uri=playerPhoto(team,name), col=color||'#FF5C00';
   var av=uri?'<img src="'+uri+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid '+_dpEsc(col)+';">'
            :'<div style="width:64px;height:64px;border-radius:50%;margin:0 auto;background:'+_dpEsc(col)+';color:'+_phTextOn(col)+';display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:22px;">'+_dpEsc(num)+'</div>';
-  return '<div class="ph-card" onclick="phOpen(this)" data-team="'+_dpEsc(team)+'" data-name="'+_dpEsc(name)+'" data-num="'+_dpEsc(num)+'">'
+  return '<div class="ph-card" onclick="phOpen(this)" data-team="'+_attrEsc(team)+'" data-name="'+_attrEsc(name)+'" data-num="'+_attrEsc(num)+'">'
     +'<div style="display:flex;justify-content:center;">'+av+'</div>'
     +'<div class="ph-name">'+_dpEsc(name)+'</div>'
     +'<div class="ph-sub">'+_dpEsc(sub)+'</div>'
@@ -9243,8 +9407,8 @@ function saveStatCorrection(){
 
   var homeTeam=teams.find(function(t){return t.name===g.home;});
   var awayTeam=teams.find(function(t){return t.name===g.away;});
-  var homeRoster=(g.homePlayers&&g.homePlayers.length)?g.homePlayers:((homeTeam&&homeTeam.players)||[]);
-  var awayRoster=(g.awayPlayers&&g.awayPlayers.length)?g.awayPlayers:((awayTeam&&awayTeam.players)||[]);
+  var homeRoster=_copyRoster((g.homePlayers&&g.homePlayers.length)?g.homePlayers:((homeTeam&&homeTeam.players)||[]));      // copies: renames and added players below change THIS game only
+  var awayRoster=_copyRoster((g.awayPlayers&&g.awayPlayers.length)?g.awayPlayers:((awayTeam&&awayTeam.players)||[]));
 
   var hStats={}, aStats={};
   document.querySelectorAll('#stats-editor input[data-side]').forEach(function(el){
