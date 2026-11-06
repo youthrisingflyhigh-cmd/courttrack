@@ -1441,14 +1441,91 @@ function buildScheduleResults(){
 // 4 teams have played a game; until then it stays "Seed n" so a bracket
 // never shows teams that haven't really earned a spot yet. Rows for teams
 // that no longer exist (old spellings) are ignored.
-function bracketSeedNames(n){
+// ── FALL 2026 · 35+ PLAYOFF BRACKET (top 6) ──
+// Seeds 1–2 get a bye past the quarterfinals. Quarterfinals 12/2: #3 vs #6 and #4 vs #5. Semifinals 12/9: #1 vs the winner of
+// 4/5 and #2 vs the winner of 3/6. Event day 12/9: 3-Point Shootout → All-Star Game → Championship. Seeds come from
+// the live standings (same order as the table); playoff games never count toward them. Winners advance by themselves
+// from the games saved in Game History with the PLAYOFF switch on. (player.html and admin.html each keep a copy of
+// this — if it changes in one it has to change in the other.)
+function fall35BracketHtml(){
+  var esc=(typeof gdEsc==='function')?gdEsc:(typeof _dpEsc==='function'?_dpEsc:function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); });
+  var norm=function(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); };
+  var S=bracketSeedNames(6,6);                       // team names, or null until 6 teams have played
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  var LOC='Oak Grove Small Gym', EVENT_LOC='Oak Grove Small Gym';
+  // the playoff game between two teams (only games flagged PLAYOFF, never the All-Star game), or null
+  function played(a,b){
+    if(!a||!b) return null;
+    var x=norm(a), y=norm(b);
+    for(var i=0;i<hist.length;i++){
+      var g=hist[i]; if(!g||g.isPlayoff!==true||g.isAllStar) continue;
+      var h=norm(g.home), w=norm(g.away), direct=(h===x&&w===y), flipped=(h===y&&w===x);
+      if(!direct&&!flipped) continue;
+      var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0; if(hs===as) continue;
+      var sa=direct?hs:as, sb=direct?as:hs;
+      return {a:sa,b:sb,winner:sa>sb?a:b};
+    }
+    return null;
+  }
+  var seedOf=function(name){ for(var i=0;i<6;i++){ if(S[i]===name) return i+1; } return null; };
+  var r1a=played(S[3],S[4]), r1b=played(S[2],S[5]);
+  var w45=r1a?r1a.winner:null, w36=r1b?r1b.winner:null;
+  var sf1=played(S[0],w45), sf2=played(S[1],w36);
+  var f1=sf1?sf1.winner:null, f2=sf2?sf2.winner:null, fin=played(f1,f2);
+  var slot=function(seedNo,name,ph){ return {seed:seedNo,name:name,ph:!!ph}; };
+  var team=function(i){ return S[i]?slot(i+1,S[i]):slot(i+1,'Seed '+(i+1),true); };
+  var adv=function(name,label){ return name?slot(seedOf(name),name):slot(null,label,true); };
+
+  function row(sl,score,state,border){
+    var dim=(state==='lose')||sl.ph;
+    return '<div style="height:40px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:'+(state==='win'?'800':'600')+';'+(border?'border-bottom:1px solid #1a1a1a;':'')+'">'
+      +'<span style="color:#FF4500;font-size:11px;font-weight:800;min-width:22px;">'+(sl.seed?'#'+sl.seed:'')+'</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(dim?'#666':'#fff')+';'+(sl.ph?'font-style:italic;font-weight:500;':'')+'">'+esc(sl.name)+'</span>'
+      +(score!=null?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:'+(state==='win'?'#fff':'#666')+';">'+score+'</span>':'')
+      +'</div>';
+  }
+  function card(x,y,s1,s2,res,nameA,nameB){
+    var st1='',st2='',sc1=null,sc2=null;
+    if(res){ sc1=res.a; sc2=res.b; st1=res.winner===nameA?'win':'lose'; st2=res.winner===nameB?'win':'lose'; }
+    return '<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:190px;height:106px;box-sizing:border-box;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;">'
+      +row(s1,sc1,st1,true)+row(s2,sc2,st2,false)
+      +'<div style="height:24px;box-sizing:border-box;font-size:10px;color:'+(res?'#aaa':'#555')+';text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+(res?'FINAL':'TBD')+'</div></div>';
+  }
+  var line=function(x,y,w,h,c){ return '<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;background:'+(c||'#333')+';"></div>'; };
+  var head=function(x,title,loc){ return '<div style="position:absolute;left:'+x+'px;top:0;width:190px;text-align:center;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;">'+title+'</div><div style="font-size:10px;color:#555;margin-top:3px;">📍 '+loc+'</div></div>'; };
+  var small=function(x,y,h,inner,extra){ return '<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:190px;height:'+h+'px;box-sizing:border-box;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;'+(extra||'')+'">'+inner+'</div>'; };
+  var evCard=function(y,title,time){ return small(460,y,64,'<div style="height:38px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:700;color:#ddd;">'+title+'</div><div style="height:24px;box-sizing:border-box;font-size:10px;color:#555;text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+time+'</div>'); };
+
+  var h='<div style="overflow-x:auto;padding-bottom:12px;"><div style="position:relative;width:650px;height:326px;min-width:650px;">';
+  h+=head(0,'QUARTERFINALS · 12/2',LOC)+head(230,'SEMIFINALS · 12/9',LOC)+head(460,'12/16',EVENT_LOC);
+  // quarterfinals (seeds 4/5 and 3/6) → semifinals
+  h+=card(0,44,team(3),team(4),r1a,S[3],S[4]);
+  h+=card(0,172,team(2),team(5),r1b,S[2],S[5]);
+  h+=card(230,44,team(0),adv(w45,'Winner of #4 / #5'),sf1,S[0],w45);
+  h+=card(230,172,team(1),adv(w36,'Winner of #3 / #6'),sf2,S[1],w36);
+  h+=line(190,97,40,2)+line(190,225,40,2);
+  // semifinals → the 12/9 event day
+  h+=line(420,97,20,2)+line(420,225,20,2)+line(438,97,2,130)+line(440,161,9,2,'#FF4500')+line(448,161,2,92,'#FF4500')+line(448,251,12,2,'#FF4500');
+  // event day
+  h+=evCard(44,'🎯 3-Point Shootout','6:30 PM')+evCard(120,'⭐ All-Star Game','7:00 PM');
+  var champInner='<div style="font-size:26px;margin-bottom:2px;">🏆</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;white-space:nowrap;">'+(fin?'CHAMPIONS':'CHAMPIONSHIP')+'</div>'
+    +(fin?'<div style="font-size:15px;font-weight:800;color:#fff;margin-top:4px;">'+esc(fin.winner)+'</div><div style="font-size:11px;color:#aaa;margin-top:2px;">'+esc(f1)+' '+fin.a+' – '+fin.b+' '+esc(f2)+'</div>'
+          :'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:00 PM · '+((f1&&f2)?esc(f1)+' vs '+esc(f2):'WINNER: SEMI 1 vs SEMI 2')+'</div>');
+  h+='<div style="position:absolute;left:460px;top:196px;width:190px;box-sizing:border-box;background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:12px 14px;text-align:center;">'+champInner+'</div>';
+  h+='</div></div>';
+  h+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 6 seeds make playoffs · #1 and #2 get a bye to the semifinals · Seeds follow the standings · Playoff games don\'t count toward them</div>';
+  return h;
+}
+
+function bracketSeedNames(n,min){
+  min=min||4;
   var rows=getSeededStandings().filter(function(e){
     if(e.gp<=0) return false;
     if(teams && teams.length && !teams.some(function(t){ return _schNorm(t.name)===_schNorm(e.name); })) return false;
     return true;
   });
   var out=[];
-  for(var i=0;i<n;i++) out.push(rows.length>=4 && rows[i] ? rows[i].name : null);
+  for(var i=0;i<n;i++) out.push(rows.length>=min && rows[i] ? rows[i].name : null);
   return out;
 }
 
@@ -1967,16 +2044,23 @@ function renderSchedule(){
   var isNewDivisionBlank=(CT_BASE!==LEGACY_BASE) && !isThursdayLeague;
   // Fall 2026 · 40+ : semifinals 12/6; event day 12/13 (3-Point Contest 6:30–7:00 PM,
   // All-Star Game 7:00 PM, Championship 8:00 PM) — both at Muwekma Ohlone Middle School.
+  // Fall 2026 · 35+ : quarterfinals 12/2, semifinals 12/9, event day 12/16 — all at Oak Grove Small Gym (drawn by fall35BracketHtml)
+  // (3-Point Shootout 6:30 PM, All-Star Game 7:00 PM, Championship 8:00 PM).
   var isFall2026Forty=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('40-league')!==-1;
-  var blankSemiDate=isFall2026ThirtyFive?'12/2':(isFall2026Forty?'12/6':'TBD');
-  var blankEventDate=isFall2026ThirtyFive?'12/9':(isFall2026Forty?'12/13':'TBD');
-  var blankLocation=isFall2026ThirtyFive?'Oak Grove Small Gym':(isFall2026Forty?'Muwekma Ohlone Middle School':'TBD');
+  var blankSemiDate=isFall2026ThirtyFive?'12/9':(isFall2026Forty?'12/6':'TBD');
+  var blankEventDate=isFall2026ThirtyFive?'12/16':(isFall2026Forty?'12/13':'TBD');
+  var blankLocation=isFall2026ThirtyFive?'Oak Grove Small Gym':(isFall2026Forty?'Muwekma Ohlone Middle School':'TBD');       // the semifinals
+  // The event day (3-Point → All-Star → Championship) can be somewhere other than the semifinals:
+  // (35+ is drawn by fall35BracketHtml: all three rounds at Oak Grove Small Gym.)
+  var blankEventLocation=blankLocation;
   var blankShootName=isFall2026Forty?'3-Point Contest':'3-Point Shootout';
-  var blankShootTime=isFall2026Forty?'6:30 – 7:00 PM':'TBD';
-  var blankAllStarTime=isFall2026Forty?'7:00 PM':'TBD';
-  var blankChampTime=isFall2026Forty?'8:00 PM':'TBD';
+  var blankShootTime=isFall2026ThirtyFive?'6:30 PM':(isFall2026Forty?'6:30 – 7:00 PM':'TBD');
+  var blankAllStarTime=(isFall2026ThirtyFive||isFall2026Forty)?'7:00 PM':'TBD';
+  var blankChampTime=(isFall2026ThirtyFive||isFall2026Forty)?'8:00 PM':'TBD';
 
-  if(isNewDivisionBlank){
+  if(isFall2026ThirtyFive){
+    html += fall35BracketHtml();                    // top 6, with winners advancing from the saved playoff games
+  } else if(isNewDivisionBlank){
     // Fall 2026 · 35+ Men's League — brand new division, no standings
     // yet, so this stays fully blank (Seed 1-4 placeholders, no team
     // names guessed). Semifinals on 12/2, then a full event day on 12/9
@@ -2003,7 +2087,7 @@ function renderSchedule(){
     html += '</div>';
     html += '<div style="display:flex;flex-direction:column;gap:0;">';
     html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;">'+blankEventDate+'</div>';
-    html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 '+blankLocation+'</div>';
+    html += '<div style="font-size:10px;color:#555;text-align:center;margin-bottom:12px;">📍 '+blankEventLocation+'</div>';
     html += '<div style="background:#1e1e1e;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:190px;margin-bottom:12px;">';
     html += '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:#ddd;">🎯 '+blankShootName+'</div>';
     html += '<div style="font-size:10px;color:#555;text-align:center;padding:4px;background:#0d0d0d;letter-spacing:1px;">'+blankShootTime+'</div></div>';
@@ -2174,15 +2258,34 @@ function renderSchedule(){
 // ── STANDINGS ──
 // Head-to-head record between two teams this season, used as the standings
 // tiebreaker before point differential. Looks at completed games only.
+// Head-to-head results that are decided by the league rather than by a saved game (the same idea as the
+// "Head-to-Head Overrides" in admin Settings, which take priority over these). Only used to separate teams that
+// are TIED on win %, and only in the division named.
+var BUILTIN_H2H=[
+  {division:'fall-2026/35-men-s-league',teamA:'Fleet Work',teamB:'United',winner:'Fleet Work'}      // Fleet Work beat United
+];
+function _h2hNorm(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+function _h2hList(){
+  var list=(Array.isArray(h2hOverrides)?h2hOverrides:Object.values(h2hOverrides||{})).filter(Boolean);
+  (typeof BUILTIN_H2H!=='undefined'?BUILTIN_H2H:[]).forEach(function(b){
+    if(String(CT_BASE).indexOf(b.division)===-1) return;
+    var already=list.some(function(o){ var x=_h2hNorm(o.teamA), y=_h2hNorm(o.teamB); return (x===_h2hNorm(b.teamA)&&y===_h2hNorm(b.teamB))||(x===_h2hNorm(b.teamB)&&y===_h2hNorm(b.teamA)); });
+    if(!already) list.push(b);
+  });
+  return list;
+}
 function headToHeadRecord(nameA,nameB){
   // Manual overrides take priority — for when a real game happened but
   // its record got lost/moved and can't be recovered. Checked first so
   // it doesn't matter whether a matching game also exists in history.
-  var override=(h2hOverrides||[]).find(function(o){
-    return (o.teamA===nameA&&o.teamB===nameB)||(o.teamA===nameB&&o.teamB===nameA);
+  var nA=_h2hNorm(nameA), nB=_h2hNorm(nameB);
+  var override=_h2hList().find(function(o){
+    var x=_h2hNorm(o.teamA), y=_h2hNorm(o.teamB);
+    return (x===nA&&y===nB)||(x===nB&&y===nA);
   });
   if(override){
-    return {aw:override.winner===nameA?1:0, bw:override.winner===nameB?1:0};
+    var wn=_h2hNorm(override.winner);
+    return {aw:wn===nA?1:0, bw:wn===nB?1:0};
   }
   var aw=0,bw=0;
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
@@ -2202,30 +2305,75 @@ function headToHeadRecord(nameA,nameB){
   return {aw:aw,bw:bw};
 }
 
+// Orders a group of teams that finished with the SAME win %. Two teams: head-to-head decides (manual
+// overrides count). Three or more: only the games among the tied teams are compared ("mini-league") — comparing
+// them two at a time can contradict itself (A beat B, B beat C, C beat A) and then the order depends on the
+// sorting algorithm instead of on the results. If that separates nobody, point differential, then PPG, then name.
+// A league decision ("X over Y") must hold even when the results alone can't separate a three-way tie: inside a
+// tied group, move X directly above Y if the other rules left Y above X.
+function _applyForcedPairs(order){
+  var pairs=_h2hList().map(function(o){
+    var w=_h2hNorm(o.winner), a=_h2hNorm(o.teamA), b=_h2hNorm(o.teamB);
+    return {w:w, l:(w===a?b:a)};
+  });
+  for(var pass=0;pass<order.length;pass++){
+    var moved=false;
+    pairs.forEach(function(p){
+      var iw=-1, il=-1;
+      order.forEach(function(t,i){ var n=_h2hNorm(t.name); if(n===p.w) iw=i; if(n===p.l) il=i; });
+      if(iw>-1&&il>-1&&il<iw){ var t=order.splice(iw,1)[0]; order.splice(il,0,t); moved=true; }
+    });
+    if(!moved) break;
+  }
+  return order;
+}
+function _orderTiedTeams(group){
+  if(group.length<2) return group.slice();
+  var byDiff=function(list){ return list.slice().sort(function(a,b){
+    if(b.diff!==a.diff) return b.diff-a.diff;
+    if(parseFloat(b.ppg)!==parseFloat(a.ppg)) return parseFloat(b.ppg)-parseFloat(a.ppg);
+    return a.name<b.name?-1:(a.name>b.name?1:0);
+  }); };
+  if(group.length===2){
+    var h=headToHeadRecord(group[0].name,group[1].name);
+    if(h.aw!==h.bw) return h.aw>h.bw?[group[0],group[1]]:[group[1],group[0]];
+    return byDiff(group);
+  }
+  var mini=group.map(function(t){
+    var w=0,l=0;
+    group.forEach(function(u){ if(u===t) return; var r=headToHeadRecord(t.name,u.name); w+=r.aw; l+=r.bw; });
+    return {t:t,p:(w+l)>0?w/(w+l):0.5};
+  }).sort(function(x,y){ return y.p-x.p; });
+  var out=[], i=0;
+  while(i<mini.length){
+    var j=i; while(j<mini.length && mini[j].p===mini[i].p) j++;
+    var run=mini.slice(i,j).map(function(m){ return m.t; });
+    out=out.concat(run.length===group.length ? byDiff(run) : _orderTiedTeams(run));
+    i=j;
+  }
+  return out;
+}
+
 // Shared seeding logic — used by both the standings table and the playoff
 // bracket, so seeds always match what's shown in the table. Same tiebreak
 // order: win % desc, head-to-head, point diff desc, PPG desc.
 function getSeededStandings(){
-  return Object.keys(standings).map(function(name){
+  var entries=Object.keys(standings).map(function(name){
     var s=standings[name]||{}; var gp=(s.w||0)+(s.l||0), diff=(s.pf||0)-(s.pa||0);
     return {name:name,w:s.w||0,l:s.l||0,gp:gp,pf:s.pf||0,pa:s.pa||0,diff:diff,
       pctNum:gp>0?(s.w||0)/gp:0,
       pct:gp>0?((s.w||0)/gp).toFixed(3).replace(/^0/,''):'.000',
       ppg:gp>0?((s.pf||0)/gp).toFixed(1):'0.0',color:s.color||'#FF5C00'};
-  }).sort(function(a,b){
-    // Win % is primary again — checking head-to-head unconditionally for
-    // every pair (regardless of how different the records were) produced
-    // a genuinely broken, non-transitive order (a team with a far better
-    // record could rank below two teams with worse ones). Head-to-head is
-    // back to being a tiebreaker for teams tied on win %, which is also
-    // exactly what correctly separates two teams with an identical
-    // record but a season-series result between them.
-    if(b.pctNum!==a.pctNum) return b.pctNum-a.pctNum;
-    var h2h=headToHeadRecord(a.name,b.name);
-    if(h2h.aw!==h2h.bw) return h2h.bw-h2h.aw;
-    if(b.diff!==a.diff) return b.diff-a.diff;
-    return parseFloat(b.ppg)-parseFloat(a.ppg);
   });
+  // Win % is primary. Teams tied on it are separated by _orderTiedTeams (head-to-head etc.).
+  entries.sort(function(a,b){ return b.pctNum-a.pctNum; });
+  var out=[], i=0;
+  while(i<entries.length){
+    var j=i; while(j<entries.length && entries[j].pctNum===entries[i].pctNum) j++;
+    out=out.concat(_applyForcedPairs(_orderTiedTeams(entries.slice(i,j))));
+    i=j;
+  }
+  return out;
 }
 
 // ── ALL-STAR (3-Point Contest + All-Star Game) ──
