@@ -865,54 +865,188 @@ db.ref(ctPath('playerStats')).on('value',function(s){
 // ── TICKER ──
 function buildTicker(){
   var items=[];
+  var esc=gdEsc;
+  // thresholds for what counts as "notable" (easy to tune)
+  var BLOWOUT=20, NAILBITER=3, MIN_STREAK=3;
   // Live game
   if(game){
     var ht=teams[game.hi],at=teams[game.ai];
-    if(ht&&at) items.push('<span>🔴 LIVE</span>'+ht.name+' '+game.homeScore+' – '+game.awayScore+' '+at.name);
+    if(ht&&at) items.push('<span>🔴 LIVE</span>'+esc(ht.name)+' '+game.homeScore+' – '+game.awayScore+' '+esc(at.name));
   }
-  // Recent results
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
-  hist=hist.filter(function(g){return g&&!g.isAllStar;});
-  // The player named on each result is the game's MVP — the very same calculation as the MVP card (computeWinningTeamMVP).
-  hist.slice(-5).forEach(function(g){
-    if(!g)return;
-    var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
-    var topLine='';
-    var mvp=computeWinningTeamMVP(g);
-    if(mvp){ var ms=mvp.s||{}; topLine='  ·  🏀 MVP '+gdEsc(mvp.name)+' ('+gdEsc(mvp.teamName)+') '+(Number(ms.pts)||0)+' PTS · '+(Number(ms.reb)||0)+' REB · '+(Number(ms.ast)||0)+' AST'; }
-    items.push('<span>'+(g.isPlayoff?'PLAYOFF FINAL':'FINAL')+'</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner+topLine);
-  });
-  // Top scorer (from recent games only) — was reading game.playerStats,
-  // a field that's never actually set (games are saved with hStats/
-  // aStats, keyed by jersey number, plus homePlayers/awayPlayers roster
-  // snapshots for names). Same scan idea as a per-game top scorer (this item is the best SCORER across the recent games — it is not the game MVP)
-  // above, but summing across games instead of taking one game's max.
-  var recentGames=[];
-  try{if(Array.isArray(gameHistory))recentGames=gameHistory;else if(gameHistory&&typeof gameHistory==='object')recentGames=Object.values(gameHistory);}catch(e){}
-  recentGames=recentGames.filter(function(g){return g&&!g.isAllStar;});
-  recentGames=recentGames.filter(Boolean).slice(-5);
+  hist=hist.filter(function(g){return g&&g.home&&g.away&&!g.isAllStar;});
+  var chron=gamesChronological(hist);                 // every game, oldest → newest, by date
+  var recent=chron.slice(-6).reverse();               // the 6 latest, newest first
+  var res=function(g){
+    var hs=Number(g.homeScore)||0, as=Number(g.awayScore)||0, w=hs>as;
+    return {hs:hs,as:as,margin:Math.abs(hs-as),winner:hs===as?null:(w?g.home:g.away),loser:hs===as?null:(w?g.away:g.home),wScore:Math.max(hs,as),lScore:Math.min(hs,as)};
+  };
+  var nameOf=function(g,side,num){
+    var roster=toArr(side==='home'?g.homePlayers:g.awayPlayers), tn=side==='home'?g.home:g.away;
+    if(!roster.length){ var t=(teams||[]).filter(function(x){ return normTeam(x.name)===normTeam(tn); })[0]; if(t) roster=t.players||[]; }
+    var pl=roster.filter(function(x){ return String(x.num)===String(num); })[0];
+    return (pl&&pl.name)?pl.name:('#'+num);
+  };
 
-  var recentPlayerStats={};
-  function addToRecentTotals(statsObj,rosterArr,teamName){
-    if(!statsObj) return;
-    Object.keys(statsObj).forEach(function(num){
-      var s=statsObj[num];
-      if(!s) return;
-      var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
-      var name=player?player.name:('#'+num);
-      var pKey=teamName+'|'+name;
-      if(!recentPlayerStats[pKey]) recentPlayerStats[pKey]={name:name,pts:0,teamName:teamName};
-      recentPlayerStats[pKey].pts+=(s.pts||0);
+  // 1) Latest results, each with the game's MVP (the same calculation as the MVP card)
+  recent.forEach(function(g){
+    var r=res(g), mvp=computeWinningTeamMVP(g), tail='';
+    if(mvp){ var ms=mvp.s||{}; tail='  ·  🏀 MVP '+esc(mvp.name)+' ('+esc(mvp.teamName)+') '+(Number(ms.pts)||0)+' PTS · '+(Number(ms.reb)||0)+' REB · '+(Number(ms.ast)||0)+' AST'; }
+    items.push('<span>'+(g.isPlayoff?'PLAYOFF FINAL':'FINAL')+'</span>'+esc(g.home)+' '+r.hs+' – '+r.as+' '+esc(g.away)+(r.winner?'  ·  W: '+esc(r.winner):'')+tail);
+  });
+
+  // 2) Blowouts and nail-biters among those latest games
+  var biggest=null;
+  chron.forEach(function(g){ var r=res(g); if(r.winner&&(!biggest||r.margin>biggest.r.margin)) biggest={g:g,r:r}; });
+  var blowouts=recent.filter(function(g){ var r=res(g); return r.winner&&r.margin>=BLOWOUT; }).sort(function(a,b){ return res(b).margin-res(a).margin; }).slice(0,2);
+  blowouts.forEach(function(g){ var r=res(g); items.push('<span>💥 BLOWOUT</span>'+esc(r.winner)+' '+r.wScore+' – '+r.lScore+' '+esc(r.loser)+' (+'+r.margin+')'+((biggest&&biggest.g===g)?'  ·  BIGGEST WIN OF THE SEASON':'')); });
+  recent.filter(function(g){ var r=res(g); return r.winner&&r.margin<=NAILBITER; }).slice(0,2).forEach(function(g){
+    var r=res(g); items.push('<span>😬 NAIL-BITER</span>'+esc(r.winner)+' '+r.wScore+' – '+r.lScore+' '+esc(r.loser)+' ('+r.margin+' PT'+(r.margin===1?'':'S')+')');
+  });
+
+  // 3) Big individual games in those latest games (best first; at most 4)
+  var big=[];
+  recent.forEach(function(g,gi){
+    ['home','away'].forEach(function(side){
+      var stats=(side==='home'?g.hStats:g.aStats)||{}, team=side==='home'?g.home:g.away, opp=side==='home'?g.away:g.home;
+      Object.keys(stats).forEach(function(num){
+        var s=stats[num]||{}, n=function(k){ return Number(s[k])||0; };
+        var cats=[n('pts'),n('reb'),n('ast'),n('stl'),n('blk')].filter(function(v){ return v>=10; }).length, label=null, rank=0;
+        if(cats>=3){ label='🔥 TRIPLE-DOUBLE'; rank=1000; }
+        else if(n('pts')>=30){ label='🚀 '+n('pts')+'-POINT GAME'; rank=500+n('pts'); }
+        else if(n('reb')>=20){ label='💪 '+n('reb')+' REBOUNDS'; rank=400+n('reb'); }
+        else if(n('ast')>=12){ label='🎯 '+n('ast')+' ASSISTS'; rank=300+n('ast'); }
+        else if(n('stl')>=6){ label='🖐 '+n('stl')+' STEALS'; rank=200+n('stl'); }
+        else if(n('blk')>=6){ label='🛡 '+n('blk')+' BLOCKS'; rank=200+n('blk'); }
+        if(!label) return;
+        var line=n('pts')+' PTS · '+n('reb')+' REB · '+n('ast')+' AST';
+        big.push({rank:rank-gi*0.01,html:'<span>'+label+'</span>'+esc(nameOf(g,side,num))+' ('+esc(team)+') '+(cats>=3?line+' ':'')+'vs '+esc(opp)});
+      });
     });
+  });
+  big.sort(function(a,b){ return b.rank-a.rank; }).slice(0,4).forEach(function(b){ items.push(b.html); });
+
+  // 3b) Double-doubles in those latest games: 10+ in exactly two of points / rebounds / assists / steals / blocks
+  // (a triple-double has its own line above). One line lists them all, newest first.
+  var CATS=['pts','reb','ast','stl','blk'], CATLAB={pts:'PTS',reb:'REB',ast:'AST',stl:'STL',blk:'BLK'};
+  var tens=function(s){ return CATS.filter(function(k){ return (Number(s&&s[k])||0)>=10; }); };
+  var dds=[];
+  recent.forEach(function(g){
+    ['home','away'].forEach(function(side){
+      var stats=(side==='home'?g.hStats:g.aStats)||{}, team=side==='home'?g.home:g.away;
+      Object.keys(stats).forEach(function(num){
+        var t=tens(stats[num]); if(t.length!==2) return;
+        dds.push(esc(nameOf(g,side,num))+' ('+esc(team)+') '+t.map(function(k){ return (Number(stats[num][k])||0)+' '+CATLAB[k]; }).join(' · '));
+      });
+    });
+  });
+  if(dds.length){
+    var shownDD=dds.slice(0,4);
+    items.push('<span>✌️ DOUBLE-DOUBLE'+(dds.length>1?'S':'')+'</span>'+shownDD.join('  /  ')+(dds.length>4?'  /  +'+(dds.length-4)+' more':''));
   }
-  recentGames.forEach(function(g){
-    addToRecentTotals(g.hStats,g.homePlayers,g.home);
-    addToRecentTotals(g.aStats,g.awayPlayers,g.away);
+
+  // 4) Hot teams: current win streaks
+  var streak={};
+  chron.forEach(function(g){
+    var r=res(g); if(!r.winner) { [g.home,g.away].forEach(function(t){ var k=normTeam(t); if(streak[k]) streak[k].n=0; }); return; }
+    var wk=normTeam(r.winner), lk=normTeam(r.loser);
+    streak[wk]=streak[wk]||{name:r.winner,n:0}; streak[wk].name=r.winner; streak[wk].n++;
+    streak[lk]=streak[lk]||{name:r.loser,n:0}; streak[lk].name=r.loser; streak[lk].n=0;
+  });
+  Object.keys(streak).map(function(k){ return streak[k]; }).filter(function(s){ return s.n>=MIN_STREAK; }).sort(function(a,b){ return b.n-a.n; }).slice(0,2).forEach(function(s){
+    items.push('<span>🔥 HOT</span>'+esc(s.name)+' — '+s.n+' WINS IN A ROW');
   });
 
-  var topRecentScorer=Object.values(recentPlayerStats).sort(function(a,b){return b.pts-a.pts;})[0];
-  if(topRecentScorer&&topRecentScorer.pts>0) items.push('<span>🏅 TOP SCORER</span>'+topRecentScorer.name+' ('+topRecentScorer.teamName+') — '+topRecentScorer.pts+' PTS (recent games)');
+  // 5) Who is leading the league
+  try{
+    var lead=getSeededStandings()[0];
+    if(lead && lead.gp>=3) items.push('<span>🥇 FIRST PLACE</span>'+esc(lead.name)+' ('+lead.w+'–'+lead.l+')');
+  }catch(e){}
+
+  // 6) Most game MVPs this season
+  var mvpCount={};
+  chron.forEach(function(g){
+    var m=computeWinningTeamMVP(g); if(!m) return;
+    var k=normTeam(m.teamName)+'|'+m.name; mvpCount[k]=mvpCount[k]||{name:m.name,team:m.teamName,n:0}; mvpCount[k].n++;
+  });
+  var mvpTop=Object.keys(mvpCount).map(function(k){ return mvpCount[k]; }).sort(function(a,b){ return b.n-a.n; });
+  if(mvpTop.length && mvpTop[0].n>=2){
+    var lead2=mvpTop.filter(function(m){ return m.n===mvpTop[0].n; }).slice(0,2);
+    items.push('<span>⭐ MOST GAME MVPs</span>'+lead2.map(function(m){ return esc(m.name)+' ('+esc(m.team)+')'; }).join(' & ')+' — '+mvpTop[0].n);
+  }
+
+  // 6b) Season double-doubles and triple-doubles (a triple-double also counts as a double-double)
+  var ddCount={};
+  chron.forEach(function(g){
+    ['home','away'].forEach(function(side){
+      var stats=(side==='home'?g.hStats:g.aStats)||{}, team=side==='home'?g.home:g.away;
+      Object.keys(stats).forEach(function(num){
+        var t=tens(stats[num]); if(t.length<2) return;
+        var nm=nameOf(g,side,num), k=normTeam(team)+'|'+nm;
+        ddCount[k]=ddCount[k]||{name:nm,team:team,dd:0,td:0}; ddCount[k].dd++; if(t.length>=3) ddCount[k].td++;
+      });
+    });
+  });
+  var ddRows=Object.keys(ddCount).map(function(k){ return ddCount[k]; });
+  var ddBest=ddRows.slice().sort(function(a,b){ return b.dd-a.dd; });
+  if(ddBest.length && ddBest[0].dd>=2){
+    var ddLead=ddBest.filter(function(r){ return r.dd===ddBest[0].dd; }).slice(0,2);
+    items.push('<span>✌️ MOST DOUBLE-DOUBLES</span>'+ddLead.map(function(r){ return esc(r.name)+' ('+esc(r.team)+')'; }).join(' & ')+' — '+ddBest[0].dd);
+  }
+  var tdClub=ddRows.filter(function(r){ return r.td>0; }).sort(function(a,b){ return b.td-a.td; }).slice(0,3);
+  if(tdClub.length) items.push('<span>🔥 TRIPLE-DOUBLE CLUB</span>'+tdClub.map(function(r){ return esc(r.name)+' ('+esc(r.team)+') '+r.td; }).join('  ·  '));
+
+  // 7) Best scorer over the latest games (this is the top SCORER — not the game MVP)
+  var recentPlayerStats={};
+  recent.forEach(function(g){
+    ['home','away'].forEach(function(side){
+      var stats=(side==='home'?g.hStats:g.aStats)||{}, team=side==='home'?g.home:g.away;
+      Object.keys(stats).forEach(function(num){
+        var pts=Number((stats[num]||{}).pts)||0; if(!pts) return;
+        var nm=nameOf(g,side,num), key=normTeam(team)+'|'+nm;
+        recentPlayerStats[key]=recentPlayerStats[key]||{name:nm,teamName:team,pts:0}; recentPlayerStats[key].pts+=pts;
+      });
+    });
+  });
+  var topRecentScorer=Object.keys(recentPlayerStats).map(function(k){ return recentPlayerStats[k]; }).sort(function(a,b){ return b.pts-a.pts; })[0];
+  if(topRecentScorer&&topRecentScorer.pts>0) items.push('<span>🏅 TOP SCORER</span>'+esc(topRecentScorer.name)+' ('+esc(topRecentScorer.teamName)+') — '+topRecentScorer.pts+' PTS (recent games)');
+
+  // 8) League leaders for the season — per-game averages among players with at least 3 games, so one big night can't top a list
+  try{
+    var MIN_GP=3;
+    var rows=getAllPlayers().map(function(r){
+      var s=r.s||{}, gp=Number(s.gp)||0, n=function(k){ return Number(s[k])||0; };
+      return {name:r.p&&r.p.name,team:r.teamName,gp:gp,pts:n('pts'),reb:n('reb'),ast:n('ast'),stl:n('stl'),blk:n('blk'),to:n('to')};
+    }).filter(function(r){ return r.name&&r.gp>=MIN_GP; });
+    var leaders=function(label,val,unit){
+      var best=0; rows.forEach(function(r){ var v=val(r); if(v>best) best=v; });
+      if(!(best>0)) return;                                                   // nobody has any (e.g. no blocks yet): skip it
+      var top=rows.filter(function(r){ return Math.abs(val(r)-best)<1e-9; }).slice(0,2);      // a tie shows both names
+      items.push('<span>'+label+'</span>'+top.map(function(r){ return esc(r.name)+' ('+esc(r.team)+')'; }).join(' & ')+' — '+best.toFixed(1)+' '+unit);
+    };
+    var per=function(k){ return function(r){ return r[k]/r.gp; }; };
+    leaders('⭐ MVP RACE',function(r){ return (r.pts+r.reb+r.ast+r.stl+r.blk-r.to)/r.gp; },'EFF/G');   // the MVP formula, averaged per game
+    leaders('📊 SCORING LEADER',per('pts'),'PPG');
+    leaders('🎯 ASSIST LEADER',per('ast'),'APG');
+    leaders('💪 REBOUND LEADER',per('reb'),'RPG');
+    leaders('🖐 STEALS LEADER',per('stl'),'SPG');
+    leaders('🛡 BLOCKS LEADER',per('blk'),'BPG');
+    leaders('🙈 MOST TURNOVERS',per('to'),'TO/G');
+  }catch(e){}
+
+  // 9) Season highs
+  var hiPts=null;
+  chron.forEach(function(g){
+    ['home','away'].forEach(function(side){
+      var stats=(side==='home'?g.hStats:g.aStats)||{};
+      Object.keys(stats).forEach(function(num){ var pts=Number((stats[num]||{}).pts)||0; if(pts>0&&(!hiPts||pts>hiPts.pts)) hiPts={pts:pts,g:g,side:side,num:num}; });
+    });
+  });
+  if(hiPts && hiPts.pts>=20){ var hg=hiPts.g, hteam=hiPts.side==='home'?hg.home:hg.away, hopp=hiPts.side==='home'?hg.away:hg.home;
+    items.push('<span>📈 SEASON HIGH</span>'+hiPts.pts+' PTS — '+esc(nameOf(hg,hiPts.side,hiPts.num))+' ('+esc(hteam)+') vs '+esc(hopp)); }
+  if(biggest && biggest.r.margin>=BLOWOUT && blowouts.indexOf(biggest.g)===-1)
+    items.push('<span>💥 BIGGEST WIN</span>'+esc(biggest.r.winner)+' '+biggest.r.wScore+' – '+biggest.r.lScore+' '+esc(biggest.r.loser)+' (+'+biggest.r.margin+')');
 
   if(!items.length) return;
   var bar=document.getElementById('ticker-bar');
@@ -922,6 +1056,9 @@ function buildTicker(){
   if(inner._lastContent!==content){          // unchanged -> leave it scrolling
     inner._lastContent=content;
     inner.innerHTML=content+content;
+    // keep the reading speed steady however many items there are (it used to be a fixed 30 s per loop)
+    var chars=items.join('').replace(/<[^>]+>/g,'').length;
+    inner.style.animationDuration=Math.max(30,Math.round((chars*6.9+items.length*56)/80))+'s';
   }
   bar.style.display='flex';
 }
@@ -942,6 +1079,13 @@ function gdEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</
 // Saved-game ids end with the time the game was saved ("game_1760000000000"),
 // which is the reliable way to tell which game is newest.
 function _gdStamp(g){ var m=String((g&&g.id)||'').match(/(\d{12,})/); return m?Number(m[1]):0; }
+// "Recent" means the latest games BY DATE — not the last ones that happen to be stored. The stored list is not always in
+// date order (games get backfilled, imported, or re-saved later), which made the ticker and Home show old games.
+function gamesChronological(list){
+  return list.map(function(g,i){ return {g:g,i:i,o:_gdOrdinal(g),s:_gdStamp(g)}; })
+    .sort(function(a,b){ return (a.o-b.o)||(a.s-b.s)||(a.i-b.i); })
+    .map(function(x){ return x.g; });
+}
 function _gdOrdinal(g){ var md=_schMd(g&&g.date); if(!md) return 0; var p=md.split('-'); return (+p[0])*100+(+p[1]); }
 function _gdTextOn(hex){
   var m=/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(hex||'').trim()); if(!m) return '#000';
@@ -1346,7 +1490,7 @@ function renderHomeRecentScores(){
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   hist=hist.filter(function(g){return g&&!g.isAllStar;});
   if(!hist.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">'+(_histLoaded?'No completed games yet.':'Loading latest results…')+'</div>';return;}
-  var recent=hist.slice(-5).reverse();
+  var recent=gamesChronological(hist).slice(-5).reverse();          // the 5 latest by date, newest first
   el.innerHTML=recent.map(function(g){
     var hWin=(g.homeScore||0)>(g.awayScore||0);
     return '<div class="recent-row">'
@@ -1576,8 +1720,8 @@ function renderHomeTopScorers(){
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   hist=hist.filter(function(g){return g&&!g.isAllStar;});
   
-  // Get stats from recent games only (last 5)
-  var recent=hist.slice(-5);
+  // Get stats from recent games only (the 5 latest by date)
+  var recent=gamesChronological(hist).slice(-5);
   if(!recent.length){el.innerHTML='<div style="padding:16px 20px;color:var(--muted);font-size:13px;font-style:italic;">'+(_histLoaded?'No stats yet.':'Loading…')+'</div>';return;}
   
   // Aggregate stats from recent games per player
