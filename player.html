@@ -287,6 +287,17 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-final{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
 .mvpw-score{font-size:13px;font-weight:700;color:var(--white);margin-top:3px;}
 .mvpw-vs{font-size:10px;color:var(--muted);margin:1px 0 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.pp-item{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;border-top:1px solid var(--line);}
+.pp-item:first-child{border-top:none;}
+.pp-icon{font-size:22px;line-height:1.1;flex-shrink:0;width:28px;text-align:center;}
+.pp-title{font-size:10px;font-weight:800;letter-spacing:1.3px;color:var(--orange);}
+.pp-text{font-size:14px;line-height:1.5;color:var(--white);margin-top:3px;}
+.pp-needs{padding:0 18px 12px 58px;font-size:12px;color:var(--muted);line-height:1.5;}
+.pp-chips{display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px;border-top:1px solid var(--line);}
+.pp-chip{font-size:11px;font-weight:600;color:var(--light);background:var(--dark3);border:1px solid var(--line);border-radius:99px;padding:4px 10px;white-space:nowrap;}
+.pp-chip b{color:var(--muted);font-weight:700;} .pp-chip i{font-style:normal;color:var(--muted);} .pp-chip em{font-style:normal;font-weight:800;letter-spacing:.6px;font-size:10px;margin-left:2px;}
+.pp-bye em,.pp-in em{color:#22c55e;} .pp-alive em{color:var(--gold);} .pp-out{opacity:.55;} .pp-out em{color:#ef4444;}
+.pp-foot{padding:0 18px 14px;font-size:11px;color:var(--muted);line-height:1.5;}
 .mvpw-row{--mvpw-photo:112px;}                                   /* the player photo / number circle */
 @media (max-width:700px){ .mvpw-row{--mvpw-photo:84px;} .mvpw-card{min-width:104px;} }          /* three cards fit on a phone without swiping */
 .mvpw-avatar{width:var(--mvpw-photo);height:var(--mvpw-photo);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;flex-shrink:0;position:relative;}
@@ -455,6 +466,15 @@ tr:hover td{background:rgba(255,255,255,0.025);}
       <a onclick="showTab('scores')">All games →</a>
     </div>
     <div id="gameday-mvps" class="mvpw-row"></div>
+  </div>
+
+  <!-- PLAYOFF PICTURE: what is at stake in the games still to be played (worked out from the standings and the schedule) -->
+  <div class="top-scorers-card" id="home-stakes-card" style="display:none;margin-bottom:1.5rem;">
+    <div class="tsc-header">
+      <div style="min-width:0;"><span>🏆 Playoff Picture</span><div id="home-stakes-sub" style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1.2px;margin-top:4px;"></div></div>
+      <a onclick="showTab('standings')">Standings →</a>
+    </div>
+    <div id="home-stakes"></div>
   </div>
 
   <!-- LEAGUE LEADERS -->
@@ -914,6 +934,9 @@ function buildTicker(){
     items.push('<span>'+(g.isPlayoff?'PLAYOFF FINAL':'FINAL')+'</span>'+esc(g.home)+' '+r.hs+' – '+r.as+' '+esc(g.away)+(r.winner?'  ·  W: '+esc(r.winner):'')+tail);
   });
 
+  // 1b) What is at stake in the games still to be played (the Playoff Picture on Home): the top two headlines
+  try{ var pp=playoffPictureData(); if(pp) pp.news.items.slice(0,2).forEach(function(it){ items.push('<span>'+esc(it.icon+' '+it.title)+'</span>'+esc(it.text)); }); }catch(e){}
+
   // 2) Blowouts and nail-biters among those latest games
   var biggest=null;
   chron.forEach(function(g){ var r=res(g); if(r.winner&&(!biggest||r.margin>biggest.r.margin)) biggest={g:g,r:r}; });
@@ -1262,6 +1285,7 @@ function renderGameDayMVPs(){
 
 function renderHome(){
   renderGameDayMVPs();
+  renderHomeStakes();
   renderHomeLeagueLeaders();
   renderHomeRecentScores();
   renderHomeUpcoming();
@@ -2527,6 +2551,265 @@ function getSeededStandings(){
   return out;
 }
 
+// ── PLAYOFF PICTURE: what is at stake in the regular-season games still to be played ──
+// Plays out EVERY possible result of the remaining games and seeds each one with the same rules as the standings (win %,
+// then head-to-head, then point differential). Head-to-head is decided by results, so it can be worked out ahead of time.
+// Point differential depends on the final scores, so a tie that only point differential can break is treated as "could go
+// either way" — which keeps every "clinched" and "eliminated" below a guarantee, not a guess.
+function playoffFormat(){
+  var is35=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1;
+  return is35?{spots:6,bye:2}:{spots:4,bye:0};          // top 6 with a bye for #1-#2 in 35+; top 4 elsewhere
+}
+function _permutations(arr){
+  if(arr.length<=1) return [arr.slice()];
+  var out=[];
+  arr.forEach(function(x,i){ _permutations(arr.slice(0,i).concat(arr.slice(i+1))).forEach(function(p){ out.push([x].concat(p)); }); });
+  return out;
+}
+// Same as _orderTiedTeams, but stops where only point differential could decide: returns blocks, in order; a block with more
+// than one team is a group the results cannot separate.
+function _tiedBlocks(group,h2h){
+  if(group.length<2) return [group];
+  if(group.length===2){
+    var r=h2h(group[0],group[1]);
+    if(r.aw!==r.bw) return r.aw>r.bw?[[group[0]],[group[1]]]:[[group[1]],[group[0]]];
+    return [group];
+  }
+  var mini=group.map(function(t){
+    var w=0,l=0;
+    group.forEach(function(u){ if(u===t) return; var r=h2h(t,u); w+=r.aw; l+=r.bw; });
+    return {t:t,p:(w+l)>0?w/(w+l):0.5};
+  }).sort(function(x,y){ return y.p-x.p; });
+  var out=[], i=0;
+  while(i<mini.length){
+    var j=i; while(j<mini.length && mini[j].p===mini[i].p) j++;
+    var run=mini.slice(i,j).map(function(m){ return m.t; });
+    if(run.length===group.length) out.push(run); else out=out.concat(_tiedBlocks(run,h2h));
+    i=j;
+  }
+  return out;
+}
+// Same idea as _applyForcedPairs (a league decision "X over Y"), on a list of names.
+function _applyForcedList(order,pairs){
+  for(var pass=0;pass<order.length;pass++){
+    var moved=false;
+    pairs.forEach(function(p){
+      var iw=-1, il=-1;
+      order.forEach(function(n,i){ var x=_h2hNorm(n); if(x===p.w) iw=i; if(x===p.l) il=i; });
+      if(iw>-1&&il>-1&&il<iw){ var t=order.splice(iw,1)[0]; order.splice(il,0,t); moved=true; }
+    });
+    if(!moved) break;
+  }
+  return order;
+}
+// Every order a group of teams tied on win % could end up in (null if that is too many to list). 'feasible' says whether
+// point differential could actually put the teams in a given order (a team that only loses can only lose points, and so on).
+function _groupOrders(group,h2h,pairs,feasible){
+  var blocks=_tiedBlocks(group,h2h), combos=[[]];
+  for(var b=0;b<blocks.length;b++){
+    var blk=blocks[b];
+    if(blk.length===1){ combos=combos.map(function(c){ return c.concat(blk); }); continue; }
+    if(blk.length>5) return null;
+    var perms=_permutations(blk), ok=feasible?perms.filter(feasible):perms, next=[];
+    if(ok.length) perms=ok;
+    combos.forEach(function(c){ perms.forEach(function(p){ next.push(c.concat(p)); }); });
+    combos=next; if(combos.length>720) return null;
+  }
+  return (pairs&&pairs.length)?combos.map(function(o){ return _applyForcedList(o.slice(),pairs); }):combos;
+}
+// inp: {entries:[{name,w,l}], games:[{home,away}], spots, bye, h2h(a,b)->{aw,bw}, overridden(a,b), pairs:[{w,l}]}
+function computePlayoffOutlook(inp){
+  var E=inp.entries, T=E.length, n=inp.games.length, spots=inp.spots, bye=inp.bye||0, S=1<<n;
+  var idx={}; E.forEach(function(e,i){ idx[e.name]=i; });
+  var G=inp.games.map(function(g){ return {h:idx[g.home],a:idx[g.away]}; });
+  var ownMask=E.map(function(){ return 0; }), ownWin=E.map(function(){ return 0; }), ownCount=E.map(function(){ return 0; });
+  G.forEach(function(g,k){ ownMask[g.h]|=(1<<k); ownWin[g.h]|=(1<<k); ownMask[g.a]|=(1<<k); ownCount[g.h]++; ownCount[g.a]++; });   // bit set = home team wins
+  var bestAll=E.map(function(){ return 99; }), worstAll=E.map(function(){ return 0; }), ownWorst=E.map(function(){ return -1; });
+  var gStat=G.map(function(){ return {hWin:0,hLose:99,aWin:0,aLose:99}; });
+  var tie={first:false,bye:false,playoff:false};
+  for(var m=0;m<S;m++){
+    var w=E.map(function(e){ return e.w; }), gp=E.map(function(e){ return e.w+e.l; }), extra={};
+    var wonS=E.map(function(){ return 0; }), lostS=E.map(function(){ return 0; });
+    G.forEach(function(g,k){
+      var hw=(m>>k)&1, wi=hw?g.h:g.a, li=hw?g.a:g.h;
+      w[wi]++; gp[wi]++; gp[li]++; wonS[wi]++; lostS[li]++; var key=wi+'>'+li; extra[key]=(extra[key]||0)+1;
+    });
+    // Point differential after these results, whatever the scores turn out to be: each win adds at least 1 (and can add any
+    // amount more), each loss takes at least 1 (and any amount more). So a team with a loss can fall as far as it likes,
+    // a team with a win can climb as far as it likes, and a team with neither stays exactly where it is.
+    var pdLo=E.map(function(e,i){ return lostS[i]>0?-Infinity:(e.d||0)+wonS[i]; }), pdHi=E.map(function(e,i){ return wonS[i]>0?Infinity:(e.d||0)-lostS[i]; });
+    var feasible=function(perm){
+      for(var x=0;x<perm.length;x++) for(var y=x+1;y<perm.length;y++) if(pdHi[idx[perm[x]]]<pdLo[idx[perm[y]]]) return false;
+      return true;
+    };
+    var pn=function(i){ return gp[i]?w[i]:0; }, pd=function(i){ return gp[i]||1; };
+    var order=E.map(function(_,i){ return i; });
+    order.sort(function(a,b){ var d=pn(b)*pd(a)-pn(a)*pd(b); return d||(a-b); });          // win % (exact fractions)
+    var h2hS=function(an,bn){
+      var base=inp.h2h(an,bn);
+      if(inp.overridden(an,bn)) return base;
+      var ai=idx[an], bi=idx[bn];
+      return {aw:base.aw+(extra[ai+'>'+bi]||0), bw:base.bw+(extra[bi+'>'+ai]||0)};
+    };
+    var bestS=[], worstS=[], s=0;
+    while(s<T){
+      var e2=s+1; while(e2<T && pn(order[e2])*pd(order[s])===pn(order[s])*pd(order[e2])) e2++;
+      var names=order.slice(s,e2).map(function(i){ return E[i].name; });
+      if(names.length===1){ bestS[order[s]]=s+1; worstS[order[s]]=s+1; }
+      else {
+        var ords=_groupOrders(names,h2hS,inp.pairs,feasible);
+        names.forEach(function(nm){
+          var i=idx[nm];
+          if(!ords){ bestS[i]=s+1; worstS[i]=e2; return; }
+          var lo=99, hi=0; ords.forEach(function(o){ var pos=s+1+o.indexOf(nm); if(pos<lo) lo=pos; if(pos>hi) hi=pos; });
+          bestS[i]=lo; worstS[i]=hi;
+        });
+      }
+      s=e2;
+    }
+    for(var i=0;i<T;i++){
+      if(bestS[i]<bestAll[i]) bestAll[i]=bestS[i];
+      if(worstS[i]>worstAll[i]) worstAll[i]=worstS[i];
+      if(ownMask[i] && (m&ownMask[i])===ownWin[i] && worstS[i]>ownWorst[i]) ownWorst[i]=worstS[i];     // seed when it wins all of its own remaining games
+      if(bestS[i]<worstS[i]){
+        if(bestS[i]<=spots && worstS[i]>spots) tie.playoff=true;
+        if(bye>0 && bestS[i]<=bye && worstS[i]>bye) tie.bye=true;
+        if(bestS[i]===1) tie.first=true;
+      }
+    }
+    G.forEach(function(g,k){
+      var st=gStat[k];
+      if((m>>k)&1){ if(worstS[g.h]>st.hWin) st.hWin=worstS[g.h]; if(bestS[g.a]<st.aLose) st.aLose=bestS[g.a]; }
+      else { if(worstS[g.a]>st.aWin) st.aWin=worstS[g.a]; if(bestS[g.h]<st.hLose) st.hLose=bestS[g.h]; }
+    });
+  }
+  return {
+    spots:spots, bye:bye, scenarios:S, tieRisk:tie,
+    teams:E.map(function(e,i){
+      return {name:e.name,w:e.w,l:e.l,best:bestAll[i],worst:worstAll[i],remaining:ownCount[i],ownWorst:ownWorst[i],
+        clinchedPlayoff:worstAll[i]<=spots, eliminated:bestAll[i]>spots,
+        clinchedBye:bye>0&&worstAll[i]<=bye, canBye:bye>0&&bestAll[i]<=bye,
+        clinchedFirst:worstAll[i]===1, canFirst:bestAll[i]===1};
+    }),
+    games:inp.games.map(function(g,k){ return {home:g.home,away:g.away,hWin:gStat[k].hWin,hLose:gStat[k].hLose,aWin:gStat[k].aWin,aLose:gStat[k].aLose}; })
+  };
+}
+// The regular-season games still to be played: scheduled, not a bye, and not yet matched to a finished game.
+function remainingRegularSeasonGames(){
+  var names=Object.keys(standings||{});
+  var find=function(n){ for(var i=0;i<names.length;i++) if(_schTeamsMatch(n,names[i])) return names[i]; return null; };
+  var done=buildScheduleResults(), out=[];
+  toArr(schedule).forEach(function(row,i){
+    if(!row||row.isBye||row.status==='final'||done[i]||row.isPlayoff===true) return;
+    var h=find(row.home), a=find(row.away);
+    if(!h||!a||h===a) return;
+    out.push({home:h,away:a,md:_schMd(row.date)});
+  });
+  return out;
+}
+function _mdText(md){ return md?md.replace('-','/'):''; }
+function _nameList(a){ return a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1]; }
+// The headlines and the status chips, written from the outlook.
+function playoffNews(o,games,seedNow){
+  var spots=o.spots, bye=o.bye, T=o.teams, items=[];
+  var mds=[]; games.forEach(function(g){ if(g.md&&mds.indexOf(g.md)===-1) mds.push(g.md); });
+  mds.sort(function(a,b){ var x=a.split('-'), y=b.split('-'); return ((+x[0])*100+(+x[1]))-((+y[0])*100+(+y[1])); });
+  var when=mds.length===1?_mdText(mds[0]):null;
+  var decide=when?('the '+when+' results decide it'):'the remaining games decide it';
+  var nm=function(t){ return t.name; };
+  var fighters=T.filter(function(t){ return t.canFirst; }), clFirst=T.filter(function(t){ return t.clinchedFirst; });
+  // 1) the #1 seed (and the bye that comes with it)
+  if(clFirst.length) items.push({icon:'🥇',title:'#1 SEED CLINCHED',text:clFirst[0].name+' has clinched the #1 seed'+(bye?' and a bye to the semifinals':'')+'.'});
+  else if(fighters.length>=2) items.push({icon:'🏆',title:'RACE FOR #1',text:_nameList(fighters.map(nm))+' '+(fighters.length===2?'can both':'can all')+' still finish first — '+decide+'.'+(bye?' The top '+bye+' seeds get a bye to the semifinals.':'')});
+  // 2) the byes
+  if(bye>0){
+    var clBye=T.filter(function(t){ return t.clinchedBye; }), byeRace=T.filter(function(t){ return t.canBye&&!t.clinchedBye; }), open=bye-clBye.length;
+    var inRace={}; fighters.forEach(function(t){ inRace[t.name]=true; });
+    var extraBye=byeRace.filter(function(t){ return !inRace[t.name]; });
+    var parts=[];
+    var onlyFirst=clFirst.length===1&&clBye.length===1&&clBye[0]===clFirst[0];
+    if(clBye.length && !onlyFirst) parts.push(_nameList(clBye.map(nm))+(clBye.length===1?' has':' have')+' clinched a bye.');
+    if(open>0 && byeRace.length && (extraBye.length || fighters.length<2)){
+      var who=(fighters.length>=2?extraBye:byeRace).map(nm);
+      parts.push(_nameList(who)+(who.length===1?' is':' are')+(fighters.length>=2?' also':'')+' in the bye race'+(fighters.length>=2?'':' ('+(open===1?'one bye':open+' byes')+' left)')+'.');
+    }
+    if(parts.length) items.push({icon:'🛌',title:'BYE WATCH',text:parts.join(' ')});
+  }
+  // 3) the last playoff spot(s)
+  var inCount=T.filter(function(t){ return t.clinchedPlayoff; }).length, openSpots=spots-inCount;
+  var bubble=T.filter(function(t){ return !t.clinchedPlayoff&&!t.eliminated; }), inBubble={}; bubble.forEach(function(t){ inBubble[t.name]=true; });
+  var needs=null;
+  if(openSpots>0 && bubble.length>0){
+    var bg=[]; o.games.forEach(function(g,k){ if(inBubble[g.home]&&inBubble[g.away]) bg.push({g:g,md:games[k].md}); });
+    var lines=bg.slice(0,2).map(function(x){
+      var g=x.g, hW=g.hWin<=spots, aW=g.aWin<=spots, hL=g.hLose>spots, aL=g.aLose>spots, cl=[];
+      if(hW&&aW&&hL&&aL) cl.push("win and you're in, lose and you're out");
+      else {
+        if(hW&&aW) cl.push('the winner clinches a playoff spot');
+        else { if(hW) cl.push(g.home+' clinches with a win'); if(aW) cl.push(g.away+' clinches with a win'); }
+        if(hL&&aL) cl.push('the loser is eliminated');
+        else { if(hL) cl.push(g.home+' is out with a loss'); if(aL) cl.push(g.away+' is out with a loss'); }
+      }
+      return g.home+' vs '+g.away+(x.md?' ('+_mdText(x.md)+')':'')+(cl.length?' — '+cl.join('; '):' — two teams still alive go head to head');
+    });
+    var tail=_nameList(bubble.map(nm))+' '+(bubble.length===2?'are both':(bubble.length===1?'is':'are all'))+' still alive for '+(openSpots===1?'the final playoff spot':'the last '+openSpots+' playoff spots')+'.';
+    items.push({icon:'⚔️',title:openSpots===1?'LAST PLAYOFF SPOT':'LAST '+openSpots+' PLAYOFF SPOTS',text:(lines.length?lines.join('. ')+'. ':'')+(lines.length?'':'')+tail+(lines.length?'':' '+decide.charAt(0).toUpperCase()+decide.slice(1)+'.')});
+    var winIn=bubble.filter(function(t){ return t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots; }), help=bubble.filter(function(t){ return !(t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots); });
+    needs=[]; if(winIn.length) needs.push('Win and in: '+_nameList(winIn.map(nm))); if(help.length) needs.push('Needs help: '+_nameList(help.map(nm)));
+  }
+  // chips: every team, in current order, with where it stands
+  var chips=T.slice().sort(function(a,b){ return (seedNow[a.name]||99)-(seedNow[b.name]||99); }).map(function(t){
+    var st=t.eliminated?'OUT':(t.clinchedBye?'BYE':(t.clinchedPlayoff?(t.canBye?'IN · BYE RACE':'IN'):'ALIVE'));
+    return {seed:seedNow[t.name]||0,name:t.name,w:t.w,l:t.l,status:st,kind:t.eliminated?'out':(t.clinchedBye?'bye':(t.clinchedPlayoff?'in':'alive'))};
+  });
+  var tieNote=(o.tieRisk.first||o.tieRisk.bye||o.tieRisk.playoff)?'If teams finish tied on win %, the team that won the head-to-head is seeded higher, no matter the points; then point differential.':'';
+  var rules='Top '+spots+' seeds make the playoffs'+(bye?' · #1 and #2 get a bye to the semifinals':'');
+  var sub=mds.length===1?'FINAL WEEK · '+_mdText(mds[0]):(mds.length+' WEEKS LEFT'+(mds.length?' · THROUGH '+_mdText(mds[mds.length-1]):''));
+  return {items:items,needs:needs,chips:chips,tieNote:tieNote,rules:rules,sub:sub};
+}
+var _ppKey='', _ppVal=null;
+function playoffPictureData(){
+  try{
+    var entries=Object.keys(standings||{}).map(function(n){ var s=standings[n]||{}; return {name:n,w:s.w||0,l:s.l||0,d:(s.pf||0)-(s.pa||0)}; });
+    if(entries.length<2) return null;
+    var fmt=playoffFormat();
+    if(entries.length<=fmt.spots && !fmt.bye) return null;                    // everyone makes it: nothing to decide
+    var games=remainingRegularSeasonGames();
+    if(!games.length || games.length>12) return null;                         // not in the final stretch yet (or season over)
+    var names=entries.map(function(e){ return e.name; }), base={}, ov={}, list=_h2hList();
+    names.forEach(function(a){ names.forEach(function(b){
+      if(a===b) return;
+      base[a+'|'+b]=headToHeadRecord(a,b);
+      ov[a+'|'+b]=list.some(function(o){ var x=_h2hNorm(o.teamA), y=_h2hNorm(o.teamB), na=_h2hNorm(a), nb=_h2hNorm(b); return (x===na&&y===nb)||(x===nb&&y===na); });
+    }); });
+    var key=JSON.stringify([entries,games,base,ov,fmt]);
+    if(key===_ppKey) return _ppVal;
+    var pairs=list.map(function(o){ var w=_h2hNorm(o.winner), a=_h2hNorm(o.teamA), b=_h2hNorm(o.teamB); return {w:w,l:(w===a?b:a)}; });
+    var o=computePlayoffOutlook({entries:entries,games:games,spots:fmt.spots,bye:fmt.bye,pairs:pairs,
+      h2h:function(a,b){ return base[a+'|'+b]; }, overridden:function(a,b){ return ov[a+'|'+b]; }});
+    var seedNow={}; getSeededStandings().forEach(function(t,i){ seedNow[t.name]=i+1; });
+    _ppKey=key; _ppVal={outlook:o,games:games,news:playoffNews(o,games,seedNow)};
+    return _ppVal;
+  }catch(e){ return null; }
+}
+function renderHomeStakes(){
+  var card=document.getElementById('home-stakes-card'); if(!card) return;
+  var d=playoffPictureData();
+  if(!d||!d.news.items.length){ card.style.display='none'; return; }
+  var nw=d.news;
+  document.getElementById('home-stakes-sub').textContent=nw.sub;
+  var html=nw.items.map(function(it){
+    return '<div class="pp-item"><div class="pp-icon">'+it.icon+'</div><div style="min-width:0;"><div class="pp-title">'+gdEsc(it.title)+'</div><div class="pp-text">'+gdEsc(it.text)+'</div></div></div>';
+  }).join('');
+  if(nw.needs&&nw.needs.length) html+='<div class="pp-needs">'+nw.needs.map(gdEsc).join('  ·  ')+'</div>';
+  html+='<div class="pp-chips">'+nw.chips.map(function(c){
+    return '<span class="pp-chip pp-'+c.kind+'"><b>#'+c.seed+'</b> '+gdEsc(c.name)+' <i>'+c.w+'–'+c.l+'</i> <em>'+gdEsc(c.status)+'</em></span>';
+  }).join('')+'</div>';
+  html+='<div class="pp-foot">'+gdEsc(nw.rules)+(nw.tieNote?'  ·  '+gdEsc(nw.tieNote):'')+'</div>';
+  document.getElementById('home-stakes').innerHTML=html;
+  card.style.display='block';
+}
+
 // ── ALL-STAR (3-Point Contest + All-Star Game) ──
 // Kept fully separate from the regular season's bracket/standings — the
 // All-Star Game itself is just a normal finished game, picked out of
@@ -2630,6 +2913,10 @@ function renderStandings(){
         +'<td>'+e.pf+'</td><td>'+e.pa+'</td><td class="'+dc+'">'+(e.diff>0?'+':'')+e.diff+'</td><td>'+e.ppg+'</td></tr>';
     }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No completed games yet.</td></tr>')
     +'</tbody></table></div>'
+    +'<div id="standings-tiebreak-note" style="font-size:12px;color:var(--muted);line-height:1.65;margin:-1rem 0 2rem;"><b style="color:var(--light);">Tied on win %?</b> '
+    +'<b style="color:var(--light);">1.</b> Head-to-head — if one team beat the other, that team is seeded higher, no matter the points. '
+    +'<b style="color:var(--light);">2.</b> Point differential. <b style="color:var(--light);">3.</b> Points per game. '
+    +'With three or more teams tied, only the games among those teams count for step 1.</div>'
     +'<h3 style="font-size:20px;font-weight:700;color:var(--white);margin-bottom:12px;">Game History</h3>'+histHtml;
 }
 
