@@ -874,37 +874,19 @@ function buildTicker(){
   var hist=[];
   try{if(Array.isArray(gameHistory))hist=gameHistory;else if(gameHistory&&typeof gameHistory==='object')hist=Object.values(gameHistory);}catch(e){}
   hist=hist.filter(function(g){return g&&!g.isAllStar;});
-  function getGameTopScorer(g){
-    var best=null;
-    function scan(statsObj,rosterArr,teamName){
-      if(!statsObj) return;
-      Object.keys(statsObj).forEach(function(num){
-        var s=statsObj[num];
-        if(!s||!(s.pts>0)) return;
-        var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
-        var name=player?player.name:('#'+num);
-        if(!best||s.pts>best.pts) best={name:name,teamName:teamName,pts:s.pts};
-      });
-    }
-    // Only the winning team's players are eligible — a high scorer on
-    // the losing team showing as the game's "top performer" reads oddly.
-    var homeWon=(g.homeScore||0)>(g.awayScore||0);
-    if(homeWon) scan(g.hStats,g.homePlayers,g.home);
-    else scan(g.aStats,g.awayPlayers,g.away);
-    return best;
-  }
+  // The player named on each result is the game's MVP — the very same calculation as the MVP card (computeWinningTeamMVP).
   hist.slice(-5).forEach(function(g){
     if(!g)return;
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var topLine='';
-    var top=getGameTopScorer(g);
-    if(top) topLine='  ·  🏀 '+top.name+' ('+top.teamName+') '+top.pts+' PTS';
+    var mvp=computeWinningTeamMVP(g);
+    if(mvp){ var ms=mvp.s||{}; topLine='  ·  🏀 MVP '+gdEsc(mvp.name)+' ('+gdEsc(mvp.teamName)+') '+(Number(ms.pts)||0)+' PTS · '+(Number(ms.reb)||0)+' REB · '+(Number(ms.ast)||0)+' AST'; }
     items.push('<span>'+(g.isPlayoff?'PLAYOFF FINAL':'FINAL')+'</span>'+g.home+' '+(g.homeScore||0)+' – '+(g.awayScore||0)+' '+g.away+'  ·  W: '+winner+topLine);
   });
   // Top scorer (from recent games only) — was reading game.playerStats,
   // a field that's never actually set (games are saved with hStats/
   // aStats, keyed by jersey number, plus homePlayers/awayPlayers roster
-  // snapshots for names). Reusing the same scan logic as getGameTopScorer
+  // snapshots for names). Same scan idea as a per-game top scorer (this item is the best SCORER across the recent games — it is not the game MVP)
   // above, but summing across games instead of taking one game's max.
   var recentGames=[];
   try{if(Array.isArray(gameHistory))recentGames=gameHistory;else if(gameHistory&&typeof gameHistory==='object')recentGames=Object.values(gameHistory);}catch(e){}
