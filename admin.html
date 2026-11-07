@@ -8140,25 +8140,18 @@ function renderPlayoffBracket(){
 // finished game — same logic added to player.html's ticker, mirrored
 // here so admin.html's own game lists show the same quick top-scorer
 // callout instead of needing to expand the box score to see it.
-function computeGameTopScorer(g){
-  var best=null;
-  function scan(statsObj,rosterArr,teamName){
-    if(!statsObj) return;
-    Object.keys(statsObj).forEach(function(num){
-      var s=statsObj[num];
-      if(!s||!(s.pts>0)) return;
-      var player=(rosterArr||[]).find(function(p){return String(p.num)===String(num);});
-      var name=player?player.name:('#'+num);
-      if(!best||s.pts>best.pts) best={name:name,teamName:teamName,pts:s.pts};
-    });
-  }
-  // Only the winning team's players are eligible — previously scanned
-  // both teams, which meant a high-scoring player on the LOSING team
-  // could get shown as the game's top performer, which reads oddly.
-  var homeWon=(g.homeScore||0)>(g.awayScore||0);
-  if(homeWon) scan(g.hStats,g.homePlayers,g.home);
-  else scan(g.aStats,g.awayPlayers,g.away);
-  return best;
+// The player shown on a game's row is the game's MVP — the same calculation as the public MVP card and
+// "Check an MVP" (points + rebounds + assists + steals + blocks − turnovers, winning team only; a tie goes to the
+// player with more points). It used to be the top scorer, which is why a row could name a different player
+// than the MVP card.
+function computeGameMvp(g){
+  var r=mvpAnalyze(g,teams);
+  if(!r||!r.best) return null;
+  return {name:r.best.name,teamName:r.team,pts:r.best.pts,reb:r.best.reb,ast:r.best.ast};
+}
+function gameMvpLineHtml(g){
+  var m=computeGameMvp(g); if(!m) return '';
+  return '<div style="font-size:11px;color:var(--muted);">🏀 MVP: '+_dpEsc(m.name)+' ('+_dpEsc(m.teamName)+') · '+m.pts+' PTS · '+m.reb+' REB · '+m.ast+' AST</div>';
 }
 
 function renderStandings(){
@@ -8186,8 +8179,7 @@ function renderStandings(){
   ghEl.innerHTML=gameHistory.map(function(g,gi){
     var winner=g.homeScore>g.awayScore?g.home:g.away;
     var ws=Math.max(g.homeScore,g.awayScore), ls=Math.min(g.homeScore,g.awayScore);
-    var topScorer=computeGameTopScorer(g);
-    var topScorerHtml=topScorer?'<div style="font-size:11px;color:var(--muted);">🏀 '+topScorer.name+' ('+topScorer.teamName+') '+topScorer.pts+' PTS</div>':'';
+    var topScorerHtml=gameMvpLineHtml(g);
     var boxHtml='';
     if(g.homePlayers&&g.hStats){
       function makeBoxRows(pl,st,color){
@@ -8312,8 +8304,7 @@ function renderGames(){
     var winner=(g.homeScore||0)>(g.awayScore||0)?g.home:g.away;
     var ws=Math.max(g.homeScore||0,g.awayScore||0),ls=Math.min(g.homeScore||0,g.awayScore||0);
     var wc=(g.homeScore||0)>(g.awayScore||0)?g.homeColor:g.awayColor;
-    var topScorer=computeGameTopScorer(g);
-    var topScorerHtml=topScorer?'<div style="font-size:11px;color:var(--muted);">🏀 '+topScorer.name+' ('+topScorer.teamName+') '+topScorer.pts+' PTS</div>':'';
+    var topScorerHtml=gameMvpLineHtml(g);
     // Box score rows
     function makeRows(pl,st,color){
       if(!pl||!st)return '';
