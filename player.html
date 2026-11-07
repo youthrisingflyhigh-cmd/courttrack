@@ -104,9 +104,11 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5r
 .stats-card{background:var(--dark2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:1.5rem;}
 /* Player Stats is wider than a phone: let it scroll sideways instead of clipping the columns past PTS */
 #tab-playerstats .stats-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+#def-table tr.def-fin td{background:rgba(255,92,0,.08);}
+#def-table tr.def-fin td:nth-child(2){background:linear-gradient(rgba(255,92,0,.08),rgba(255,92,0,.08)),var(--dark2);}   /* the pinned cell needs an opaque version of the same tint */
 /* ...and on a phone the Player column stays pinned while the stats scroll under it, so you always know whose numbers they are */
 @media (max-width:700px){
-  #p-table th:nth-child(3),#p-table td:nth-child(3){position:sticky;left:0;z-index:2;background:var(--dark2);box-shadow:1px 0 0 var(--line);}
+  #p-table th:nth-child(3),#p-table td:nth-child(3),#def-table th:nth-child(2),#def-table td:nth-child(2){position:sticky;left:0;z-index:2;background:var(--dark2);box-shadow:1px 0 0 var(--line);}
 }
 .stats-card-header{padding:14px 20px;border-bottom:1px solid var(--line);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
 
@@ -570,12 +572,13 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     <button class="stat-tab" data-key="ast" onclick="setStatTab('ast')">Assists</button>
     <button class="stat-tab" data-key="stl" onclick="setStatTab('stl')">Steals</button>
     <button class="stat-tab" data-key="blk" onclick="setStatTab('blk')">Blocks</button>
+    <button class="stat-tab" data-key="def" onclick="setStatTab('def')">🛡 Defense</button>
     <button class="stat-tab" data-key="to" onclick="setStatTab('to')">Turnovers</button>
     <button class="stat-tab" data-key="dd" onclick="setStatTab('dd')">✌️ Double-Doubles</button>
     <button class="stat-tab" data-key="td" onclick="setStatTab('td')">🔥 Triple-Doubles</button>
     <button class="stat-tab" data-key="mpg" onclick="setStatTab('mpg')">Minutes</button>
   </div>
-  <div class="stats-card">
+  <div class="stats-card" id="p-main-card">
     <table id="p-table"><thead><tr>
       <th style="text-align:left;">Rk</th>
       <th style="text-align:left;">#</th>
@@ -595,6 +598,9 @@ tr:hover td{background:rgba(255,255,255,0.025);}
     </tr></thead>
     <tbody id="p-body"></tbody></table>
   </div>
+
+  <!-- DEFENSE — shortlist for Defensive Player of the Season (shown instead of the main table when the 🛡 Defense tab is chosen) -->
+  <div id="def-section" style="display:none;"></div>
 
   <!-- FORMER PLAYERS — stats that survive a roster change instead of just
        disappearing. Only shows up if there actually are any. -->
@@ -2800,13 +2806,77 @@ function showTeamModal(teamName){
 }
 
 // ── PLAYER STATS TABS ──
+// ── DEFENSE: shortlist for Defensive Player of the Season ──
+// Score = 1.0 × steals + 0.7 × blocks + 0.3 × rebounds, per game. A steal always ends the other team's possession, a block only
+// sometimes does, and most rebounds are defensive (the app doesn't split them), so they get a small weight. A player must have
+// played at least half of their team's games. Team points allowed is shown for context; it is not part of the score.
+// The app doesn't track opponent shooting, charges or contesting shots, so this picks the finalists — people choose the winner.
+var DEF_W={stl:1.0,blk:0.7,reb:0.3}, DEF_FINALISTS=5;
+function _ord(n){ var s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function computeDefense(rows,entries){
+  // team defense: points allowed per game, ranked (1 = fewest allowed; ties share a rank)
+  var teamInfo={};
+  var list=(entries||[]).filter(function(e){ return e&&e.gp>0; }).map(function(e){ return {key:normTeam(e.name),name:e.name,gp:e.gp,paPg:(Number(e.pa)||0)/e.gp}; });
+  list.slice().sort(function(a,b){ return a.paPg-b.paPg; }).forEach(function(t,i,arr){
+    t.rank=(i>0&&Math.abs(arr[i-1].paPg-t.paPg)<1e-9)?arr[i-1].rank:i+1; teamInfo[t.key]=t;
+  });
+  var maxGp={};                                  // if a team is missing from the standings, fall back to its busiest player's games
+  rows.forEach(function(r){ var k=normTeam(r.teamName); maxGp[k]=Math.max(maxGp[k]||0,Number(r.s&&r.s.gp)||0); });
+  var all=rows.map(function(r){
+    var s=r.s||{}, gp=Number(s.gp)||0, k=normTeam(r.teamName), ti=teamInfo[k]||null, tgp=(ti&&ti.gp)||maxGp[k]||0, need=Math.ceil(tgp/2);
+    var per=function(v){ return gp?(Number(v)||0)/gp:0; };
+    var stl=per(s.stl), blk=per(s.blk), reb=per(s.reb);
+    return {row:r,name:(r.p&&r.p.name)||'',teamName:r.teamName,gp:gp,stl:stl,blk:blk,reb:reb,
+            score:DEF_W.stl*stl+DEF_W.blk*blk+DEF_W.reb*reb,teamGp:tgp,need:need,qualifies:gp>0&&tgp>0&&gp>=need,team:ti};
+  });
+  var cmp=function(a,b){ return (b.score-a.score)||(b.stl-a.stl)||(a.name<b.name?-1:(a.name>b.name?1:0)); };
+  var q=all.filter(function(x){ return x.qualifies; }).sort(cmp);
+  var others=all.filter(function(x){ return !x.qualifies&&x.gp>0; }).sort(cmp);
+  q.forEach(function(x,i){ x.rank=(i>0&&Math.abs(q[i-1].score-x.score)<1e-9)?q[i-1].rank:i+1; x.finalist=x.rank<=DEF_FINALISTS; });
+  return {qualified:q,others:others,teams:teamInfo};
+}
+function renderDefense(rows){
+  var sec=document.getElementById('def-section');
+  var res=computeDefense(rows,getSeededStandings());
+  var teamCell=function(x){ return x.team?(x.team.paPg.toFixed(1)+' <span style="color:var(--muted);font-size:11px;">('+_ord(x.team.rank)+')</span>'):'—'; };
+  var rowHtml=function(x,ranked){
+    var r=x.row, tip=ranked?'':(' title="Needs '+x.need+' games (half of '+x.teamGp+')"');
+    return '<tr'+tip+(ranked&&x.finalist?' class="def-fin"':'')+(ranked?'':' style="opacity:.55;"')+'>'
+      +'<td style="text-align:left;font-weight:800;font-family:\'Barlow Condensed\',sans-serif;font-size:'+(ranked&&x.rank<=3?'18':'14')+'px;">'+(ranked?(x.rank<=3?['🥇','🥈','🥉'][x.rank-1]:x.rank):'—')+'</td>'
+      +'<td style="text-align:left;"><span style="cursor:pointer;color:var(--orange);text-decoration:underline;" onclick="showPlayerModal('+JSON.stringify(r).replace(/"/g,'&quot;')+')">'+gdEsc(x.name)+'</span>'+(ranked&&x.finalist?' <span title="Finalist" style="font-size:11px;">🛡</span>':'')+'</td>'
+      +'<td style="text-align:left;cursor:pointer;" data-team="'+gdEsc(x.teamName)+'" onclick="showTeamModal(this.getAttribute(\'data-team\'))"><span style="text-decoration:underline;color:var(--white);">'+gdEsc(x.teamName)+'</span></td>'
+      +'<td>'+x.gp+(ranked?'':'<span style="color:var(--muted);font-size:11px;"> / '+x.need+'</span>')+'</td>'
+      +'<td>'+x.stl.toFixed(1)+'</td><td>'+x.blk.toFixed(1)+'</td><td>'+x.reb.toFixed(1)+'</td>'
+      +'<td style="color:var(--orange);font-weight:800;font-size:15px;">'+x.score.toFixed(2)+'</td>'
+      +'<td>'+teamCell(x)+'</td></tr>';
+  };
+  var note='<div style="background:var(--dark2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:1rem;font-size:12.5px;line-height:1.55;color:var(--light);">'
+    +'<div style="font-weight:800;color:var(--white);font-size:13px;margin-bottom:4px;">🛡 Defensive Player of the Season — the shortlist</div>'
+    +'<b>DEF</b> = '+DEF_W.stl.toFixed(1)+' × steals + '+DEF_W.blk.toFixed(1)+' × blocks + '+DEF_W.reb.toFixed(1)+' × rebounds, per game. '
+    +'Players must have played at least <b>half of their team\'s games</b>. The <b>top '+DEF_FINALISTS+'</b> (🛡) are the finalists. '
+    +'<span style="color:var(--muted);">Team points allowed per game is shown for context and is not part of the score. '
+    +'The app can\'t see opponent shooting, charges or contesting shots, so this picks the finalists — the winner is chosen from them.</span></div>';
+  var body;
+  if(!rows.length) body='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No players found.</td></tr>';
+  else {
+    body=res.qualified.length?res.qualified.map(function(x){ return rowHtml(x,true); }).join('')
+      :'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;font-style:italic;">No one has played enough games yet (at least half of their team\'s games).</td></tr>';
+    if(res.others.length) body+='<tr><td colspan="9" style="text-align:left;color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:14px 12px 6px;">Not enough games yet</td></tr>'+res.others.map(function(x){ return rowHtml(x,false); }).join('');
+  }
+  sec.innerHTML=note+'<div class="stats-card"><table id="def-table"><thead><tr>'
+    +'<th style="text-align:left;">Rk</th><th style="text-align:left;">Player</th><th style="text-align:left;">Team</th><th>GP</th>'
+    +'<th title="Steals per game">STL/G</th><th title="Blocks per game">BLK/G</th><th title="Rebounds per game">REB/G</th>'
+    +'<th style="color:var(--orange);" title="1.0 × STL + 0.7 × BLK + 0.3 × REB, per game">DEF</th>'
+    +'<th title="The player\'s team: points allowed per game (rank among teams)">TEAM PA/G</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
 function setStatTab(key){
   currentStatTab=key;
   document.querySelectorAll('.stat-tab').forEach(function(b){b.classList.remove('active');});
   var on=document.querySelector('.stat-tab[data-key="'+key+'"]');
   if(on) on.classList.add('active');
   // Highlight active column header
-  ['eff','pts','reb','ast','stl','blk','to','dd','td','mpg'].forEach(function(k){
+  ['eff','pts','reb','ast','stl','blk','to','dd','td','mpg','def'].forEach(function(k){
     var th=document.getElementById('th-'+k);
     if(th) th.style.color=k===key?'var(--orange)':'';
   });
@@ -2830,6 +2900,10 @@ function renderPlayerStats(){
     var c=ddtdCounts(r); r.dd=c.dd; r.td=c.td;
   });
   var key=currentStatTab;
+  var defOn=(key==='def');
+  document.getElementById('p-main-card').style.display=defOn?'none':'';
+  document.getElementById('def-section').style.display=defOn?'block':'none';
+  if(defOn){ document.getElementById('former-players-section').style.display='none'; renderDefense(rows); return; }
   rows.sort(function(a,b){
     var av = key==='eff' ? a.eff : (key==='mpg' ? a.mpg : (key==='dd' ? a.dd : (key==='td' ? a.td : (a.s[key]||0))));
     var bv = key==='eff' ? b.eff : (key==='mpg' ? b.mpg : (key==='dd' ? b.dd : (key==='td' ? b.td : (b.s[key]||0))));
