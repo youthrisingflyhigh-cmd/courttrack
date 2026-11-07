@@ -2624,7 +2624,7 @@ function computePlayoffOutlook(inp){
   var G=inp.games.map(function(g){ return {h:idx[g.home],a:idx[g.away]}; });
   var ownMask=E.map(function(){ return 0; }), ownWin=E.map(function(){ return 0; }), ownCount=E.map(function(){ return 0; });
   G.forEach(function(g,k){ ownMask[g.h]|=(1<<k); ownWin[g.h]|=(1<<k); ownMask[g.a]|=(1<<k); ownCount[g.h]++; ownCount[g.a]++; });   // bit set = home team wins
-  var bestAll=E.map(function(){ return 99; }), worstAll=E.map(function(){ return 0; }), ownWorst=E.map(function(){ return -1; });
+  var bestAll=E.map(function(){ return 99; }), worstAll=E.map(function(){ return 0; }), ownWorst=E.map(function(){ return -1; }), seedMask=E.map(function(){ return 0; });   // seedMask bit s = can finish seed s
   var gStat=G.map(function(){ return {hWin:0,hLose:99,aWin:0,aLose:99}; });
   var tie={first:false,bye:false,playoff:false};
   for(var m=0;m<S;m++){
@@ -2655,13 +2655,13 @@ function computePlayoffOutlook(inp){
     while(s<T){
       var e2=s+1; while(e2<T && pn(order[e2])*pd(order[s])===pn(order[s])*pd(order[e2])) e2++;
       var names=order.slice(s,e2).map(function(i){ return E[i].name; });
-      if(names.length===1){ bestS[order[s]]=s+1; worstS[order[s]]=s+1; }
+      if(names.length===1){ bestS[order[s]]=s+1; worstS[order[s]]=s+1; seedMask[order[s]]|=(1<<(s+1)); }
       else {
         var ords=_groupOrders(names,h2hS,inp.pairs,feasible);
         names.forEach(function(nm){
           var i=idx[nm];
-          if(!ords){ bestS[i]=s+1; worstS[i]=e2; return; }
-          var lo=99, hi=0; ords.forEach(function(o){ var pos=s+1+o.indexOf(nm); if(pos<lo) lo=pos; if(pos>hi) hi=pos; });
+          if(!ords){ bestS[i]=s+1; worstS[i]=e2; for(var q=s+1;q<=e2;q++) seedMask[i]|=(1<<q); return; }
+          var lo=99, hi=0; ords.forEach(function(o){ var pos=s+1+o.indexOf(nm); if(pos<lo) lo=pos; if(pos>hi) hi=pos; seedMask[i]|=(1<<pos); });
           bestS[i]=lo; worstS[i]=hi;
         });
       }
@@ -2686,7 +2686,7 @@ function computePlayoffOutlook(inp){
   return {
     spots:spots, bye:bye, scenarios:S, tieRisk:tie,
     teams:E.map(function(e,i){
-      return {name:e.name,w:e.w,l:e.l,best:bestAll[i],worst:worstAll[i],remaining:ownCount[i],ownWorst:ownWorst[i],
+      return {name:e.name,w:e.w,l:e.l,best:bestAll[i],worst:worstAll[i],seedMask:seedMask[i],remaining:ownCount[i],ownWorst:ownWorst[i],
         clinchedPlayoff:worstAll[i]<=spots, eliminated:bestAll[i]>spots,
         clinchedBye:bye>0&&worstAll[i]<=bye, canBye:bye>0&&bestAll[i]<=bye,
         clinchedFirst:worstAll[i]===1, canFirst:bestAll[i]===1};
@@ -2712,15 +2712,19 @@ function _nameList(a){ return a.length<2?a.join(''):a.slice(0,-1).join(', ')+' a
 // The headlines and the status chips, written from the outlook.
 function playoffNews(o,games,seedNow){
   var spots=o.spots, bye=o.bye, T=o.teams, items=[];
+  var allLocked=T.every(function(t){ var m=t.seedMask; return m&&(m&(m-1))===0; });                 // every team has exactly one possible seed
+  if(allLocked) return {items:[],needs:null,chips:[],tieNote:'',rules:'',sub:''};
   var mds=[]; games.forEach(function(g){ if(g.md&&mds.indexOf(g.md)===-1) mds.push(g.md); });
   mds.sort(function(a,b){ var x=a.split('-'), y=b.split('-'); return ((+x[0])*100+(+x[1]))-((+y[0])*100+(+y[1])); });
   var when=mds.length===1?_mdText(mds[0]):null;
   var decide=when?('the '+when+' results decide it'):'the remaining games decide it';
+  var semis=(spots===4&&!bye);                                   // top-4 divisions: #1 plays #4 and #2 plays #3 in the semifinals
+  var semisText=' The #1 seed plays #4 and #2 plays #3 in the semifinals.';
   var nm=function(t){ return t.name; };
   var fighters=T.filter(function(t){ return t.canFirst; }), clFirst=T.filter(function(t){ return t.clinchedFirst; });
   // 1) the #1 seed (and the bye that comes with it)
   if(clFirst.length) items.push({icon:'🥇',title:'#1 SEED CLINCHED',text:clFirst[0].name+' has clinched the #1 seed'+(bye?' and a bye to the semifinals':'')+'.'});
-  else if(fighters.length>=2) items.push({icon:'🏆',title:'RACE FOR #1',text:_nameList(fighters.map(nm))+' '+(fighters.length===2?'can both':'can all')+' still finish first — '+decide+'.'+(bye?' The top '+bye+' seeds get a bye to the semifinals.':'')});
+  else if(fighters.length>=2) items.push({icon:'🏆',title:'RACE FOR #1',text:_nameList(fighters.map(nm))+' '+(fighters.length===2?'can both':'can all')+' still finish first — '+decide+'.'+(bye?' The top '+bye+' seeds get a bye to the semifinals.':(semis?semisText:''))});
   // 2) the byes
   if(bye>0){
     var clBye=T.filter(function(t){ return t.clinchedBye; }), byeRace=T.filter(function(t){ return t.canBye&&!t.clinchedBye; }), open=bye-clBye.length;
@@ -2757,9 +2761,18 @@ function playoffNews(o,games,seedNow){
     var winIn=bubble.filter(function(t){ return t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots; }), help=bubble.filter(function(t){ return !(t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots); });
     needs=[]; if(winIn.length) needs.push('Win and in: '+_nameList(winIn.map(nm))); if(help.length) needs.push('Needs help: '+_nameList(help.map(nm)));
   }
+  // 3b) everyone is in (or out) and there are no byes: the seeds themselves decide who plays whom, so say which are still open
+  if(!bye && openSpots<=0 && !bubble.length){
+    var open=[];
+    for(var sd=2;sd<=Math.min(spots,T.length);sd++){
+      var cand=T.filter(function(t){ return (t.seedMask>>sd)&1; }).map(nm);
+      if(cand.length>1) open.push('#'+sd+': '+cand.join(' / '));
+    }
+    if(open.length) items.push({icon:'🔢',title:'SEEDS STILL OPEN',text:open.join('  ·  ')+'.'+(semis&&!fighters.length?semisText:'')});
+  }
   // chips: every team, in current order, with where it stands
   var chips=T.slice().sort(function(a,b){ return (seedNow[a.name]||99)-(seedNow[b.name]||99); }).map(function(t){
-    var st=t.eliminated?'OUT':(t.clinchedBye?'BYE':(t.clinchedPlayoff?(t.canBye?'IN · BYE RACE':'IN'):'ALIVE'));
+    var st=t.eliminated?'OUT':(t.clinchedBye?'BYE':(t.clinchedPlayoff?(bye?(t.canBye?'IN · BYE RACE':'IN'):('IN · #'+t.best+(t.best!==t.worst?'–#'+t.worst:''))):'ALIVE'));
     return {seed:seedNow[t.name]||0,name:t.name,w:t.w,l:t.l,status:st,kind:t.eliminated?'out':(t.clinchedBye?'bye':(t.clinchedPlayoff?'in':'alive'))};
   });
   var tieNote=(o.tieRisk.first||o.tieRisk.bye||o.tieRisk.playoff)?'If teams finish tied on win %, the team that won the head-to-head is seeded higher, no matter the points; then point differential.':'';
@@ -2773,9 +2786,9 @@ function playoffPictureData(){
     var entries=Object.keys(standings||{}).map(function(n){ var s=standings[n]||{}; return {name:n,w:s.w||0,l:s.l||0,d:(s.pf||0)-(s.pa||0)}; });
     if(entries.length<2) return null;
     var fmt=playoffFormat();
-    if(entries.length<=fmt.spots && !fmt.bye) return null;                    // everyone makes it: nothing to decide
     var games=remainingRegularSeasonGames();
-    if(!games.length || games.length>12) return null;                         // not in the final stretch yet (or season over)
+    var cap=entries.length<=5?14:12;                                           // small divisions are cheap to work out, so allow a bit longer
+    if(!games.length || games.length>cap) return null;                        // not in the final stretch yet (or season over)
     var names=entries.map(function(e){ return e.name; }), base={}, ov={}, list=_h2hList();
     names.forEach(function(a){ names.forEach(function(b){
       if(a===b) return;
