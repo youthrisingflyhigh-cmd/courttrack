@@ -1582,10 +1582,18 @@ function _schTeamsMatch(a,b){
 }
 var _SCH_MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
 function _schMd(str){
-  var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
+  var t=(str||'').toString(), low=t.toLowerCase(), m;
+  var MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  m=t.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);                       // 2026-11-15 or 2026/11/15
+  if(m) return (+m[2])+'-'+(+m[3]);
+  m=t.match(/(\d{1,2})\/(\d{1,2})/);                                       // 11/15 or 11/15/2026
   if(m) return (+m[1])+'-'+(+m[2]);
-  var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
-  return m2?((_SCH_MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
+  var NAMES='(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  m=low.match(new RegExp('\\b'+NAMES+'\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b'));            // November 15, Nov 15, Nov. 15, Sept 3, November 8th
+  if(m) return (MON.indexOf(m[1].slice(0,3))+1)+'-'+(+m[2]);
+  m=low.match(new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?'+NAMES+'\\b'));   // 15 November, 15th Nov
+  if(m) return (MON.indexOf(m[2].slice(0,3))+1)+'-'+(+m[1]);
+  return null;
 }
 // Returns {rowIndex: {homeScore, awayScore}} for rows still showing Upcoming
 // that have a saved game (same two teams, same day). Scores are oriented to
@@ -2556,6 +2564,8 @@ function getSeededStandings(){
 // then head-to-head, then point differential). Head-to-head is decided by results, so it can be worked out ahead of time.
 // Point differential depends on the final scores, so a tie that only point differential can break is treated as "could go
 // either way" — which keeps every "clinched" and "eliminated" below a guarantee, not a guess.
+// The Playoff Picture appears on its own once EVERY team in the division has played at least this many games.
+var PLAYOFF_PICTURE_MIN_GAMES=5;
 function playoffFormat(){
   var is35=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1;
   return is35?{spots:6,bye:2}:{spots:4,bye:0};          // top 6 with a bye for #1-#2 in 35+; top 4 elsewhere
@@ -2749,10 +2759,10 @@ function playoffNews(o,games,seedNow){
       var g=x.g, hW=g.hWin<=spots, aW=g.aWin<=spots, hL=g.hLose>spots, aL=g.aLose>spots, cl=[];
       if(hW&&aW&&hL&&aL) cl.push("win and you're in, lose and you're out");
       else {
-        if(hW&&aW) cl.push('the winner clinches a playoff spot');
-        else { if(hW) cl.push(g.home+' clinches with a win'); if(aW) cl.push(g.away+' clinches with a win'); }
-        if(hL&&aL) cl.push('the loser is eliminated');
-        else { if(hL) cl.push(g.home+' is out with a loss'); if(aL) cl.push(g.away+' is out with a loss'); }
+        if(hW&&aW) cl.push('if either team wins, it clinches a playoff spot');
+        else { if(hW) cl.push('if '+g.home+' beat '+g.away+", they clinch a playoff spot"); if(aW) cl.push('if '+g.away+' beat '+g.home+", they clinch a playoff spot"); }
+        if(hL&&aL) cl.push("if either team loses, it's eliminated");
+        else { if(hL) cl.push('if '+g.home+' lose to '+g.away+", they're eliminated"); if(aL) cl.push('if '+g.away+' lose to '+g.home+", they're eliminated"); }
       }
       return g.home+' vs '+g.away+(x.md?' ('+_mdText(x.md)+')':'')+(cl.length?' — '+cl.join('; '):' — two teams still alive go head to head');
     });
@@ -2775,7 +2785,7 @@ function playoffNews(o,games,seedNow){
     var st=t.eliminated?'OUT':(t.clinchedBye?'BYE':(t.clinchedPlayoff?(bye?(t.canBye?'IN · BYE RACE':'IN'):('IN · #'+t.best+(t.best!==t.worst?'–#'+t.worst:''))):'ALIVE'));
     return {seed:seedNow[t.name]||0,name:t.name,w:t.w,l:t.l,status:st,kind:t.eliminated?'out':(t.clinchedBye?'bye':(t.clinchedPlayoff?'in':'alive'))};
   });
-  var tieNote=(o.tieRisk.first||o.tieRisk.bye||o.tieRisk.playoff)?'If teams finish tied on win %, the team that won the head-to-head is seeded higher, no matter the points; then point differential.':'';
+  var tieNote=(o.tieRisk.first||o.tieRisk.bye||o.tieRisk.playoff)?'If teams finish tied on win %, the team that won the head-to-head is seeded higher, no matter the points; then point differential. If three or more teams tie and each has beaten one of the others, head-to-head cancels out and point differential decides.':'';
   var rules='Top '+spots+' seeds make the playoffs'+(bye?' · #1 and #2 get a bye to the semifinals':'');
   var sub=mds.length===1?'FINAL WEEK · '+_mdText(mds[0]):(mds.length+' WEEKS LEFT'+(mds.length?' · THROUGH '+_mdText(mds[mds.length-1]):''));
   return {items:items,needs:needs,chips:chips,tieNote:tieNote,rules:rules,sub:sub};
@@ -2787,6 +2797,9 @@ function playoffPictureData(){
     if(entries.length<2) return null;
     var fmt=playoffFormat();
     var games=remainingRegularSeasonGames();
+    // wait until every team has played enough games (a team that has never played and is not on the schedule is ignored)
+    var left={}; games.forEach(function(g){ left[g.home]=(left[g.home]||0)+1; left[g.away]=(left[g.away]||0)+1; });
+    if(entries.some(function(e){ var gp=e.w+e.l; return gp<PLAYOFF_PICTURE_MIN_GAMES && !(gp===0 && !left[e.name]); })) return null;
     var cap=entries.length<=5?14:12;                                           // small divisions are cheap to work out, so allow a bit longer
     if(!games.length || games.length>cap) return null;                        // not in the final stretch yet (or season over)
     var names=entries.map(function(e){ return e.name; }), base={}, ov={}, list=_h2hList();
@@ -2929,7 +2942,7 @@ function renderStandings(){
     +'<div id="standings-tiebreak-note" style="font-size:12px;color:var(--muted);line-height:1.65;margin:-1rem 0 2rem;"><b style="color:var(--light);">Tied on win %?</b> '
     +'<b style="color:var(--light);">1.</b> Head-to-head — if one team beat the other, that team is seeded higher, no matter the points. '
     +'<b style="color:var(--light);">2.</b> Point differential. <b style="color:var(--light);">3.</b> Points per game. '
-    +'With three or more teams tied, only the games among those teams count for step 1.</div>'
+    +'With three or more teams tied, only the games among those teams count for step 1 — and if each of them has beaten one of the others, those games cancel out and point differential decides.</div>'
     +'<h3 style="font-size:20px;font-weight:700;color:var(--white);margin-bottom:12px;">Game History</h3>'+histHtml;
 }
 

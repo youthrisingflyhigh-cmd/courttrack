@@ -6115,10 +6115,18 @@ function _schPairMatch(s,t){
 }
 var _SCH_MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
 function _schMd(str){
-  var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
+  var t=(str||'').toString(), low=t.toLowerCase(), m;
+  var MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  m=t.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);                       // 2026-11-15 or 2026/11/15
+  if(m) return (+m[2])+'-'+(+m[3]);
+  m=t.match(/(\d{1,2})\/(\d{1,2})/);                                       // 11/15 or 11/15/2026
   if(m) return (+m[1])+'-'+(+m[2]);
-  var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
-  return m2?((_SCH_MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
+  var NAMES='(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  m=low.match(new RegExp('\\b'+NAMES+'\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b'));            // November 15, Nov 15, Nov. 15, Sept 3, November 8th
+  if(m) return (MON.indexOf(m[1].slice(0,3))+1)+'-'+(+m[2]);
+  m=low.match(new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?'+NAMES+'\\b'));   // 15 November, 15th Nov
+  if(m) return (MON.indexOf(m[2].slice(0,3))+1)+'-'+(+m[1]);
+  return null;
 }
 function _schCleanDate(str){ return /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/.test(str||''); }
 function _schOriented(row,t){   // t's score, oriented to row's home/away
@@ -6219,12 +6227,7 @@ function rebuildScheduleFromGameHistory(){
   }
   // month-day of "9/23/2026" or "Thursday, September 23", for breaking ties
   var MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
-  function md(str){
-    var t=(str||'').toString(), m=t.match(/(\d{1,2})\/(\d{1,2})/);
-    if(m) return (+m[1])+'-'+(+m[2]);
-    var m2=t.toLowerCase().match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
-    return m2?((MONTHS.indexOf(m2[1])+1)+'-'+(+m2[2])):null;
-  }
+  function md(str){ return _schMd(str); }          // one shared date reader (it also understands "Sun, Nov 15, 2026")
   // Known date → round for games with no matching row and no week number
   function resolveRoundFromDate(dateStr){
     var dd=(dateStr||'').toLowerCase();
