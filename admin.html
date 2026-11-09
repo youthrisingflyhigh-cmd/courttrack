@@ -7820,11 +7820,14 @@ function headToHeadRecord(nameA,nameB){
     // archived Summer 2026 league, whose final order was settled using its
     // own manual overrides.)
     if(CT_BASE!==LEGACY_BASE && (g.isPlayoff===true || g.excludedFromStandings===true)) return;
-    var isMatchup=(g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA);
+    // team names are compared ignoring capitals, spaces and punctuation, so "FLEET OGS" and "Fleet OGs" are the same team
+    var hn=_h2hNorm(g.home), an=_h2hNorm(g.away);
+    var isMatchup=(hn===nA&&an===nB)||(hn===nB&&an===nA);
     if(!isMatchup) return;
     var winner=g.homeScore>g.awayScore?g.home:(g.awayScore>g.homeScore?g.away:null);
-    if(winner===nameA) aw++;
-    else if(winner===nameB) bw++;
+    var wn2=winner?_h2hNorm(winner):null;
+    if(wn2===nA) aw++;
+    else if(wn2===nB) bw++;
   });
   return {aw:aw,bw:bw};
 }

@@ -2479,11 +2479,14 @@ function headToHeadRecord(nameA,nameB){
     // archived Summer 2026 league, whose final order was settled using its
     // own manual overrides.)
     if(CT_BASE!==LEGACY_BASE && (g.isPlayoff===true || g.excludedFromStandings===true)) return;
-    var isMatchup=(g.home===nameA&&g.away===nameB)||(g.home===nameB&&g.away===nameA);
+    // team names are compared ignoring capitals, spaces and punctuation, so "FLEET OGS" and "Fleet OGs" are the same team
+    var hn=_h2hNorm(g.home), an=_h2hNorm(g.away);
+    var isMatchup=(hn===nA&&an===nB)||(hn===nB&&an===nA);
     if(!isMatchup) return;
     var winner=g.homeScore>g.awayScore?g.home:(g.awayScore>g.homeScore?g.away:null);
-    if(winner===nameA) aw++;
-    else if(winner===nameB) bw++;
+    var wn2=winner?_h2hNorm(winner):null;
+    if(wn2===nA) aw++;
+    else if(wn2===nB) bw++;
   });
   return {aw:aw,bw:bw};
 }
@@ -2908,6 +2911,55 @@ function renderAllStarTab(){
   el.innerHTML=html;
 }
 
+// ── "Why this order?" for teams tied on win %: the games among them and which rule decided ──
+function explainStandingsTies(){
+  var rows=getSeededStandings(), groups={}, order=[];
+  rows.forEach(function(t){ var k=String(t.pctNum); if(!groups[k]){ groups[k]=[]; order.push(k); } groups[k].push(t); });
+  var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{}), list=_h2hList(), out=[];
+  var sgn=function(n){ return (n>0?'+':(n<0?'−':''))+Math.abs(n); };
+  order.forEach(function(k){
+    var g=groups[k]; if(g.length<2) return;
+    var norm=g.map(function(t){ return _h2hNorm(t.name); }), games=[];
+    hist.forEach(function(x){
+      if(!x) return;
+      if(CT_BASE!==LEGACY_BASE && (x.isPlayoff===true||x.excludedFromStandings===true)) return;
+      var h=_h2hNorm(x.home), a=_h2hNorm(x.away);
+      if(h===a||norm.indexOf(h)===-1||norm.indexOf(a)===-1) return;
+      var hs=+x.homeScore||0, as=+x.awayScore||0; if(hs===as) return;
+      games.push(gdEsc(hs>as?x.home:x.away)+' beat '+gdEsc(hs>as?x.away:x.home)+' '+Math.max(hs,as)+'–'+Math.min(hs,as)+(x.date?' ('+gdEsc(x.date)+')':''));
+    });
+    var decisions=list.filter(function(o){ return norm.indexOf(_h2hNorm(o.teamA))>-1 && norm.indexOf(_h2hNorm(o.teamB))>-1; });
+    var diffTxt=g.map(function(t){ return gdEsc(t.name)+' '+sgn(t.diff); }).join(', ');
+    var mini=g.map(function(t){ var w=0,l=0; g.forEach(function(u){ if(u===t) return; var r=headToHeadRecord(t.name,u.name); w+=r.aw; l+=r.bw; }); return {name:t.name,w:w,l:l}; });
+    var recTxt=mini.map(function(m){ return gdEsc(m.name)+' '+m.w+'–'+m.l; }).join(' · ');
+    var why, kind;
+    if(g.length===2){
+      var r=headToHeadRecord(g[0].name,g[1].name);
+      if(decisions.length){ kind='decision'; why='League decision: '+gdEsc(decisions[0].winner)+' over '+gdEsc(_h2hNorm(decisions[0].winner)===_h2hNorm(decisions[0].teamA)?decisions[0].teamB:decisions[0].teamA)+', so '+gdEsc(g[0].name)+' is seeded higher.'; }
+      else if(r.aw!==r.bw){ kind='h2h'; why='<b>'+gdEsc(g[0].name)+'</b> beat <b>'+gdEsc(g[1].name)+'</b> — head-to-head comes first, so '+gdEsc(g[0].name)+' is seeded higher no matter the points.'; }
+      else { kind=games.length?'split':'nogames'; why=(games.length?'They split their games, ':'They have not played each other, ')+'so point differential decides: '+diffTxt+'.'; }
+    } else {
+      var ps=mini.map(function(m){ return (m.w+m.l)>0?m.w/(m.w+m.l):0.5; }), level=ps.every(function(q){ return q===ps[0]; });
+      if(level&&!games.length){ kind='nogames'; why='None of them have played each other, so point differential decides: '+diffTxt+'.'; }
+      else if(level){ kind='level'; why='Their results against each other are level ('+recTxt+'), so head-to-head cancels out and point differential decides: '+diffTxt+'.'; }
+      else { kind='record'; why='Results among these teams come first ('+recTxt+'). Anyone still level is decided by head-to-head between just those teams, then point differential ('+diffTxt+').'; }
+    }
+    out.push({pct:g[0].pct,names:g.map(function(t){ return t.name; }),games:games,why:why,kind:kind});
+  });
+  return out;
+}
+var _whyOpen=false;                      // remembers whether the section is open, because the page re-draws itself as data comes in
+function standingsWhyHtml(){
+  var ex=explainStandingsTies(); if(!ex.length) return '';
+  return '<details id="standings-why"'+(_whyOpen?' open':'')+' ontoggle="_whyOpen=this.open" style="margin:-1rem 0 2rem;font-size:12px;color:var(--muted);line-height:1.6;"><summary style="cursor:pointer;color:var(--light);font-weight:700;">Why are tied teams in this order?</summary>'
+    +ex.map(function(e){
+      return '<div style="margin:10px 0 0;padding:10px 12px;background:var(--dark2);border:1px solid var(--line);border-radius:8px;">'
+        +'<div style="color:var(--white);font-weight:700;margin-bottom:4px;">Tied at '+gdEsc(e.pct)+': '+e.names.map(gdEsc).join(', ')+'</div>'
+        +(e.games.length?'<div>Games among them: '+e.games.join(' · ')+'</div>':'<div>No games among them yet.</div>')
+        +'<div style="margin-top:4px;color:var(--light);">'+e.why+'</div></div>';
+    }).join('')+'</details>';
+}
+
 function renderStandings(){
   var el=document.getElementById('tab-standings');
   var entries=[];
@@ -2943,6 +2995,7 @@ function renderStandings(){
     +'<b style="color:var(--light);">1.</b> Head-to-head — if one team beat the other, that team is seeded higher, no matter the points. '
     +'<b style="color:var(--light);">2.</b> Point differential. <b style="color:var(--light);">3.</b> Points per game. '
     +'With three or more teams tied, only the games among those teams count for step 1 — and if each of them has beaten one of the others, those games cancel out and point differential decides.</div>'
+    +standingsWhyHtml()
     +'<h3 style="font-size:20px;font-weight:700;color:var(--white);margin-bottom:12px;">Game History</h3>'+histHtml;
 }
 
