@@ -7786,7 +7786,10 @@ function renderBox(){
 // "Head-to-Head Overrides" in admin Settings, which take priority over these). Only used to separate teams that
 // are TIED on win %, and only in the division named.
 var BUILTIN_H2H=[
-  {division:'fall-2026/35-men-s-league',teamA:'Fleet Work',teamB:'United',winner:'Fleet Work'}      // Fleet Work beat United
+  {division:'fall-2026/35-men-s-league',teamA:'Fleet Work',teamB:'United',winner:'Fleet Work'},     // Fleet Work beat United
+  // Fall 2026 40+: league decisions (they only matter when the two teams are tied on win %)
+  {division:'fall-2026/40-league',teamA:'Fleet OGs',teamB:'Flicktown',winner:'Fleet OGs'},         // Fleet OGs beat Flicktown
+  {division:'fall-2026/40-league',teamA:'Old & Slow',teamB:'Birdmen',winner:'Old & Slow'}           // Old & Slow beat Birdmen
 ];
 function _h2hNorm(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
 function _h2hList(){
@@ -7854,28 +7857,57 @@ function _applyForcedPairs(order){
   }
   return order;
 }
-function _orderTiedTeams(group){
+function _h2hOverridden(nameA,nameB){
+  var nA=_h2hNorm(nameA), nB=_h2hNorm(nameB);
+  return _h2hList().some(function(o){ var x=_h2hNorm(o.teamA), y=_h2hNorm(o.teamB); return (x===nA&&y===nB)||(x===nB&&y===nA); });
+}
+// Orders a group of teams that are level on win %. 'trace' (optional) receives each step taken, so the standings page can explain itself.
+//   1. head-to-head: two teams -> who won; three or more -> record in the games among just those teams
+//   2. point differential — and if that leaves some teams level, go back to step 1 for just those teams
+//   3. points per game, then team name
+function _orderTiedTeams(group,trace){
   if(group.length<2) return group.slice();
-  var byDiff=function(list){ return list.slice().sort(function(a,b){
-    if(b.diff!==a.diff) return b.diff-a.diff;
-    if(parseFloat(b.ppg)!==parseFloat(a.ppg)) return parseFloat(b.ppg)-parseFloat(a.ppg);
-    return a.name<b.name?-1:(a.name>b.name?1:0);
-  }); };
+  var T=function(e){ if(trace) trace.push(e); };
+  var byPpg=function(list){
+    var s=list.slice().sort(function(a,b){ var d=parseFloat(b.ppg)-parseFloat(a.ppg); if(d) return d; return a.name<b.name?-1:(a.name>b.name?1:0); });
+    T({k:'ppg',list:s.map(function(t){ return {name:t.name,ppg:t.ppg}; })});
+    return s;
+  };
+  var byDiff=function(list){
+    var s=list.slice().sort(function(a,b){ return b.diff-a.diff; });
+    if(s.every(function(t){ return t.diff===s[0].diff; })){ T({k:'pdlevel',diff:s[0].diff}); return byPpg(s); }
+    T({k:'pd',list:s.map(function(t){ return {name:t.name,diff:t.diff}; })});
+    var out=[], i=0;
+    while(i<s.length){
+      var j=i; while(j<s.length && s[j].diff===s[i].diff) j++;
+      var run=s.slice(i,j);
+      if(run.length===1) out.push(run[0]);
+      else { T({k:'pdtie',names:run.map(function(t){ return t.name; }),diff:s[i].diff}); out=out.concat(_orderTiedTeams(run,trace)); }   // level on points too: head-to-head between just these teams again
+      i=j;
+    }
+    return out;
+  };
   if(group.length===2){
     var h=headToHeadRecord(group[0].name,group[1].name);
-    if(h.aw!==h.bw) return h.aw>h.bw?[group[0],group[1]]:[group[1],group[0]];
+    if(h.aw!==h.bw){
+      var win=h.aw>h.bw?group[0]:group[1], lose=h.aw>h.bw?group[1]:group[0];
+      T({k:_h2hOverridden(group[0].name,group[1].name)?'decision':'h2h',w:win.name,l:lose.name});
+      return [win,lose];
+    }
+    T({k:'nolead',games:h.aw+h.bw});
     return byDiff(group);
   }
   var mini=group.map(function(t){
     var w=0,l=0;
     group.forEach(function(u){ if(u===t) return; var r=headToHeadRecord(t.name,u.name); w+=r.aw; l+=r.bw; });
-    return {t:t,p:(w+l)>0?w/(w+l):0.5};
+    return {t:t,w:w,l:l,p:(w+l)>0?w/(w+l):0.5};
   }).sort(function(x,y){ return y.p-x.p; });
+  T({k:'mini',recs:mini.map(function(m){ return {name:m.t.name,w:m.w,l:m.l}; }),level:mini.every(function(m){ return m.p===mini[0].p; }),games:mini.reduce(function(n,m){ return n+m.w; },0)});
   var out=[], i=0;
   while(i<mini.length){
     var j=i; while(j<mini.length && mini[j].p===mini[i].p) j++;
     var run=mini.slice(i,j).map(function(m){ return m.t; });
-    out=out.concat(run.length===group.length ? byDiff(run) : _orderTiedTeams(run));
+    out=out.concat(run.length===group.length ? byDiff(run) : _orderTiedTeams(run,trace));
     i=j;
   }
   return out;
