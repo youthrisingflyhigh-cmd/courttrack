@@ -8735,7 +8735,7 @@ function playerPhoto(team,name){
   var cands=[dbPhotos[k[0]],uniq?dbPhotos[k[1]]:null,playerPhotos[k[0]],uniq?playerPhotos[k[1]]:null];
   for(var i=0;i<cands.length;i++){
     var uri=cands[i];
-    if(uri && uri.length<=30000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
+    if(uri && uri.length<=50000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
   }
   return null;
 }
@@ -9077,24 +9077,36 @@ function pmDraw(){
   cx.clearRect(0,0,PM_STAGE,PM_STAGE);
   cx.drawImage(_pm.src,_pm.ox,_pm.oy,_pm.sw*_pm.scale,_pm.sh*_pm.scale);
 }
-// 256x256 JPEG, kept small (the database stores it as text). Shown up to ~110 px wide on the MVP card, so 256 stays sharp
-// on a retina screen; photos saved earlier at 160 still work (they are just a touch softer at the biggest size).
-function pmExport(){
-  var r=_pmSourceRect(_pm.ox,_pm.oy,_pm.scale,PM_STAGE), out=document.createElement('canvas');
-  out.width=256; out.height=256;
-  out.getContext('2d').drawImage(_pm.src,r.sx,r.sy,r.size,r.size,0,0,256,256);
-  var q=[0.86,0.78,0.7,0.62,0.54], uri='';
-  for(var i=0;i<q.length;i++){ uri=out.toDataURL('image/jpeg',q[i]); if(uri.length<=34000) return uri; }
-  return uri.length<=46000?uri:'';
+// A JPEG small enough for the database (it stores the photo as text) and for the page to accept it when showing it (30,000-50,000 characters
+// is the most it will display). Tries 256 px first, then smaller sizes, and always stays under 29,000 characters. maxSize lets a retry ask for a smaller picture.
+function pmExport(maxSize){
+  var r=_pmSourceRect(_pm.ox,_pm.oy,_pm.scale,PM_STAGE), sizes=[256,224,192,160].filter(function(s){ return s<=(maxSize||256); });
+  var budget={256:26000,224:22000,192:18000,160:16000}, q=[0.86,0.78,0.7,0.62,0.54,0.46,0.38], smallest='';
+  for(var si=0;si<sizes.length;si++){
+    var size=sizes[si], out=document.createElement('canvas'); out.width=size; out.height=size;
+    out.getContext('2d').drawImage(_pm.src,r.sx,r.sy,r.size,r.size,0,0,size,size);
+    for(var i=0;i<q.length;i++){
+      var uri=out.toDataURL('image/jpeg',q[i]);
+      if(uri.length<=budget[size]) return uri;
+      if(!smallest||uri.length<smallest.length) smallest=uri;
+    }
+  }
+  return smallest.length<=29000?smallest:'';
 }
 function pmSave(){
   var msg=document.getElementById('pm-msg');
   if(!_pm.src){ msg.textContent='Choose a photo first.'; return; }
-  var uri=pmExport(); if(!uri){ msg.textContent='That photo is too detailed to store. Try zooming in a bit.'; return; }
+  var uri=pmExport(256); if(!uri){ msg.textContent='That photo is too detailed to store. Try zooming in a bit.'; return; }
   var btn=document.getElementById('pm-save'); btn.disabled=true; btn.textContent='Saving…'; var key=_pm.key;
-  db.ref('playerPhotos/'+key).set(uri).then(function(){
-    dbPhotos[key]=uri; btn.textContent='Save'; pmClose(); renderPhotosPage();
-  }).catch(function(e){ btn.disabled=false; btn.textContent='Save'; msg.textContent='Couldn\'t save: '+((e&&e.message)||'the database said no.'); });
+  var attempt=function(u,retried){
+    return db.ref('playerPhotos/'+key).set(u).then(function(){
+      dbPhotos[key]=u; btn.textContent='Save'; btn.disabled=false; pmClose(); renderPhotosPage();
+    }).catch(function(e){
+      if(!retried){ var small=pmExport(160); if(small && small.length<u.length) return attempt(small,true); }     // the database refused it: try a smaller picture before giving up
+      btn.disabled=false; btn.textContent='Save'; msg.textContent='Couldn\'t save: '+((e&&e.message)||'the database said no.');
+    });
+  };
+  attempt(uri,false);
 }
 function pmRemove(){
   var msg=document.getElementById('pm-msg');

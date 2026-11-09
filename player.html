@@ -1151,7 +1151,7 @@ function playerPhoto(team,name){
   var cands=[dbPhotos[t+'-'+full],uniq?dbPhotos[t+'-'+first]:null,playerPhotos[t+'-'+full],uniq?playerPhotos[t+'-'+first]:null];
   for(var i=0;i<cands.length;i++){
     var uri=cands[i];
-    if(uri && uri.length<=30000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
+    if(uri && uri.length<=50000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(uri)) return uri;
   }
   return null;
 }
