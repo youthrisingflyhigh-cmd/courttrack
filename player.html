@@ -287,6 +287,16 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-final{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
 .mvpw-score{font-size:13px;font-weight:700;color:var(--white);margin-top:3px;}
 .mvpw-vs{font-size:10px;color:var(--muted);margin:1px 0 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.ps-season{margin-bottom:1.8rem;}
+.ps-season-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:1px;color:var(--white);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--orange);}
+.ps-div{background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.ps-div-name{font-size:15px;font-weight:700;color:var(--white);margin-bottom:10px;}
+.ps-here{font-size:9px;letter-spacing:1px;color:var(--gold);border:1px solid var(--gold);border-radius:99px;padding:2px 7px;margin-left:6px;vertical-align:middle;}
+.ps-btns{display:flex;flex-wrap:wrap;gap:8px;}
+.ps-btn{font-size:12px;font-weight:700;color:var(--light);background:var(--dark3);border:1px solid var(--line);border-radius:99px;padding:8px 14px;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+@media (hover:hover) and (pointer:fine){ .ps-btn:hover{border-color:var(--orange);color:var(--white);} }
+#archive-banner{background:#2a1f0a;border-bottom:1px solid #4a3410;color:#f0d9a8;font-size:12px;line-height:1.5;padding:8px 20px;}
+#archive-banner a{color:var(--orange);font-weight:700;text-decoration:underline;cursor:pointer;margin-left:8px;}
 .pp-item{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;border-top:1px solid var(--line);}
 .pp-item:first-child{border-top:none;}
 .pp-icon{font-size:22px;line-height:1.1;flex-shrink:0;width:28px;text-align:center;}
@@ -421,7 +431,9 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 <div style="background:var(--dark2);border-bottom:1px solid #333;padding:6px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
   <span style="font-size:10px;color:#888;font-weight:700;letter-spacing:1px;">VIEWING:</span>
   <select id="season-division-select" onchange="switchSeasonDivisionPublic()" style="padding:5px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
+  <a id="nav-past" style="display:none;margin-left:auto;font-size:12px;font-weight:700;color:var(--light);cursor:pointer;text-decoration:underline;white-space:nowrap;" onclick="showTab('pastseasons')">📚 Past seasons</a>
 </div>
+<div id="archive-banner" style="display:none;"></div>
 
 <!-- Mobile dropdown menu -->
 <div class="mobile-menu" id="mobile-menu">
@@ -435,6 +447,7 @@ tr:hover td{background:rgba(255,255,255,0.025);}
   <button class="mobile-tab" onclick="showTab('teams');closeMenu()">🏀 Teams</button>
   <button class="mobile-tab" onclick="showTab('playerstats');closeMenu()">👤 Player Stats</button>
   <button class="mobile-tab" onclick="showTab('locations');closeMenu()">📍 Locations</button>
+  <button class="mobile-tab" id="mnav-past" style="display:none;" onclick="showTab('pastseasons');closeMenu()">📚 Past Seasons</button>
 </div>
 
 <!-- ── TICKER ── -->
@@ -646,6 +659,13 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 </div>
 
 <!-- LOCATIONS -->
+<!-- PAST SEASONS: every archived season, grouped, with links straight to its standings, scores and stats -->
+<div class="page" id="tab-pastseasons">
+  <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">Past Seasons</h2>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">Look back at earlier seasons — final standings, scores, player stats and more. (For the current season, use the VIEWING menu at the top.)</p>
+  <div id="pastseasons-list"><div style="color:var(--muted);font-size:13px;">Loading…</div></div>
+</div>
+
 <div class="page" id="tab-locations">
   <h2 style="font-size:28px;font-weight:900;color:var(--white);margin-bottom:4px;">Locations</h2>
   <p style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;">Game venues and courts.</p>
@@ -734,15 +754,67 @@ function ctPath(sub){ return sub?(CT_BASE+'/'+sub):CT_BASE; }
   });
 })();
 
+// ── PAST SEASONS ──
+var _ctList=[];                                   // the season registry (every season and division, archived or not)
+var _TABS=['home','live','scores','film','schedule','allstar','standings','teams','playerstats','locations','pastseasons'];
+function initialTab(){ var t=getUrlParam('tab'); return _TABS.indexOf(t)>-1?t:'home'; }
+function pastSeasonEntries(){ return _ctList.filter(function(e){ return e&&e.archived; }); }
+function _seasonOf(e){ if(e.seasonLabel) return e.seasonLabel; var l=e.label||'', i=l.indexOf(' · '); return i>0?l.slice(0,i):(l||'Earlier season'); }
+function _divisionOf(e){ if(e.divisionLabel) return e.divisionLabel; var l=e.label||'', i=l.indexOf(' · '); return i>0?l.slice(i+3):l; }
+// a link to a season/division (and optionally a tab). The base is ALWAYS written into the link — even for the original Summer 2026
+// league ('ct') — because a link with no ?ct= is sent to the current season instead.
+function pastLink(base,tab){
+  var u=new URL(window.location.href); u.searchParams.set('ct',base);
+  if(tab) u.searchParams.set('tab',tab); else u.searchParams.delete('tab');
+  return u.toString();
+}
+function currentSeasonEntry(){
+  var viewing=_ctList.filter(function(e){ return e&&e.base===CT_BASE; })[0], active=_ctList.filter(function(e){ return e&&!e.archived; });
+  if(!active.length) return null;
+  return (viewing&&active.filter(function(e){ return e.divisionLabel&&e.divisionLabel===viewing.divisionLabel; })[0])||active[0];
+}
+function renderPastSeasons(){
+  var el=document.getElementById('pastseasons-list'); if(!el) return;
+  var past=pastSeasonEntries();
+  if(!past.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;">No past seasons yet. When a season is archived, it shows up here.</div>'; return; }
+  var order=[], groups={};
+  past.slice().reverse().forEach(function(e){ var s=_seasonOf(e); if(!groups[s]){ groups[s]=[]; order.push(s); } groups[s].push(e); });      // newest first
+  el.innerHTML=order.map(function(s){
+    return '<div class="ps-season"><div class="ps-season-title">'+gdEsc(s)+'</div>'+groups[s].map(function(e){
+      var here=(e.base===CT_BASE);
+      var btn=function(tab,label){ return here?'<a class="ps-btn" onclick="showTab(\''+tab+'\')">'+label+'</a>':'<a class="ps-btn" href="'+gdEsc(pastLink(e.base,tab))+'">'+label+'</a>'; };
+      return '<div class="ps-div"><div class="ps-div-name">'+gdEsc(_divisionOf(e))+(here?' <span class="ps-here">VIEWING NOW</span>':'')+'</div>'
+        +'<div class="ps-btns">'+btn('standings','📊 Standings')+btn('scores','🏆 Scores')+btn('playerstats','👤 Player Stats')+btn('teams','🏀 Teams')+btn('schedule','📅 Schedule')+'</div></div>';
+    }).join('')+'</div>';
+  }).join('');
+}
+function updateArchiveBanner(){
+  var el=document.getElementById('archive-banner'); if(!el) return;
+  var cur=_ctList.filter(function(e){ return e&&e.base===CT_BASE; })[0];
+  if(!cur||!cur.archived){ el.style.display='none'; el.innerHTML=''; return; }
+  var succ=currentSeasonEntry();
+  el.innerHTML='📚 <b>Archived season</b> — '+gdEsc(cur.label||_seasonOf(cur))+'. These are the final numbers.'
+    +(succ?' <a href="'+gdEsc(pastLink(succ.base,''))+'">Go to the current season →</a>':'')
+    +' <a onclick="showTab(\'pastseasons\')">All past seasons</a>';
+  el.style.display='block';
+}
+function afterSeasonListChanged(list){
+  _ctList=(list||[]).filter(Boolean);
+  var has=pastSeasonEntries().length>0;
+  ['nav-past','mnav-past'].forEach(function(id){ var b=document.getElementById(id); if(b) b.style.display=has?'':'none'; });
+  updateArchiveBanner();
+  if(currentTab==='pastseasons') renderPastSeasons();
+}
 function populateSeasonDivisionSelector(){
   var KEY='ct_division_list_v1';
   function paint(list){
     var sel=document.getElementById('season-division-select');
     if(!sel||!list.length)return;
+    afterSeasonListChanged(list);
     sel.innerHTML=list.filter(function(entry){ return entry && (!entry.archived || entry.base===CT_BASE); }).map(function(entry){
       var selected=(entry.base===CT_BASE)?' selected':'';
       return '<option value="'+entry.base+'"'+selected+'>'+entry.label+(entry.archived?' (archived)':'')+'</option>';
-    }).join('');
+    }).join('')+(pastSeasonEntries().length?'<option value="__past__">📚 Past seasons…</option>':'');
   }
   // 1) straight away, from the last copy this device saw — so the options are
   //    there to tap before the network has answered anything
@@ -759,7 +831,12 @@ function switchSeasonDivisionPublic(){
   var sel=document.getElementById('season-division-select');
   if(!sel)return;
   var base=sel.value;
+  if(base==='__past__'){                                  // the "Past seasons…" entry opens the page instead of switching season
+    for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===CT_BASE){ sel.selectedIndex=i; break; }
+    showTab('pastseasons'); return;
+  }
   var url=new URL(window.location.href);
+  url.searchParams.delete('tab');
   if(base===LEGACY_BASE) url.searchParams.delete('ct');
   else url.searchParams.set('ct',base);
   window.location.href=url.toString();
@@ -838,7 +915,7 @@ function updateLoadingBanner(){
 function _boot(){
   if(_booted) return;
   _booted=true; _ready=true;
-  showTab('home');
+  showTab(initialTab());
   updateLoadingBanner();
 }
 function _mark(k){ _got[k]=true; if(_got.teams&&_got.standings&&_got.schedule) _boot(); }
@@ -2225,8 +2302,8 @@ function renderSchedule(){
   // placeholder instead of falling through to the frozen Summer 2026
   // bracket. Dates stay TBD unless it's the 35+ league, which has its own.
   var isNewDivisionBlank=(CT_BASE!==LEGACY_BASE) && !isThursdayLeague;
-  // Fall 2026 · 40+ : semifinals 12/6; event day 12/13 (3-Point Contest 6:30–7:00 PM,
-  // All-Star Game 7:00 PM, Championship 8:00 PM) — both at Muwekma Ohlone Middle School.
+  // Fall 2026 · 40+ : semifinals 12/6; event day 12/13, a MORNING start (3-Point Contest 10:30–11:00 AM,
+  // All-Star Game 11:00 AM, Championship 12:00 PM) — both at Muwekma Ohlone Middle School.
   // Fall 2026 · 35+ : quarterfinals 12/2, semifinals 12/9, event day 12/16 — all at Oak Grove Small Gym (drawn by fall35BracketHtml)
   // (3-Point Shootout 6:30 PM, All-Star Game 7:00 PM, Championship 8:00 PM).
   var isFall2026Forty=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('40-league')!==-1;
@@ -2237,9 +2314,9 @@ function renderSchedule(){
   // (35+ is drawn by fall35BracketHtml: all three rounds at Oak Grove Small Gym.)
   var blankEventLocation=blankLocation;
   var blankShootName=isFall2026Forty?'3-Point Contest':'3-Point Shootout';
-  var blankShootTime=isFall2026ThirtyFive?'6:30 PM':(isFall2026Forty?'6:30 – 7:00 PM':'TBD');
-  var blankAllStarTime=(isFall2026ThirtyFive||isFall2026Forty)?'7:00 PM':'TBD';
-  var blankChampTime=(isFall2026ThirtyFive||isFall2026Forty)?'8:00 PM':'TBD';
+  var blankShootTime=isFall2026ThirtyFive?'6:30 PM':(isFall2026Forty?'10:30 – 11:00 AM':'TBD');
+  var blankAllStarTime=isFall2026ThirtyFive?'7:00 PM':(isFall2026Forty?'11:00 AM':'TBD');
+  var blankChampTime=isFall2026ThirtyFive?'8:00 PM':(isFall2026Forty?'12:00 PM':'TBD');
 
   if(isFall2026ThirtyFive){
     html += fall35BracketHtml();                    // top 6, with winners advancing from the saved playoff games
@@ -2988,25 +3065,6 @@ function explainStandingsTies(){
   });
   return out;
 }
-// League decisions in force for this division (built in, or saved in admin): shown so nothing about the order is hidden.
-function standingsDecisionsHtml(){
-  var list=_h2hList(); if(!list.length) return '';
-  return '<div id="standings-decisions" style="font-size:12px;color:var(--muted);line-height:1.65;margin:-1.4rem 0 1.4rem;"><b style="color:var(--light);">League decisions:</b> '
-    +list.map(function(o){ return gdEsc(o.winner)+' over '+gdEsc(_h2hNorm(o.winner)===_h2hNorm(o.teamA)?o.teamB:o.teamA); }).join(' · ')
-    +' — used only when those two teams are tied on win %.</div>';
-}
-var _whyOpen=false;                      // remembers whether the section is open, because the page re-draws itself as data comes in
-function standingsWhyHtml(){
-  var ex=explainStandingsTies(); if(!ex.length) return '';
-  return '<details id="standings-why"'+(_whyOpen?' open':'')+' ontoggle="_whyOpen=this.open" style="margin:-1rem 0 2rem;font-size:12px;color:var(--muted);line-height:1.6;"><summary style="cursor:pointer;color:var(--light);font-weight:700;">Why are tied teams in this order?</summary>'
-    +ex.map(function(e){
-      return '<div style="margin:10px 0 0;padding:10px 12px;background:var(--dark2);border:1px solid var(--line);border-radius:8px;">'
-        +'<div style="color:var(--white);font-weight:700;margin-bottom:4px;">Tied at '+gdEsc(e.pct)+': '+e.names.map(gdEsc).join(', ')+'</div>'
-        +(e.games.length?'<div>Games among them: '+e.games.join(' · ')+'</div>':'<div>No games among them yet.</div>')
-        +'<div style="margin-top:4px;color:var(--light);">'+e.why+'</div></div>';
-    }).join('')+'</details>';
-}
-
 function renderStandings(){
   var el=document.getElementById('tab-standings');
   var entries=[];
@@ -3038,12 +3096,6 @@ function renderStandings(){
         +'<td>'+e.pf+'</td><td>'+e.pa+'</td><td class="'+dc+'">'+(e.diff>0?'+':'')+e.diff+'</td><td>'+e.ppg+'</td></tr>';
     }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">No completed games yet.</td></tr>')
     +'</tbody></table></div>'
-    +'<div id="standings-tiebreak-note" style="font-size:12px;color:var(--muted);line-height:1.65;margin:-1rem 0 2rem;"><b style="color:var(--light);">Tied on win %?</b> '
-    +'<b style="color:var(--light);">1.</b> Head-to-head — if one team beat the other, that team is seeded higher, no matter the points. '
-    +'<b style="color:var(--light);">2.</b> Point differential — if that leaves only some teams level, head-to-head between just those teams decides again. <b style="color:var(--light);">3.</b> Points per game. '
-    +'With three or more teams tied, only the games among those teams count for step 1 — and if each of them has beaten one of the others, those games cancel out and point differential decides.</div>'
-    +standingsDecisionsHtml()
-    +standingsWhyHtml()
     +'<h3 style="font-size:20px;font-weight:700;color:var(--white);margin-bottom:12px;">Game History</h3>'+histHtml;
 }
 
@@ -3616,7 +3668,7 @@ function showTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+t).classList.add('active');
-  var idx={home:0,live:1,scores:2,film:3,schedule:4,allstar:5,standings:6,teams:7,playerstats:8,locations:9}[t];
+  var idx={home:0,live:1,scores:2,film:3,schedule:4,allstar:5,standings:6,teams:7,playerstats:8,locations:9,pastseasons:10}[t];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
   var mtabs=document.querySelectorAll('.mobile-tab');
@@ -3631,6 +3683,8 @@ function showTab(t){
   if(t==='teams')       { var b=document.getElementById('team-banner');if(b){b.remove();document.getElementById('p-search').value='';} renderTeams(); }
   if(t==='playerstats') renderPlayerStats();
   if(t==='locations')   renderLocations();
+  if(t==='pastseasons') renderPastSeasons();
+  var np=document.getElementById('nav-past'); if(np) np.style.color=(t==='pastseasons')?'var(--orange)':'';
 }
 
 function toggleGameRecord(gi){
