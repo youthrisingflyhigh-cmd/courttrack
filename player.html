@@ -287,6 +287,8 @@ tr:hover td{background:rgba(255,255,255,0.025);}
 .mvpw-final{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
 .mvpw-score{font-size:13px;font-weight:700;color:var(--white);margin-top:3px;}
 .mvpw-vs{font-size:10px;color:var(--muted);margin:1px 0 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;box-sizing:border-box;}
+.loc-tier-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--white);margin:1.6rem 0 10px;padding-bottom:6px;border-bottom:2px solid var(--orange);}
+.loc-tier-title:first-child{margin-top:0;}
 .ps-season{margin-bottom:1.8rem;}
 .ps-season-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:1px;color:var(--white);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--orange);}
 .ps-div{background:var(--dark2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
@@ -3430,9 +3432,39 @@ function renderPlayerStats(){
 }
 
 // ── LOCATIONS ──
+// ── LOCATIONS ──
+// League-wide venues, shared by every division: primary = the main gyms, secondary = backups. Editable in admin (Settings), saved at
+// ctIndex/venues; until anything is saved this standard list is shown.
+var DEFAULT_VENUES=[
+  {name:'Pioneer High School',tier:'primary'},{name:'Oak Grove High School',tier:'primary'},{name:'Ohlone Middle School',tier:'primary'},{name:'San Jose High School',tier:'primary'},
+  {name:'Piedmont High School',tier:'secondary'},{name:'Alviso Community Center',tier:'secondary'}
+];
+var _venues=DEFAULT_VENUES.slice();
+db.ref('ctIndex/venues').on('value',function(s){
+  var v=s.val(), arr=v?(Array.isArray(v)?v:Object.values(v)):[];
+  arr=arr.filter(function(x){ return x&&x.name; });
+  _venues=arr.length?arr:DEFAULT_VENUES.slice();
+  if(currentTab==='locations') renderLocations();
+},function(){});
+function _venueMapsUrl(v){ return 'https://maps.google.com/?q='+encodeURIComponent((v.address&&String(v.address).trim())||(v.name+', San Jose, CA')); }
+function venueCardHtml(v){
+  return '<div class="location-card">'
+    +'<div class="loc-icon">📍</div>'
+    +'<div class="loc-info">'
+      +'<div class="loc-name">'+gdEsc(v.name)+'</div>'
+      +(v.address?'<div class="loc-meta">'+gdEsc(v.address)+'</div>':'')
+      +(v.notes?'<div class="loc-meta" style="font-style:italic;">'+gdEsc(v.notes)+'</div>':'')
+      +'<a class="loc-map-btn" href="'+gdEsc(_venueMapsUrl(v))+'" target="_blank" rel="noopener">🗺 Open in Maps</a>'
+    +'</div>'
+  +'</div>';
+}
 function renderLocations(){
   var el=document.getElementById('locations-list');
-  // Collect unique locations from schedule
+  var primary=_venues.filter(function(v){ return v.tier!=='secondary'; }), secondary=_venues.filter(function(v){ return v.tier==='secondary'; });
+  var html='';
+  if(primary.length) html+='<div class="loc-tier-title">Primary locations</div>'+primary.map(venueCardHtml).join('');
+  if(secondary.length) html+='<div class="loc-tier-title">Secondary locations</div>'+secondary.map(venueCardHtml).join('');
+  // the places games are actually scheduled in this division
   var locMap={};
   schedule.forEach(function(g){
     if(g&&g.location&&!g.isBye){
@@ -3443,22 +3475,21 @@ function renderLocations(){
     }
   });
   var locs=Object.values(locMap);
-  if(!locs.length){
-    el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:8px 0;">No locations found. Add locations in the schedule to see them here.</div>';
-    return;
+  if(locs.length){
+    html+=(html?'<div class="loc-tier-title">Scheduled in this division</div>':'')+locs.map(function(loc){
+      var upcoming=loc.games.filter(function(g){return g.status!=='final';}).length;
+      var encoded=encodeURIComponent(loc.name);
+      return '<div class="location-card">'
+        +'<div class="loc-icon">📍</div>'
+        +'<div class="loc-info">'
+          +'<div class="loc-name">'+gdEsc(loc.name)+'</div>'
+          +'<div class="loc-meta"><span>'+loc.count+'</span> game'+(loc.count!==1?'s':'')+' scheduled'+(upcoming?' · <span>'+upcoming+'</span> upcoming':'')+'</div>'
+          +'<a class="loc-map-btn" href="https://maps.google.com/?q='+encoded+'" target="_blank" rel="noopener">🗺 Open in Maps</a>'
+        +'</div>'
+      +'</div>';
+    }).join('');
   }
-  el.innerHTML=locs.map(function(loc){
-    var upcoming=loc.games.filter(function(g){return g.status!=='final';}).length;
-    var encoded=encodeURIComponent(loc.name);
-    return '<div class="location-card">'
-      +'<div class="loc-icon">📍</div>'
-      +'<div class="loc-info">'
-        +'<div class="loc-name">'+loc.name+'</div>'
-        +'<div class="loc-meta"><span>'+loc.count+'</span> game'+(loc.count!==1?'s':'')+' scheduled'+(upcoming?' · <span>'+upcoming+'</span> upcoming':'')+'</div>'
-        +'<a class="loc-map-btn" href="https://maps.google.com/?q='+encoded+'" target="_blank" rel="noopener">🗺 Open in Maps</a>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+  el.innerHTML=html||'<div style="color:var(--muted);font-size:13px;font-style:italic;padding:8px 0;">No locations found. Add locations in the schedule to see them here.</div>';
 }
 
 // ── LIVE STREAM ──

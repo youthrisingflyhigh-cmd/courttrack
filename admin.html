@@ -1503,9 +1503,23 @@ BYE: Ohana, AIM
     </div>
   </div>
   <div class="card" style="margin-bottom:1.5rem;">
-    <div class="card-header"><h3>📍 Locations</h3></div>
+    <div class="card-header"><h3>📍 Primary &amp; Secondary Locations</h3></div>
     <div class="card-body">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Add named venues shown on the player Locations tab. Each links to Google Maps.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">The league's venues, shown on the player Locations tab of <b>every division</b>. Primary = the main gyms; secondary = backups. Each links to Google Maps (add an address for an exact pin).</p>
+      <div class="input-row">
+        <input type="text" id="lv-name" placeholder="Venue name" style="flex:2;"/>
+        <select id="lv-tier" style="flex:1;"><option value="primary">Primary</option><option value="secondary">Secondary</option></select>
+        <input type="text" id="lv-address" placeholder="Address (optional, for Maps)" style="flex:3;"/>
+        <input type="text" id="lv-notes" placeholder="Notes (optional)" style="flex:2;"/>
+        <button class="btn btn-orange" onclick="addLeagueVenue()">+ Add</button>
+      </div>
+      <div id="league-venues-admin"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3>📍 Locations (this division)</h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Named venues for this division — offered as suggestions when you schedule games or change locations. (What players see on the Locations tab is the Primary &amp; Secondary list above.)</p>
       <div class="input-row">
         <input type="text" id="loc-name-input" placeholder="Venue name" style="flex:2;"/>
         <input type="text" id="loc-address-input" placeholder="Address (for Maps link)" style="flex:3;"/>
@@ -6008,6 +6022,7 @@ function openLocationsByDateModal(){
   var seen={}, opts=[];
   toArr(schedule).forEach(function(r){ if(r&&r.location&&!seen[r.location]){ seen[r.location]=1; opts.push(r.location); } });
   ((typeof appSettings!=='undefined'&&appSettings&&appSettings.locations)||[]).forEach(function(l){ if(l&&l.name&&!seen[l.name]){ seen[l.name]=1; opts.push(l.name); } });
+  (typeof leagueVenues!=='undefined'?leagueVenues:[]).forEach(function(l){ if(l&&l.name&&!seen[l.name]){ seen[l.name]=1; opts.push(l.name); } });          // the league's primary and secondary venues
   document.getElementById('lbd-location-list').innerHTML=opts.map(function(o){ return '<option value="'+_dpEsc(o)+'">'; }).join('');
   document.getElementById('lbd-location').value='';
   document.getElementById('lbd-preview').textContent='';
@@ -9253,6 +9268,7 @@ function saveSettings(){
 }
 
 function renderSettings(){
+  renderLeagueVenuesAdmin();
   renderLocationsAdmin();
   renderPOTWAdmin();
   renderStreamAdmin();
@@ -9265,6 +9281,60 @@ function renderSettings(){
   teams.forEach(function(t,i){ tSel.innerHTML+='<option value="'+i+'">'+t.name+'</option>'; });
   if(appSettings.potw) tSel.value=String(teams.findIndex(function(t){return t.name===appSettings.potw.teamName;}));
   potwTeamChanged(true);
+}
+
+// ── PRIMARY & SECONDARY LOCATIONS (league-wide, shown on every division's Locations tab; saved at ctIndex/venues) ──
+var DEFAULT_LEAGUE_VENUES=[
+  {name:'Pioneer High School',tier:'primary'},{name:'Oak Grove High School',tier:'primary'},{name:'Ohlone Middle School',tier:'primary'},{name:'San Jose High School',tier:'primary'},
+  {name:'Piedmont High School',tier:'secondary'},{name:'Alviso Community Center',tier:'secondary'}
+];
+var leagueVenues=DEFAULT_LEAGUE_VENUES.map(function(v){ return Object.assign({},v); }), leagueVenuesSaved=false;
+function loadLeagueVenues(){
+  return db.ref('ctIndex/venues').once('value').then(function(s){
+    var v=s.val(), arr=v?(Array.isArray(v)?v:Object.values(v)):[];
+    arr=arr.filter(function(x){ return x&&x.name; });
+    if(arr.length){ leagueVenues=arr; leagueVenuesSaved=true; }
+    renderLeagueVenuesAdmin();
+  }).catch(function(){});
+}
+loadLeagueVenues();
+function saveLeagueVenues(){ leagueVenuesSaved=true; fbSet('ctIndex/venues',leagueVenues); }
+function _lvKey(n){ return (n||'').toString().toLowerCase().replace(/[^a-z0-9]/g,''); }
+function addLeagueVenue(){
+  var name=(document.getElementById('lv-name').value||'').trim(), tier=document.getElementById('lv-tier').value==='secondary'?'secondary':'primary';
+  var address=(document.getElementById('lv-address').value||'').trim(), notes=(document.getElementById('lv-notes').value||'').trim();
+  if(!name){ alert('Enter a venue name.'); return; }
+  if(leagueVenues.some(function(v){ return _lvKey(v.name)===_lvKey(name); })){ alert(name+' is already in the list.'); return; }
+  leagueVenues.push({name:name,tier:tier,address:address,notes:notes});
+  saveLeagueVenues();
+  ['lv-name','lv-address','lv-notes'].forEach(function(id){ document.getElementById(id).value=''; });
+  renderLeagueVenuesAdmin();
+}
+function moveLeagueVenue(i){ var v=leagueVenues[i]; if(!v) return; v.tier=(v.tier==='secondary')?'primary':'secondary'; saveLeagueVenues(); renderLeagueVenuesAdmin(); }
+function deleteLeagueVenue(i){
+  var v=leagueVenues[i]; if(!v) return;
+  if(!confirm('Remove '+v.name+' from the list?')) return;
+  leagueVenues.splice(i,1); saveLeagueVenues(); renderLeagueVenuesAdmin();
+}
+function renderLeagueVenuesAdmin(){
+  var el=document.getElementById('league-venues-admin'); if(!el) return;
+  var row=function(v,i){
+    var other=v.tier==='secondary'?'Primary':'Secondary';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--dark3);border-radius:8px;border:1px solid #2a2a2a;">'
+      +'<span style="font-size:16px;">📍</span>'
+      +'<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--white);">'+_dpEsc(v.name)+'</div>'
+        +(v.address?'<div style="font-size:11px;color:var(--muted);">'+_dpEsc(v.address)+'</div>':'')
+        +(v.notes?'<div style="font-size:11px;color:var(--muted);font-style:italic;">'+_dpEsc(v.notes)+'</div>':'')+'</div>'
+      +'<button class="btn btn-ghost" onclick="moveLeagueVenue('+i+')">→ '+other+'</button>'
+      +'<button class="btn-red" onclick="deleteLeagueVenue('+i+')">🗑 Remove</button></div>';
+  };
+  var section=function(title,tier){
+    var items=leagueVenues.map(function(v,i){ return {v:v,i:i}; }).filter(function(x){ return (x.v.tier==='secondary')===(tier==='secondary'); });
+    return '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;">'+title+'</div>'
+      +(items.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+items.map(function(x){ return row(x.v,x.i); }).join('')+'</div>':'<div class="empty-state">None yet</div>');
+  };
+  el.innerHTML=(leagueVenuesSaved?'':'<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Showing the standard list. Change anything and it is saved for every division.</div>')
+    +section('Primary locations','primary')+section('Secondary locations','secondary');
 }
 
 // ── LOCATIONS ADMIN ──
