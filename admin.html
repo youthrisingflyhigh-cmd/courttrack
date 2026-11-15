@@ -1652,7 +1652,7 @@ function shotClockUpdate(){
     el.style.opacity = '0.35';
     el.style.animation = '';
     if(miniEl){ miniEl.textContent = '—'; miniEl.style.opacity = '0.35'; }
-    if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: true});
+    fbSetQuiet(ctPath('game/shotClock'),{seconds: shotClockSeconds, running: shotClockRunning, off: true});
     return;
   }
   el.style.opacity = '1';
@@ -1673,7 +1673,7 @@ function shotClockUpdate(){
     if(miniEl) miniEl.style.color = '#FF4500';
   }
   // Sync to Firebase
-  if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
+  fbSetQuiet(ctPath('game/shotClock'),{seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
 }
 
 function shotClockStart(){
@@ -1821,7 +1821,7 @@ function updateShotClockOffUI(){
     display.textContent = shotClockOff ? '—' : shotClockSeconds;
     display.style.opacity = shotClockOff ? '0.35' : '1';
   }
-  if(db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
+  fbSetQuiet(ctPath('game/shotClock'),{seconds: shotClockSeconds, running: shotClockRunning, off: shotClockOff});
 }
 
 // Quick nudge — doesn't stop a running shot clock.
@@ -2197,7 +2197,7 @@ var HORN_SRC = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU5LjI3L
 // Push a signal to Firebase so scoreboard.html (or any other open display)
 // plays (or stops) the horn too, in sync with this admin device.
 function broadcastHorn(type){
-  if(db) db.ref(ctPath('game/hornSignal')).set({ts:Date.now(), type:type||'manual'});
+  fbSetQuiet(ctPath('game/hornSignal'),{ts:Date.now(), type:type||'manual'});
 }
 function manualHorn(){
   unlockHornAudio();
@@ -2279,7 +2279,7 @@ function timerUpdate(){
   var miniEl = document.getElementById('mini-clock');
   if(miniEl) miniEl.textContent = timerFmt(timerSeconds);
   // Sync to Firebase regardless of game state
-  if(db) db.ref(ctPath('game/clock')).set({seconds: timerSeconds, running: timerRunning});
+  fbSetQuiet(ctPath('game/clock'),{seconds: timerSeconds, running: timerRunning});
   try{ updateLiveMinutes(); }catch(e){}      // the minutes on every chip tick along with the clock
 }
 
@@ -3037,6 +3037,15 @@ function liveGamePayload(g){
 // be a snapshot that does not contain the change you just made (the tap would be lost). Echoes of our own writes
 // are ignored; real updates from other devices arrive later and are still applied.
 var _savingLive=false;
+// A write to the clock, shot clock or horn is announced back to THIS page's game listener immediately — carrying the page's last-saved
+// copy of the whole game, which wipes out any change made a moment earlier that is not saved yet (pressing "second half" changes the half,
+// then writes the clock, and the clock write used to undo the new half before it was ever saved). Those writes only touch their own small
+// piece of the game, so the echo of them is ignored, exactly like the echo of a save.
+function fbSetQuiet(path,val){
+  if(!db) return;
+  var prev=_savingLive; _savingLive=true;
+  try{ db.ref(path).set(val); } finally { _savingLive=prev; }
+}
 function saveLiveGame(){
   if(!game || !isActiveSession) return;       // (a stale second tab must not write a stale score either)
   var g=game;                                  // (the listener may swap the global `game` while we write)
@@ -3221,7 +3230,7 @@ function onClockSnapshot(v){
   if(!v || timerRunning) return;
   if(_clockReads===1 && v.running){
     var n=_clockReads;
-    setTimeout(function(){ if(_clockReads===n && !timerRunning && isActiveSession && db) db.ref(ctPath('game/clock')).set({seconds: timerSeconds, running: false}); },2500);
+    setTimeout(function(){ if(_clockReads===n && !timerRunning && isActiveSession && db) fbSetQuiet(ctPath('game/clock'),{seconds: timerSeconds, running: false}); },2500);
   }
   timerSeconds = v.seconds;
   var el = document.getElementById('game-timer-display');
@@ -3240,7 +3249,7 @@ function onShotClockSnapshot(v){
   if(!v || shotClockRunning) return;
   if(_shotReads===1 && v.running){
     var n=_shotReads;
-    setTimeout(function(){ if(_shotReads===n && !shotClockRunning && isActiveSession && db) db.ref(ctPath('game/shotClock')).set({seconds: shotClockSeconds, running: false, off: shotClockOff}); },2500);
+    setTimeout(function(){ if(_shotReads===n && !shotClockRunning && isActiveSession && db) fbSetQuiet(ctPath('game/shotClock'),{seconds: shotClockSeconds, running: false, off: shotClockOff}); },2500);
   }
   shotClockSeconds = v.seconds != null ? v.seconds : 30;
   shotClockOff = !!v.off;
@@ -4743,7 +4752,10 @@ function confirmStartGame(){
   });
   unlockHornAudio(); // unlock audio synchronously within this tap, before the delayed clock start below
   logStack=[];
-  fbRemove(ctPath('game'));                   // clean slate: saves now merge, so clear anything left by an abandoned game
+  // clean slate: saves now merge, so clear anything left by an abandoned game. The database announces our OWN removal to this
+  // page immediately when something was there (a stray clock, say) — and the page would replace the game we just built with that
+  // empty announcement. Ignore the echo of this one removal.
+  _savingLive=true; try{ fbRemove(ctPath('game')); } finally { _savingLive=false; }
   save();
   closeLineupModal();
   var b=document.getElementById('game-banner');
