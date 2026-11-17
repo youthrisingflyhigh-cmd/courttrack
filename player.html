@@ -1713,7 +1713,7 @@ function buildScheduleResults(){
 // Each division supplies its own dates, venues and event-day times below (a date or venue still unknown is shown as TBD).
 var BRACKET6_CFG={
   '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
-  '40':{qfDate:'TBD',sfDate:'12/6',evDate:'12/13',qfLoc:'TBD',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
+  '40':{qfDate:'12/6',sfDate:'12/13',evDate:'12/20',qfLoc:'Muwekma Ohlone Middle School',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Pioneer High School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
 };
 function fall35BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['35']); }
 function fall40BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['40']); }
@@ -2312,13 +2312,13 @@ function renderSchedule(){
   // placeholder instead of falling through to the frozen Summer 2026
   // bracket. Dates stay TBD unless it's the 35+ league, which has its own.
   var isNewDivisionBlank=(CT_BASE!==LEGACY_BASE) && !isThursdayLeague;
-  // Fall 2026 · 40+ : semifinals 12/6; event day 12/13, a MORNING start (3-Point Contest 10:30–11:00 AM,
+  // Fall 2026 · 40+ (no longer drawn from here: it uses the six-team bracket; kept in step): semifinals 12/13; event day 12/20, a MORNING start (3-Point Contest 10:30–11:00 AM,
   // All-Star Game 11:00 AM, Championship 12:00 PM) — both at Muwekma Ohlone Middle School.
   // Fall 2026 · 35+ : quarterfinals 12/2, semifinals 12/9, event day 12/16 — all at Oak Grove Small Gym (drawn by fall35BracketHtml)
   // (3-Point Shootout 6:30 PM, All-Star Game 7:00 PM, Championship 8:00 PM).
   var isFall2026Forty=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('40-league')!==-1;
-  var blankSemiDate=isFall2026ThirtyFive?'12/9':(isFall2026Forty?'12/6':'TBD');
-  var blankEventDate=isFall2026ThirtyFive?'12/16':(isFall2026Forty?'12/13':'TBD');
+  var blankSemiDate=isFall2026ThirtyFive?'12/9':(isFall2026Forty?'12/13':'TBD');
+  var blankEventDate=isFall2026ThirtyFive?'12/16':(isFall2026Forty?'12/20':'TBD');
   var blankLocation=isFall2026ThirtyFive?'Oak Grove Small Gym':(isFall2026Forty?'Muwekma Ohlone Middle School':'TBD');       // the semifinals
   // The event day (3-Point → All-Star → Championship) can be somewhere other than the semifinals:
   // (35+ is drawn by fall35BracketHtml: all three rounds at Oak Grove Small Gym.)

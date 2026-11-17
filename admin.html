@@ -5052,7 +5052,7 @@ window.retryPendingFinish = function(){
 // Each division supplies its own dates, venues and event-day times below (a date or venue still unknown is shown as TBD).
 var BRACKET6_CFG={
   '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
-  '40':{qfDate:'TBD',sfDate:'12/6',evDate:'12/13',qfLoc:'TBD',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
+  '40':{qfDate:'12/6',sfDate:'12/13',evDate:'12/20',qfLoc:'Muwekma Ohlone Middle School',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Pioneer High School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
 };
 function fall35BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['35']); }
 function fall40BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['40']); }
@@ -5147,7 +5147,7 @@ function bracketSeedNames(n,min){
 // playoff days, so it can't be forgotten.
 function _isKnownPlayoffDay(dateStr){
   var md=_schMd(dateStr); if(!md) return false;
-  var days={'6-2-under':['10-22','10-29'],'35-men-s-league':['12-2','12-9','12-16'],'40-league':['12-6','12-13']};       // 40+: semifinals 12/6, event day 12/13 (the quarterfinal day is not set yet)
+  var days={'6-2-under':['10-22','10-29'],'35-men-s-league':['12-2','12-9','12-16'],'40-league':['12-6','12-13','12-20']};       // 40+: quarterfinals 12/6, semifinals 12/13, event day 12/20
   return Object.keys(days).some(function(k){ return CT_BASE.indexOf(k)!==-1 && days[k].indexOf(md)!==-1; });
 }
 function renderPlayoffToggle(){
