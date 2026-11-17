@@ -288,6 +288,44 @@ th, td { padding: 10px 8px !important; }
   .game-tab:hover{color:var(--light);}
   .ph-card:hover{border-color:var(--orange);}
 }
+
+/* ── the sticky score bar used to be wider than the screen (its side margins assumed more page padding than phones and iPads have), which made the page wobble sideways ── */
+@media (max-width:767px){ #sticky-scorebar{margin-left:-8px !important;margin-right:-8px !important;padding-left:8px !important;padding-right:8px !important;} }
+@media (min-width:768px){ #sticky-scorebar{margin-left:-16px !important;margin-right:-16px !important;padding-left:16px !important;padding-right:16px !important;} }
+/* ── injured reserve: greyed out, not tappable ── */
+.player-chip.ir-locked{opacity:.5;pointer-events:none;border-color:#7c2d2d;cursor:not-allowed;}
+/* ── Compact live view: the players and their stat buttons sit right under the score bar ── */
+body.live-compact.has-live-game.on-track #season-bar,
+body.live-compact.has-live-game.on-track #pregame-checklist,
+body.live-compact.has-live-game.on-track #recent-games-wrap,
+body.live-compact.has-live-game.on-track #recent-top-wrap{display:none !important;}     /* pregame / season boxes get out of the way once the game is live (only on this page) */
+body.live-compact #track-content:not([style*="none"]){display:flex !important;flex-direction:column;}
+body.live-compact #track-content>:nth-child(1){order:2;}           /* the scoreboard card (fouls, timeouts, shot clock, half) moves under the players… */
+body.live-compact #track-content>:nth-child(2){order:1;}           /* …so the players and stat buttons come first */
+body.live-compact #track-content>:nth-child(n+3){order:3;}
+body.live-compact .scoreboard{padding:.6rem .9rem;margin:.6rem 0 1rem;gap:8px;}
+body.live-compact .scoreboard .team-pts{font-size:38px;}
+body.live-compact .scoreboard .team-block{min-width:96px;}
+body.live-compact .scoreboard .team-name-lbl{margin-bottom:2px;}
+body.live-compact .scoreboard div[style*="margin-top:22px"],body.live-compact .scoreboard div[style*="margin-top:20px"]{margin-top:8px !important;}
+body.live-compact .scoreboard button[onclick^="shotClockQuickReset"],body.live-compact #shot-pause-btn{min-height:46px !important;min-width:70px !important;font-size:24px !important;}
+body.live-compact #shot-pause-num{font-size:24px !important;}
+body.live-compact #shot-pause-lbl{font-size:11px !important;}
+body.live-compact #ct-home-to,body.live-compact #ct-away-to{font-size:24px !important;letter-spacing:3px !important;}
+body.live-compact #playoff-toggle-note{display:none;}
+body.live-compact #dual-track-grid{gap:.6rem;margin-bottom:.8rem;}
+body.live-compact .stat-grid{grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.6rem;}
+body.live-compact .stat-btn{padding:6px 3px !important;min-height:56px !important;}
+body.live-compact .stat-btn .sb-label{font-size:9px;letter-spacing:.3px;margin-bottom:2px;}
+body.live-compact .stat-btn .sb-count{font-size:20px;}
+body.live-compact .stat-btn .pts-tag{display:none;}
+body.live-compact .stat-btn .sb-plus{display:none;}
+@media (max-width:420px){
+  body.live-compact .scoreboard{padding:.5rem .4rem;gap:4px;}
+  body.live-compact .scoreboard .team-block{min-width:0;}
+  body.live-compact .scoreboard .team-block div[style*="font-size:12px"]{font-size:10px !important;}
+  body.live-compact .scoreboard button[onclick^="shotClockQuickReset"],body.live-compact #shot-pause-btn{min-width:60px !important;}
+}
 </style>
 <style id="live-layout-css">
 /* ── Live Tracking: players are compact tiles laid out side by side (2 across on a phone, more on wider screens) ── */
@@ -327,7 +365,7 @@ th, td { padding: 10px 8px !important; }
   </button>
 </nav>
 
-<div style="background:var(--dark2);border-bottom:1px solid #333;padding:8px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div id="season-bar" style="background:var(--dark2);border-bottom:1px solid #333;padding:8px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
   <span style="font-size:11px;color:#888;font-weight:700;letter-spacing:1px;">SEASON / DIVISION:</span>
   <select id="season-division-select" onchange="switchSeasonDivision()" style="padding:6px 10px;background:var(--dark3);border:1px solid #555;color:#fff;border-radius:6px;font-size:12px;font-weight:600;max-width:280px;"></select>
   <button onclick="openNewSeasonDivisionModal()" style="padding:6px 12px;background:var(--orange);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ New Season/Division</button>
@@ -849,7 +887,7 @@ BYE: Ohana, AIM
     </div>
   </div>
   <!-- ── RECENT GAMES ── -->
-  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+  <div id="recent-games-wrap" style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
     <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">RECENT GAMES</div>
     <div id="recent-games-carousel" style="display:flex;gap:10px;overflow-x:auto;padding:4px 0;scroll-behavior:smooth;">
       <div style="color:var(--muted);padding:10px;min-width:180px;text-align:center;font-size:12px;">Loading…</div>
@@ -857,7 +895,7 @@ BYE: Ohana, AIM
   </div>
 
   <!-- ── TOP STATS (RECENT) ── -->
-  <div style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
+  <div id="recent-top-wrap" style="padding:20px 2rem;border-bottom:1px solid #2a2a2a;">
     <div style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:10px;">TOP SCORERS (RECENT GAMES)</div>
     <div id="recent-top-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;">
       <div style="color:var(--muted);padding:10px;text-align:center;font-size:12px;">Loading…</div>
@@ -885,6 +923,7 @@ BYE: Ohana, AIM
         <div style="display:flex;gap:4px;justify-content:center;">
           <button id="mini-shotclock-btn" onclick="toggleMiniShotClock()" style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid #FF4500;color:#fff;background:#FF4500;cursor:pointer;">▶</button>
           <button onclick="shotClockReset()" title="Reset shot clock" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;border:1px solid #555;color:#ccc;background:var(--dark3);cursor:pointer;">↺</button>
+          <button onclick="shotClockQuickReset(14)" title="Reset shot clock to 14" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;border:1px solid #555;color:#eab308;background:var(--dark3);cursor:pointer;">14</button>
         </div>
       </div>
       <div style="text-align:center;min-width:64px;">
@@ -896,8 +935,9 @@ BYE: Ohana, AIM
   </div>
 
   <!-- ── CLOCKS (always visible in track tab) ── -->
-  <div style="display:flex;justify-content:center;margin:8px 0 4px;">
+  <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0 4px;">
     <button id="clocks-toggle-btn" onclick="toggleClocksPanel()" style="background:transparent;border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;padding:6px 16px;border-radius:99px;cursor:pointer;">▲ Hide Clock Controls</button>
+    <button id="compact-toggle-btn" onclick="toggleLiveCompact()" title="Compact view puts the players and stat buttons right under the score bar so there is less scrolling" style="background:transparent;border:1px solid #333;color:var(--muted);font-size:12px;font-weight:700;padding:6px 16px;border-radius:99px;cursor:pointer;">⤢ Compact view: ON</button>
   </div>
   <div style="display:flex;gap:12px;margin:4px 0 12px;flex-wrap:wrap;" id="clocks-panel">
 
@@ -1792,16 +1832,27 @@ function toggleClocksPanel(){
     localStorage.setItem('ct_clocks_collapsed','1');
   }
 }
-// Restore the last collapse preference once the track page's elements exist.
+// Restore the last collapse preference once the track page's elements exist. With nothing saved, the clock panel starts collapsed in
+// Compact view (the game and shot clock controls are also in the sticky bar) and open otherwise.
 function restoreClocksPanelState(){
   var panel=document.getElementById('clocks-panel');
   var btn=document.getElementById('clocks-toggle-btn');
   if(!panel||!btn) return;
-  if(localStorage.getItem('ct_clocks_collapsed')==='1'){
-    panel.style.display='none';
-    btn.textContent='▼ Show Clock Controls';
-  }
+  var pref=localStorage.getItem('ct_clocks_collapsed');
+  var collapse=(pref==='1')||(pref===null&&liveCompactOn());
+  panel.style.display=collapse?'none':'flex';
+  btn.textContent=collapse?'▼ Show Clock Controls':'▲ Hide Clock Controls';
 }
+// ── Compact view for Live Tracking: less scrolling between the players and their stat buttons ──
+function liveCompactOn(){ return localStorage.getItem('ct_live_compact')!=='0'; }
+function applyLiveCompact(){
+  var on=liveCompactOn();
+  document.body.classList.toggle('live-compact',on);
+  var b=document.getElementById('compact-toggle-btn'); if(b) b.textContent='⤢ Compact view: '+(on?'ON':'OFF');
+  restoreClocksPanelState();
+}
+function toggleLiveCompact(){ localStorage.setItem('ct_live_compact',liveCompactOn()?'0':'1'); applyLiveCompact(); }
+function syncLiveClass(){ document.body.classList.toggle('has-live-game',!!game); }
 
 function toggleShotClockOff(){
   shotClockOff = !shotClockOff;
@@ -3184,6 +3235,7 @@ function gameSigNoClocks(v){
 function handleGameUpdate(v){
   if(_savingLive) return;                  // the echo of our own save in progress: our in-memory game is already right
   game=v||null;
+  syncLiveClass();
   try{ ensureLogPanel(); }catch(e){}      // a refresh mid-game: bring the log + Undo history back (the panel itself is drawn when Live Tracking opens if teams haven't loaded yet)
   var sig=gameSigNoClocks(game);
   if(sig===_lastGameSigAdm) return;
@@ -4507,11 +4559,19 @@ function renderRoster(){
   el.innerHTML=pl.map(function(p,i){
     return '<div class="player-item" id="prow-'+i+'" style="border-left:3px solid '+tc+';">'
       +'<div class="p-jersey" style="color:'+tc+'">#'+p.num+'</div>'
-      +'<div class="p-info"><div class="pname">'+p.name+'</div><div class="ppos">'+p.pos+'</div></div>'
+      +'<div class="p-info"><div class="pname">'+p.name+(p.ir?' <span style="color:#f87171;font-weight:800;font-size:12px;">(IR)</span>':'')+'</div><div class="ppos">'+p.pos+'</div></div>'
+      +'<button class="btn-ghost" title="Injured reserve: out for now, so they can\'t be picked in a game while the team uses a fill-in" style="font-size:11px;padding:4px 9px;'+(p.ir?'background:rgba(239,68,68,0.15);border-color:#7c2d2d;color:#f87171;font-weight:800;':'')+'" onclick="toggleIR('+i+')">🩹 IR</button>'
       +'<button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="editPlayer('+i+')">✏️</button>'
       +'<button class="btn-red" onclick="delPlayer('+i+')">✕</button>'
       +'</div>';
   }).join('');
+}
+
+// Injured reserve: the player stays on the roster and keeps every stat, is marked (IR), and can't be picked in a game.
+function toggleIR(i){
+  var p=teams[selTeam].players[i]; if(!p) return;
+  if(p.ir) delete p.ir; else p.ir=true;
+  fbSet(ctPath('teams'),teams); renderRoster();
 }
 
 function editPlayer(i){
@@ -4540,7 +4600,7 @@ function savePlayer(i){
     var cf=numberHistoryConflict(teams[selTeam].name,num,name);
     if(cf && !confirm(_numConflictMsg(cf,num,name))) return;
   }
-  teams[selTeam].players[i]={name:name,num:num,pos:pos};
+  teams[selTeam].players[i]=Object.assign({},old||{},{name:name,num:num,pos:pos});      // keeps anything else on the player, such as the IR mark
   fbSet(ctPath('teams'),teams); renderRoster();
 }
 
@@ -4644,7 +4704,9 @@ var lineupHi=null, lineupAi=null, lineupHomeSel=[], lineupAwaySel=[], lineupHome
 function lineupNeeded(ti){ return Math.min(5, teams[ti].players.length); }
 
 function openLineupModal(hi,ai){
-  lineupHi=hi; lineupAi=ai; lineupHomeSel=[]; lineupAwaySel=[]; lineupHomeOut=[]; lineupAwayOut=[];
+  lineupHi=hi; lineupAi=ai; lineupHomeSel=[]; lineupAwaySel=[];
+  var _irNums=function(ti){ return (teams[ti].players||[]).filter(function(p){ return p&&p.ir; }).map(function(p){ return p.num; }); };
+  lineupHomeOut=_irNums(hi); lineupAwayOut=_irNums(ai);          // injured-reserve players start the game as OUT
   var overlay=document.createElement('div');
   overlay.id='lineup-modal-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
@@ -4677,7 +4739,7 @@ function renderLineupList(side,ti){
     return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:'+(isOut?'rgba(239,68,68,0.08)':checked?'rgba(255,92,0,0.1)':'#1e1e1e')+';border:1px solid '+(isOut?'#7c2d2d':checked?'var(--orange)':'#2a2a2a')+';border-radius:7px;cursor:pointer;'+(isOut?'opacity:0.6;':'')+'">'
       +'<input type="checkbox" '+(checked?'checked':'')+(isOut?' disabled':'')+' onchange="toggleLineupPlayer(\''+side+'\','+p.num+')" style="width:16px;height:16px;flex-shrink:0;">'
       +'<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:14px;min-width:24px;">#'+p.num+'</span>'
-      +'<span style="font-size:13px;font-weight:600;color:#fff;flex:1;">'+p.name+(isOut?' <span style="color:#f87171;font-weight:700;font-size:11px;">OUT</span>':'')+'</span>'
+      +'<span style="font-size:13px;font-weight:600;color:#fff;flex:1;">'+p.name+(p.ir?' <span style="color:#f87171;font-weight:800;font-size:11px;">(IR)</span>':'')+(isOut?' <span style="color:#f87171;font-weight:700;font-size:11px;">OUT</span>':'')+'</span>'
       +'<button type="button" onclick="event.preventDefault();toggleLineupOut(\''+side+'\','+p.num+')" '+(checked?'disabled style="opacity:0.3;"':'')+' style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;border:1px solid '+(isOut?'#ef4444':'#555')+';color:'+(isOut?'#f87171':'#999')+';background:transparent;cursor:pointer;flex-shrink:0;">'+(isOut?'✓ OUT':'Mark OUT')+'</button>'
       +'</label>';
   }).join('');
@@ -4688,6 +4750,8 @@ function toggleLineupPlayer(side,num){
   var need=lineupNeeded(ti);
   var sel=side==='home'?lineupHomeSel:lineupAwaySel;
   var idx=sel.indexOf(num);
+  var _irp=(teams[ti].players||[]).filter(function(x){ return x.num===num; })[0];
+  if(idx===-1 && _irp && _irp.ir) return;          // an injured-reserve player can't be a starter
   if(idx!==-1){
     sel.splice(idx,1);
   } else {
@@ -4710,6 +4774,8 @@ function toggleLineupOut(side,num){
   var ti=side==='home'?lineupHi:lineupAi;
   var sel=side==='home'?lineupHomeSel:lineupAwaySel;
   if(sel.indexOf(num)!==-1) return; // starters can't be marked out
+  var irp=(teams[ti].players||[]).filter(function(x){ return x.num===num; })[0];
+  if(irp&&irp.ir) return;           // an IR player stays out — take them off IR in Setup first
   var outs=side==='home'?lineupHomeOut:lineupAwayOut;
   var idx=outs.indexOf(num);
   if(idx!==-1) outs.splice(idx,1);
@@ -4727,6 +4793,8 @@ function confirmStartGame(){
   var hi=lineupHi, ai=lineupAi;
   if(hi==null||ai==null)return;
   if(lineupHomeSel.length!==lineupNeeded(hi)||lineupAwaySel.length!==lineupNeeded(ai))return;
+  var _irStarter=function(ti,sel){ return (teams[ti].players||[]).some(function(p){ return p&&p.ir&&sel.indexOf(p.num)!==-1; }); };
+  if(_irStarter(hi,lineupHomeSel)||_irStarter(ai,lineupAwaySel)){ alert('A player on injured reserve (IR) is in the starting lineup — take them out of the lineup, or take them off IR in Setup.'); return; }
   function mk(pl){var s={};pl.forEach(function(p){s[p.num]={pts:0,reb:0,ast:0,stl:0,blk:0,to:0,fgm:0,'3pm':0,ftm:0,miss:0,foul:0,tech:0};});return s;}
   function mkStatus(pl,starters,outs){var s={};pl.forEach(function(p){s[p.num]=starters.indexOf(p.num)!==-1?'IN':(outs.indexOf(p.num)!==-1?'OUT':'SUB');});return s;}
   var homeSelSnap=lineupHomeSel.slice(), awaySelSnap=lineupAwaySel.slice();
@@ -4980,12 +5048,20 @@ window.retryPendingFinish = function(){
 // the live standings (same order as the table); playoff games never count toward them. Winners advance by themselves
 // from the games saved in Game History with the PLAYOFF switch on. (player.html and admin.html each keep a copy of
 // this — if it changes in one it has to change in the other.)
-function fall35BracketHtml(){
+// The six-team bracket shared by 35+ and 40+: seeds 1-2 get a bye, quarterfinals #3 v #6 and #4 v #5, then semifinals and the event day.
+// Each division supplies its own dates, venues and event-day times below (a date or venue still unknown is shown as TBD).
+var BRACKET6_CFG={
+  '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Oak Grove Small Gym',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
+  '40':{qfDate:'TBD',sfDate:'12/6',evDate:'12/13',qfLoc:'TBD',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
+};
+function fall35BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['35']); }
+function fall40BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['40']); }
+function fallSixBracketHtml(cfg){
   var esc=(typeof gdEsc==='function')?gdEsc:(typeof _dpEsc==='function'?_dpEsc:function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); });
   var norm=function(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); };
   var S=bracketSeedNames(6,6);                       // team names, or null until 6 teams have played
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  var LOC='Oak Grove Small Gym', EVENT_LOC='Oak Grove Small Gym';
+  var LOC=cfg.qfLoc, SF_LOC=cfg.sfLoc, EVENT_LOC=cfg.evLoc;
   // the playoff game between two teams (only games flagged PLAYOFF, never the All-Star game), or null
   function played(a,b){
     if(!a||!b) return null;
@@ -5030,7 +5106,7 @@ function fall35BracketHtml(){
   var evCard=function(y,title,time){ return small(460,y,64,'<div style="height:38px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:700;color:#ddd;">'+title+'</div><div style="height:24px;box-sizing:border-box;font-size:10px;color:#555;text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+time+'</div>'); };
 
   var h='<div style="overflow-x:auto;padding-bottom:12px;"><div style="position:relative;width:650px;height:326px;min-width:650px;">';
-  h+=head(0,'QUARTERFINALS · 12/2',LOC)+head(230,'SEMIFINALS · 12/9',LOC)+head(460,'12/16',EVENT_LOC);
+  h+=head(0,'QUARTERFINALS · '+cfg.qfDate,LOC)+head(230,'SEMIFINALS · '+cfg.sfDate,SF_LOC)+head(460,cfg.evDate,EVENT_LOC);
   // quarterfinals (seeds 4/5 and 3/6) → semifinals
   h+=card(0,44,team(3),team(4),r1a,S[3],S[4]);
   h+=card(0,172,team(2),team(5),r1b,S[2],S[5]);
@@ -5040,10 +5116,10 @@ function fall35BracketHtml(){
   // semifinals → the 12/9 event day
   h+=line(420,97,20,2)+line(420,225,20,2)+line(438,97,2,130)+line(440,161,9,2,'#FF4500')+line(448,161,2,92,'#FF4500')+line(448,251,12,2,'#FF4500');
   // event day
-  h+=evCard(44,'🎯 3-Point Shootout','6:30 PM')+evCard(120,'⭐ All-Star Game','7:00 PM');
+  h+=evCard(44,'🎯 '+cfg.shootName,cfg.shootTime)+evCard(120,'⭐ All-Star Game',cfg.allStarTime);
   var champInner='<div style="font-size:26px;margin-bottom:2px;">🏆</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;white-space:nowrap;">'+(fin?'CHAMPIONS':'CHAMPIONSHIP')+'</div>'
     +(fin?'<div style="font-size:15px;font-weight:800;color:#fff;margin-top:4px;">'+esc(fin.winner)+'</div><div style="font-size:11px;color:#aaa;margin-top:2px;">'+esc(f1)+' '+fin.a+' – '+fin.b+' '+esc(f2)+'</div>'
-          :'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:00 PM · '+((f1&&f2)?esc(f1)+' vs '+esc(f2):'WINNER: SEMI 1 vs SEMI 2')+'</div>');
+          :'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">'+cfg.champTime+' · '+((f1&&f2)?esc(f1)+' vs '+esc(f2):'WINNER: SEMI 1 vs SEMI 2')+'</div>');
   h+='<div style="position:absolute;left:460px;top:196px;width:190px;box-sizing:border-box;background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:12px 14px;text-align:center;">'+champInner+'</div>';
   h+='</div></div>';
   h+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 6 seeds make playoffs · #1 and #2 get a bye to the semifinals · Seeds follow the standings · Playoff games don\'t count toward them</div>';
@@ -5071,7 +5147,7 @@ function bracketSeedNames(n,min){
 // playoff days, so it can't be forgotten.
 function _isKnownPlayoffDay(dateStr){
   var md=_schMd(dateStr); if(!md) return false;
-  var days={'6-2-under':['10-22','10-29'],'35-men-s-league':['12-2','12-9','12-16']};
+  var days={'6-2-under':['10-22','10-29'],'35-men-s-league':['12-2','12-9','12-16'],'40-league':['12-6','12-13']};       // 40+: semifinals 12/6, event day 12/13 (the quarterfinal day is not set yet)
   return Object.keys(days).some(function(k){ return CT_BASE.indexOf(k)!==-1 && days[k].indexOf(md)!==-1; });
 }
 function renderPlayoffToggle(){
@@ -6689,6 +6765,7 @@ function initSubDragAndDrop(){
     if(e.target.closest('button')) return; // let the IN/SUB/OUT and swap buttons work normally
     var chip=e.target.closest('.player-chip');
     if(!chip) return;
+    if(chip.classList.contains('ir-locked')) return;        // an IR player can't be picked up
     var zone=chip.closest('.sub-dropzone');
     if(!zone) return;
     subDrag={
@@ -6831,6 +6908,7 @@ function initSubDragAndDrop(){
 // to the target status instead of stepping through the cycle.
 function setPlayerStatus(side,num,newStatus){
   if(!game) return;
+  if(irLocked(side,num)) return;
   var isHome=side==='home';
   if(isHome && !game.hStatus) game.hStatus={};
   if(!isHome && !game.aStatus) game.aStatus={};
@@ -6875,6 +6953,7 @@ function _asPlainObject(x){
 }
 function openLivePlayerEdit(side,num){
   if(!game) return;
+  if(irLocked(side,num)) return;
   var ti=side==='home'?game.hi:game.ai;
   var p=teams[ti].players.filter(function(x){ return String(x.num)===String(num); })[0];
   if(!p) return;
@@ -7096,6 +7175,7 @@ function saveSubTime(entryId){
 }
 
 function renderDualChips(){
+  syncLiveClass();
   if(!game)return;
   var ht=teams[game.hi], at=teams[game.ai];
   var lm=liveMinutes();                       // minutes on court so far, for the chips below
@@ -7150,6 +7230,12 @@ function renderDualChips(){
     var color=teamObj.color;
     var pendingNum=isHome?pendingSubHome:pendingSubAway;
     var isPending=pendingNum!==null&&(pendingNum===p.num||pendingNum===String(p.num));
+    if(irLocked(side,p.num)){          // injured reserve: shown, greyed out, and not tappable
+      return '<div class="player-chip ir-locked" data-side="'+side+'" data-num="'+p.num+'" title="Injured reserve — not available this game">'
+        +'<div class="pc-top"><span class="jersey" style="color:'+color+'">#'+p.num+'</span><span class="pname">'+p.name.split(' ').pop()+'</span>'
+        +'<span style="margin-left:0;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:3px 8px;border-radius:99px;border:1px solid #ef4444;color:#f87171;background:rgba(239,68,68,0.12);">IR</span></div>'
+        +'<div class="pc-mid"><div class="ppts">'+pStats.pts+' pts</div></div></div>';
+    }
     return '<div class="player-chip" data-side="'+side+'" data-num="'+p.num+'" onclick="pickPlayerSide(\''+side+'\','+p.num+')" style="'+(sel?'border-color:'+color+';background:rgba('+(hexToRgb(color)||'255,92,0')+',0.1);':'')+(fouledOut?'opacity:0.5;':'')+(isPending?'box-shadow:0 0 0 2px #60a5fa;':'')+'">'
       +'<div class="pc-top"><span class="jersey" style="color:'+color+'">#'+p.num+'</span>'
       +'<span class="pname">'+p.name.split(' ').pop()+(fouledOut?' 🚫':'')+'</span>'
@@ -7195,7 +7281,22 @@ function renderDualChips(){
   });
 }
 
+// ── Injured reserve, during a game ──
+function _irPlayer(side,num){
+  if(!game) return null;
+  var t=teams[side==='home'?game.hi:game.ai]; if(!t) return null;
+  return (t.players||[]).filter(function(x){ return String(x.num)===String(num); })[0]||null;
+}
+// An IR player who is not on the court can't be selected, put in, swapped or dragged. (If someone is marked IR while they are on
+// the court, they can still be taken off.)
+function irLocked(side,num){
+  var p=_irPlayer(side,num); if(!p||!p.ir) return false;
+  var sm=side==='home'?game.hStatus:game.aStatus;
+  var st=sm&&(sm[num]!==undefined?sm[num]:sm[String(num)]);
+  return st!=='IN';
+}
 function pickPlayerSide(side,num){
+  if(game&&irLocked(side,num)) return;
   // Normalize num — match how hStats/aStats keys are stored
   var st=side==='home'?game.hStats:game.aStats;
   var normNum=st[num]!==undefined?num:(st[String(num)]!==undefined?String(num):num);
@@ -7214,6 +7315,7 @@ function pickPlayerSide(side,num){
 // ── SUB TRACKING (IN / OUT) ──
 function toggleSub(side,num){
   if(!game)return;
+  if(irLocked(side,num)) return;
   var isHome=side==='home';
   if(isHome && !game.hStatus) game.hStatus={};
   if(!isHome && !game.aStatus) game.aStatus={};
@@ -7247,6 +7349,7 @@ function toggleSub(side,num){
 // trade statuses in one action, instead of cycling each one separately.
 // Tapping the same player again cancels the pending selection.
 function triggerSwap(side,num){
+  if(game&&irLocked(side,num)) return;
   var pending = side==='home' ? pendingSubHome : pendingSubAway;
   if(pending===null){
     if(side==='home') pendingSubHome=num; else pendingSubAway=num;
@@ -7264,6 +7367,7 @@ function triggerSwap(side,num){
 
 function performSwap(side,numA,numB){
   if(!game) return;
+  if(irLocked(side,numA)||irLocked(side,numB)) return;
   var isHome=side==='home';
   if(isHome && !game.hStatus) game.hStatus={};
   if(!isHome && !game.aStatus) game.aStatus={};
@@ -7996,6 +8100,7 @@ function renderFall2026Bracket(container){
   var bracketLoc=is35?'Oak Grove Small Gym':'TBD';
   var html='<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px;border-bottom:2px solid #FF4500;padding-bottom:8px;">PLAYOFF BRACKET</div>';
   if(is35){ container.innerHTML=html+fall35BracketHtml(); return; }       // 35+: top 6, winners advance from the saved playoff games
+  if(CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('40-league')!==-1){ container.innerHTML=html+fall40BracketHtml(); return; }       // 40+: top 6 too
   html+='<div style="overflow-x:auto;padding-bottom:12px;"><div style="display:flex;align-items:center;gap:0;min-width:600px;">';
 
   function card(rows,timeLabel){
@@ -9202,6 +9307,7 @@ function showPage(p){
   document.querySelectorAll('.nav-tab').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.mobile-tab').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
+  document.body.classList.toggle('on-track',p==='track');
   var idx={setup:0,schedule:1,track:2,threept:3,standings:4,games:5,teams:6,settings:7,photos:8,registrations:9}[p];
   var tabs=document.querySelectorAll('.nav-tab');
   if(tabs[idx]) tabs[idx].classList.add('active');
@@ -9226,7 +9332,7 @@ function showPage(p){
     document.getElementById('no-game-track').style.display=hasGame?'none':'block';
     document.getElementById('track-content').style.display=hasGame?'block':'none';
     document.getElementById('sticky-scorebar').style.display=hasGame?'block':'none';
-    restoreClocksPanelState();
+    syncLiveClass(); applyLiveCompact();
     if(hasGame){
       document.getElementById('home-lbl').textContent=teams[game.hi].name;
       document.getElementById('away-lbl').textContent=teams[game.ai].name;

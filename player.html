@@ -1709,12 +1709,20 @@ function buildScheduleResults(){
 // the live standings (same order as the table); playoff games never count toward them. Winners advance by themselves
 // from the games saved in Game History with the PLAYOFF switch on. (player.html and admin.html each keep a copy of
 // this — if it changes in one it has to change in the other.)
-function fall35BracketHtml(){
+// The six-team bracket shared by 35+ and 40+: seeds 1-2 get a bye, quarterfinals #3 v #6 and #4 v #5, then semifinals and the event day.
+// Each division supplies its own dates, venues and event-day times below (a date or venue still unknown is shown as TBD).
+var BRACKET6_CFG={
+  '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Oak Grove Small Gym',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
+  '40':{qfDate:'TBD',sfDate:'12/6',evDate:'12/13',qfLoc:'TBD',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
+};
+function fall35BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['35']); }
+function fall40BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['40']); }
+function fallSixBracketHtml(cfg){
   var esc=(typeof gdEsc==='function')?gdEsc:(typeof _dpEsc==='function'?_dpEsc:function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); });
   var norm=function(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); };
   var S=bracketSeedNames(6,6);                       // team names, or null until 6 teams have played
   var hist=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  var LOC='Oak Grove Small Gym', EVENT_LOC='Oak Grove Small Gym';
+  var LOC=cfg.qfLoc, SF_LOC=cfg.sfLoc, EVENT_LOC=cfg.evLoc;
   // the playoff game between two teams (only games flagged PLAYOFF, never the All-Star game), or null
   function played(a,b){
     if(!a||!b) return null;
@@ -1759,7 +1767,7 @@ function fall35BracketHtml(){
   var evCard=function(y,title,time){ return small(460,y,64,'<div style="height:38px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:700;color:#ddd;">'+title+'</div><div style="height:24px;box-sizing:border-box;font-size:10px;color:#555;text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+time+'</div>'); };
 
   var h='<div style="overflow-x:auto;padding-bottom:12px;"><div style="position:relative;width:650px;height:326px;min-width:650px;">';
-  h+=head(0,'QUARTERFINALS · 12/2',LOC)+head(230,'SEMIFINALS · 12/9',LOC)+head(460,'12/16',EVENT_LOC);
+  h+=head(0,'QUARTERFINALS · '+cfg.qfDate,LOC)+head(230,'SEMIFINALS · '+cfg.sfDate,SF_LOC)+head(460,cfg.evDate,EVENT_LOC);
   // quarterfinals (seeds 4/5 and 3/6) → semifinals
   h+=card(0,44,team(3),team(4),r1a,S[3],S[4]);
   h+=card(0,172,team(2),team(5),r1b,S[2],S[5]);
@@ -1769,10 +1777,10 @@ function fall35BracketHtml(){
   // semifinals → the 12/9 event day
   h+=line(420,97,20,2)+line(420,225,20,2)+line(438,97,2,130)+line(440,161,9,2,'#FF4500')+line(448,161,2,92,'#FF4500')+line(448,251,12,2,'#FF4500');
   // event day
-  h+=evCard(44,'🎯 3-Point Shootout','6:30 PM')+evCard(120,'⭐ All-Star Game','7:00 PM');
+  h+=evCard(44,'🎯 '+cfg.shootName,cfg.shootTime)+evCard(120,'⭐ All-Star Game',cfg.allStarTime);
   var champInner='<div style="font-size:26px;margin-bottom:2px;">🏆</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:#FF4500;letter-spacing:1px;white-space:nowrap;">'+(fin?'CHAMPIONS':'CHAMPIONSHIP')+'</div>'
     +(fin?'<div style="font-size:15px;font-weight:800;color:#fff;margin-top:4px;">'+esc(fin.winner)+'</div><div style="font-size:11px;color:#aaa;margin-top:2px;">'+esc(f1)+' '+fin.a+' – '+fin.b+' '+esc(f2)+'</div>'
-          :'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">8:00 PM · '+((f1&&f2)?esc(f1)+' vs '+esc(f2):'WINNER: SEMI 1 vs SEMI 2')+'</div>');
+          :'<div style="font-size:10px;color:#555;margin-top:6px;letter-spacing:1px;">'+cfg.champTime+' · '+((f1&&f2)?esc(f1)+' vs '+esc(f2):'WINNER: SEMI 1 vs SEMI 2')+'</div>');
   h+='<div style="position:absolute;left:460px;top:196px;width:190px;box-sizing:border-box;background:linear-gradient(135deg,rgba(255,69,0,0.15),rgba(255,69,0,0.08));border:2px solid #FF4500;border-radius:12px;padding:12px 14px;text-align:center;">'+champInner+'</div>';
   h+='</div></div>';
   h+='<div style="font-size:11px;color:#555;text-align:center;margin-top:14px;letter-spacing:1px;">Top 6 seeds make playoffs · #1 and #2 get a bye to the semifinals · Seeds follow the standings · Playoff games don\'t count toward them</div>';
@@ -2322,6 +2330,8 @@ function renderSchedule(){
 
   if(isFall2026ThirtyFive){
     html += fall35BracketHtml();                    // top 6, with winners advancing from the saved playoff games
+  } else if(isFall2026Forty){
+    html += fall40BracketHtml();                    // 40+: also top 6 (byes for #1-#2), same layout
   } else if(isNewDivisionBlank){
     // Fall 2026 · 35+ Men's League — brand new division, no standings
     // yet, so this stays fully blank (Seed 1-4 placeholders, no team
@@ -2681,8 +2691,8 @@ function getSeededStandings(){
 // The Playoff Picture appears on its own once EVERY team in the division has played at least this many games.
 var PLAYOFF_PICTURE_MIN_GAMES=5;
 function playoffFormat(){
-  var is35=CT_BASE.indexOf('fall-2026')!==-1 && CT_BASE.indexOf('35-men-s-league')!==-1;
-  return is35?{spots:6,bye:2}:{spots:4,bye:0};          // top 6 with a bye for #1-#2 in 35+; top 4 elsewhere
+  var six=CT_BASE.indexOf('fall-2026')!==-1 && (CT_BASE.indexOf('35-men-s-league')!==-1 || CT_BASE.indexOf('40-league')!==-1);
+  return six?{spots:6,bye:2}:{spots:4,bye:0};           // top 6 with a bye for #1-#2 in 35+ and 40+; top 4 elsewhere
 }
 function _permutations(arr){
   if(arr.length<=1) return [arr.slice()];
@@ -2885,14 +2895,14 @@ function playoffNews(o,games,seedNow){
     var winIn=bubble.filter(function(t){ return t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots; }), help=bubble.filter(function(t){ return !(t.remaining>0&&t.ownWorst>-1&&t.ownWorst<=spots); });
     needs=[]; if(winIn.length) needs.push('Win and in: '+_nameList(winIn.map(nm))); if(help.length) needs.push('Needs help: '+_nameList(help.map(nm)));
   }
-  // 3b) everyone is in (or out) and there are no byes: the seeds themselves decide who plays whom, so say which are still open
-  if(!bye && openSpots<=0 && !bubble.length){
+  // 3b) everyone is in (or out): the seeds themselves decide who plays whom (and who gets a bye), so say which are still open
+  if(openSpots<=0 && !bubble.length){
     var open=[];
     for(var sd=2;sd<=Math.min(spots,T.length);sd++){
       var cand=T.filter(function(t){ return (t.seedMask>>sd)&1; }).map(nm);
       if(cand.length>1) open.push('#'+sd+': '+cand.join(' / '));
     }
-    if(open.length) items.push({icon:'🔢',title:'SEEDS STILL OPEN',text:open.join('  ·  ')+'.'+(semis&&!fighters.length?semisText:'')});
+    if(open.length) items.push({icon:'🔢',title:'SEEDS STILL OPEN',text:open.join('  ·  ')+'.'+(semis&&!fighters.length?semisText:'')+(bye?' The quarterfinals are #3 v #6 and #4 v #5.':'')});
   }
   // chips: every team, in current order, with where it stands
   var chips=T.slice().sort(function(a,b){ return (seedNow[a.name]||99)-(seedNow[b.name]||99); }).map(function(t){
