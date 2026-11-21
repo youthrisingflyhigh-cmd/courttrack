@@ -5051,7 +5051,7 @@ window.retryPendingFinish = function(){
 // The six-team bracket shared by 35+ and 40+: seeds 1-2 get a bye, quarterfinals #3 v #6 and #4 v #5, then semifinals and the event day.
 // Each division supplies its own dates, venues and event-day times below (a date or venue still unknown is shown as TBD).
 var BRACKET6_CFG={
-  '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
+  '35':{qfDate:'12/2',sfDate:'12/9',evDate:'12/16',qfTimes:['7:00 PM','8:00 PM'],sfTimes:['7:00 PM','8:00 PM'],qfLoc:'Oak Grove Small Gym',sfLoc:'Oak Grove Small Gym',evLoc:'Muwekma Ohlone Middle School',shootName:'3-Point Shootout',shootTime:'6:30 PM',allStarTime:'7:00 PM',champTime:'8:00 PM'},
   '40':{qfDate:'12/6',sfDate:'12/13',evDate:'12/20',qfLoc:'Muwekma Ohlone Middle School',sfLoc:'Muwekma Ohlone Middle School',evLoc:'Pioneer High School',shootName:'3-Point Contest',shootTime:'10:30 – 11:00 AM',allStarTime:'11:00 AM',champTime:'12:00 PM'}
 };
 function fall35BracketHtml(){ return fallSixBracketHtml(BRACKET6_CFG['35']); }
@@ -5093,12 +5093,12 @@ function fallSixBracketHtml(cfg){
       +(score!=null?'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:'+(state==='win'?'#fff':'#666')+';">'+score+'</span>':'')
       +'</div>';
   }
-  function card(x,y,s1,s2,res,nameA,nameB){
+  function card(x,y,s1,s2,res,nameA,nameB,time){
     var st1='',st2='',sc1=null,sc2=null;
     if(res){ sc1=res.a; sc2=res.b; st1=res.winner===nameA?'win':'lose'; st2=res.winner===nameB?'win':'lose'; }
     return '<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:190px;height:106px;box-sizing:border-box;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;">'
       +row(s1,sc1,st1,true)+row(s2,sc2,st2,false)
-      +'<div style="height:24px;box-sizing:border-box;font-size:10px;color:'+(res?'#aaa':'#555')+';text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+(res?'FINAL':'TBD')+'</div></div>';
+      +'<div style="height:24px;box-sizing:border-box;font-size:10px;color:'+(res?'#aaa':(time?'#9a9a9a':'#555'))+';text-align:center;padding-top:6px;background:#0d0d0d;letter-spacing:1px;">'+(res?'FINAL':(time||'TBD'))+'</div></div>';
   }
   var line=function(x,y,w,h,c){ return '<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;background:'+(c||'#333')+';"></div>'; };
   var head=function(x,title,loc){ return '<div style="position:absolute;left:'+x+'px;top:0;width:190px;text-align:center;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;">'+title+'</div><div style="font-size:10px;color:#555;margin-top:3px;">📍 '+loc+'</div></div>'; };
@@ -5108,10 +5108,10 @@ function fallSixBracketHtml(cfg){
   var h='<div style="overflow-x:auto;padding-bottom:12px;"><div style="position:relative;width:650px;height:326px;min-width:650px;">';
   h+=head(0,'QUARTERFINALS · '+cfg.qfDate,LOC)+head(230,'SEMIFINALS · '+cfg.sfDate,SF_LOC)+head(460,cfg.evDate,EVENT_LOC);
   // quarterfinals (seeds 4/5 and 3/6) → semifinals
-  h+=card(0,44,team(3),team(4),r1a,S[3],S[4]);
-  h+=card(0,172,team(2),team(5),r1b,S[2],S[5]);
-  h+=card(230,44,team(0),adv(w45,'Winner of #4 / #5'),sf1,S[0],w45);
-  h+=card(230,172,team(1),adv(w36,'Winner of #3 / #6'),sf2,S[1],w36);
+  h+=card(0,44,team(3),team(4),r1a,S[3],S[4],(cfg.qfTimes||[])[0]);
+  h+=card(0,172,team(2),team(5),r1b,S[2],S[5],(cfg.qfTimes||[])[1]);
+  h+=card(230,44,team(0),adv(w45,'Winner of #4 / #5'),sf1,S[0],w45,(cfg.sfTimes||[])[0]);
+  h+=card(230,172,team(1),adv(w36,'Winner of #3 / #6'),sf2,S[1],w36,(cfg.sfTimes||[])[1]);
   h+=line(190,97,40,2)+line(190,225,40,2);
   // semifinals → the 12/9 event day
   h+=line(420,97,20,2)+line(420,225,20,2)+line(438,97,2,130)+line(440,161,9,2,'#FF4500')+line(448,161,2,92,'#FF4500')+line(448,251,12,2,'#FF4500');
